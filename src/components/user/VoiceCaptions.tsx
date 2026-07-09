@@ -1,6 +1,8 @@
-// src/components/user/VoiceCaptions.tsx — live captions of what Nikki says, in large type through
-// the app's signature Reveal motion. Accessibility matters double here: many older adults are
-// hard of hearing, so the spoken reply is always readable too. Purely presentational, no SDK.
+// src/components/user/VoiceCaptions.tsx — live captions of the conversation, in large type
+// through the app's signature Reveal motion. Accessibility matters double here: many older
+// adults are hard of hearing, so both what they said AND Nikki's reply are always readable.
+// The two sides are visually distinct: "You" sits on the right in the brand colour, "Nikki"
+// on the left on a soft surface. Purely presentational, no SDK.
 import React from "react";
 import { StyleSheet, View } from "react-native";
 import { theme } from "../../theme";
@@ -11,23 +13,45 @@ export default function VoiceCaptions({ captions }: { captions: NikkiCaption[] }
   if (captions.length === 0) return null;
   return (
     <View style={styles.wrap}>
-      {captions.map((caption) => (
-        <Reveal key={caption.id}>
-          <View style={styles.bubble}>
-            <Text variant="body">{caption.text}</Text>
-          </View>
-        </Reveal>
-      ))}
+      {captions.map((caption) => {
+        const isUser = caption.role === "user";
+        return (
+          <Reveal key={caption.id}>
+            <View style={[styles.row, isUser ? styles.rowUser : styles.rowNikki]}>
+              <View style={[styles.bubble, isUser ? styles.userBubble : styles.nikkiBubble]}>
+                <Text variant="overline" tone={isUser ? "onPrimary" : "textTertiary"}>
+                  {isUser ? "YOU" : "NIKKI"}
+                </Text>
+                <Text variant="body" tone={isUser ? "onPrimary" : "textPrimary"}>
+                  {caption.text}
+                </Text>
+              </View>
+            </View>
+          </Reveal>
+        );
+      })}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { gap: theme.spacing.sm },
+  row: { flexDirection: "row" },
+  rowUser: { justifyContent: "flex-end" },
+  rowNikki: { justifyContent: "flex-start" },
   bubble: {
-    backgroundColor: theme.colors.surface,
+    maxWidth: "88%",
+    gap: theme.spacing.xs,
     borderRadius: theme.radius.lg,
     padding: theme.spacing.lg,
     ...theme.shadows.sm,
+  },
+  nikkiBubble: {
+    backgroundColor: theme.colors.surface,
+    borderBottomLeftRadius: theme.radius.sm,
+  },
+  userBubble: {
+    backgroundColor: theme.colors.primary,
+    borderBottomRightRadius: theme.radius.sm,
   },
 });

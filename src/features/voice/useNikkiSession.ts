@@ -15,7 +15,7 @@ import { buildSessionVariables } from "./sessionVariables";
 import { ensureMicPermission } from "./micPermission";
 import { makeAgentTools, type AgentToolSet, type SessionRecap } from "./agentTools";
 
-export type NikkiCaption = { id: number; text: string };
+export type NikkiCaption = { id: number; role: "user" | "nikki"; text: string };
 
 // idle → preparing (token/vars/permission) → connecting → live → ended | error
 export type NikkiSessionPhase = "idle" | "preparing" | "connecting" | "live" | "ended" | "error";
@@ -77,13 +77,15 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
       });
     },
     onMessage: ({ message, role }) => {
+      const who: "user" | "nikki" = role === "agent" ? "nikki" : "user";
       // Both sides persist for continuity ([RECENT] next session); a failed write never
       // interrupts the conversation.
-      void recordTurn(olderAdultId, role === "agent" ? "nikki" : "user", message).catch(() => undefined);
-      if (role !== "agent") return;
+      void recordTurn(olderAdultId, who, message).catch(() => undefined);
+      // Caption BOTH sides so the person sees their own words and Nikki's reply. Keep the
+      // last few turns for a readable rolling transcript.
       captionSeq.current += 1;
       const id = captionSeq.current;
-      setCaptions((prev) => [...prev.slice(-3), { id, text: message }]);
+      setCaptions((prev) => [...prev.slice(-5), { id, role: who, text: message }]);
     },
   });
 
