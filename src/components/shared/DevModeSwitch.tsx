@@ -1,105 +1,83 @@
-// src/components/shared/DevModeSwitch.tsx — DEV ONLY floating pill to flip between the
-// elder ("user") and admin sides with real auth sessions (src/features/dev/devSessionSwitch).
-// Renders nothing in release builds. Deliberately small and slightly ugly: it is scaffolding.
+// src/components/shared/DevModeSwitch.tsx — DEV ONLY floating control to jump between the
+// admin and user views of ONE fixed family (src/features/dev/devConfig.ts). Deterministic:
+// each button signs into the fixed dev admin, or re-claims the fixed elder, so both sides
+// always show the SAME group no matter what session was left in storage. Renders nothing in
+// release builds.
 import React, { useState } from "react";
-import { Alert, Pressable, StyleSheet, Text as RNText, type AlertButton } from "react-native";
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text as RNText, View } from "react-native";
 import { useRouter } from "expo-router";
 import { theme } from "../../theme";
 import { useAppState } from "../../auth/appState";
 import { supabase } from "../../lib/supabase";
-import { prepareLoginAsOther, resetLocalModeCache, switchSession } from "../../features/dev/devSessionSwitch";
-import type { AppMode } from "../../types/database";
+import { clearSession } from "../../storage/localStore";
+import { becomeAdmin, becomeUser } from "../../features/dev/devHarness";
+import { DEV_HARNESS } from "../../features/dev/devConfig";
 
 export default function DevModeSwitch(): React.ReactElement | null {
-  const { mode, refresh } = useAppState();
+  const { mode, refresh, completeSetupWithGroup } = useAppState();
   const router = useRouter();
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<null | "admin" | "user">(null);
 
-  if (!__DEV__ || !supabase || !mode) return null;
-  const target: AppMode = mode === "admin" ? "user" : "admin";
+  if (!__DEV__ || !supabase || !DEV_HARNESS) return null;
 
-  async function flip(): Promise<void> {
+  async function goAdmin(): Promise<void> {
     if (busy) return;
-    setBusy(true);
+    setBusy("admin");
     try {
-      const result = await switchSession(mode as AppMode, target);
-      if (result.kind === "switched") {
-        await refresh();
-        router.replace("/");
-        return;
-      }
-      if (result.kind === "group-mismatch") {
-        const buttons: AlertButton[] = [
-          { text: "Stay where I was", style: "cancel", onPress: () => { void result.revert().then(refresh); } },
-          { text: "Switch anyway", style: "destructive", onPress: () => { void result.proceed().then(refresh).then(() => router.replace("/")); } },
-        ];
-        // The common dev case: flip admin→user, but the user identity belongs to another
-        // family. Offer the actual fix — re-pair the user into the CURRENT family, with
-        // the code carried over so it is two taps (name → move to this phone).
-        if (target === "user" && result.fromCode) {
-          buttons.push({
-            text: `Re-pair user in ${result.fromCode}`,
-            onPress: () => {
-              void resetLocalModeCache()
-                .then(refresh)
-                .then(() => router.replace(`/onboarding/user-pairing?code=${result.fromCode}`));
-            },
-          });
-        }
-        Alert.alert(
-          "Different family groups!",
-          `This ${mode} is in family ${result.fromCode ?? "(none)"} but the ${target} is in ${result.toCode ?? "(none)"}. Cross-side testing needs BOTH in the same family.`,
-          buttons,
-        );
-        return;
-      }
-      if (result.kind === "needs-login") {
-        Alert.alert(
-          `No ${target} session on this device yet`,
-          `Sign in once as ${target === "admin" ? "a family admin" : "the older adult (join with the family code)"} — after that this button flips instantly both ways.`,
-          [
-            { text: "Cancel", style: "cancel" },
-            {
-              text: "Go to sign-in",
-              onPress: () => {
-                void prepareLoginAsOther(mode as AppMode)
-                  .then(refresh)
-                  .then(() => router.replace("/"));
-              },
-            },
-          ],
-        );
-        return;
-      }
-      Alert.alert("Could not switch", "Try again, or sign in manually.");
+      const r = await becomeAdmin();
+      if (!r.ok) { Alert.alert("Dev: could not become admin", r.message); return; }
+      await clearSession(); // drop stale local link so refresh() re-derives from the server
+      await refresh();
+      router.replace("/admin/dashboard");
     } finally {
-      setBusy(false);
+      setBusy(null);
+    }
+  }
+
+  async function goUser(): Promise<void> {
+    if (busy) return;
+    setBusy("user");
+    try {
+      const r = await becomeUser();
+      if (!r.ok) { Alert.alert("Dev: could not become user", r.message); return; }
+      await completeSetupWithGroup("user", r.olderAdultId, r.groupId, r.joinCode);
+      router.replace("/user/nikki");
+    } finally {
+      setBusy(null);
     }
   }
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Developer: switch to ${target} view`}
-      onPress={() => void flip()}
-      style={({ pressed }) => [styles.pill, pressed || busy ? styles.pressed : null]}
-    >
-      <RNText style={styles.label}>⇄ {target === "admin" ? "Admin" : "User"}</RNText>
-    </Pressable>
+    <View style={styles.wrap} pointerEvents="box-none">
+      <RNText style={styles.code}>{DEV_HARNESS.familyCode}</RNText>
+      <View style={styles.row}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Developer: become admin of the test family"
+          onPress={() => void goAdmin()}
+          style={({ pressed }) => [styles.pill, mode === "admin" ? styles.active : null, pressed ? styles.pressed : null]}
+        >
+          {busy === "admin" ? <ActivityIndicator color="#fff" size="small" /> : <RNText style={styles.label}>🅰 Admin</RNText>}
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Developer: become the user of the test family"
+          onPress={() => void goUser()}
+          style={({ pressed }) => [styles.pill, mode === "user" ? styles.active : null, pressed ? styles.pressed : null]}
+        >
+          {busy === "user" ? <ActivityIndicator color="#fff" size="small" /> : <RNText style={styles.label}>🅴 User</RNText>}
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  pill: {
-    position: "absolute",
-    top: 54,
-    right: theme.spacing.md,
-    zIndex: 999,
-    backgroundColor: "rgba(30,30,30,0.75)",
-    borderRadius: theme.radius.pill,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: 6,
-  },
+  wrap: { position: "absolute", top: 50, right: theme.spacing.md, zIndex: 999, alignItems: "flex-end", gap: 2 },
+  code: { color: "rgba(255,255,255,0.9)", backgroundColor: "rgba(30,30,30,0.7)", fontSize: 10, fontWeight: "700", paddingHorizontal: 6, borderRadius: theme.radius.pill, overflow: "hidden" },
+  row: { flexDirection: "row", gap: 6 },
+  pill: { minWidth: 66, alignItems: "center", backgroundColor: "rgba(30,30,30,0.75)", borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.md, paddingVertical: 6 },
+  active: { backgroundColor: theme.colors.primary },
   pressed: { opacity: 0.6 },
   label: { color: "#fff", fontSize: 12, fontWeight: "600" },
 });
