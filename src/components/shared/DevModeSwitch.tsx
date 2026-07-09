@@ -23,12 +23,23 @@ export default function DevModeSwitch(): React.ReactElement | null {
     setBusy(true);
     try {
       const result = await switchSession(mode as AppMode, target);
-      if (result === "switched") {
+      if (result.kind === "switched") {
         await refresh();
         router.replace("/");
         return;
       }
-      if (result === "needs-login") {
+      if (result.kind === "group-mismatch") {
+        Alert.alert(
+          "Different family groups!",
+          `This ${mode} is in family ${result.fromCode ?? "(none)"} but the ${target} is in ${result.toCode ?? "(none)"}. Cross-side testing needs BOTH in the same family — re-pair one of them with the same code.`,
+          [
+            { text: "Stay where I was", style: "cancel", onPress: () => { void result.revert().then(refresh); } },
+            { text: "Switch anyway", style: "destructive", onPress: () => { void result.proceed().then(refresh).then(() => router.replace("/")); } },
+          ],
+        );
+        return;
+      }
+      if (result.kind === "needs-login") {
         Alert.alert(
           `No ${target} session on this device yet`,
           `Sign in once as ${target === "admin" ? "a family admin" : "the older adult (join with the family code)"} — after that this button flips instantly both ways.`,
