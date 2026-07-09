@@ -17,7 +17,7 @@ const DEMO_CODE = "DEMOFAM2";
 function friendly(message: string | undefined): string {
   const m = (message ?? "").toLowerCase();
   if (m.includes("invalid code")) return "That code didn't match a household. Please double-check it.";
-  if (m.includes("not authenticated")) return "Something interrupted the connection. Please try again.";
+  if (m.includes("not authenticated") || m.includes("prepare your profile")) return "We could not start your session. Please fully close the app and open it again.";
   if (m.includes("only an admin")) return "Please sign in as family first, then enter the code.";
   if (m.includes("not in this household")) return "That person isn't in this household anymore.";
   if (m.includes("too many")) return "Too many tries. Please wait a minute and try again.";

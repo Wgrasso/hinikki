@@ -39,12 +39,18 @@ export async function ensureAdminProfile(displayName: string, email: string): Pr
 // Ensure an anonymous older-adult session + profiles row exists BEFORE any redeem/claim/roster call.
 export async function ensureAnonSession(): Promise<void> {
   if (!supabase) return;
-  const { data: existing } = await supabase.auth.getSession();
-  if (!existing.session) {
+  // getSession() returns whatever sits in device storage — which may be EXPIRED or invalid
+  // (common after the dev session-switcher restores stashed tokens). getUser() actually
+  // validates the token (refreshing if it can); a null result means the stored session is
+  // dead, so we mint a fresh anonymous one rather than trusting the corpse. Skipping this
+  // check leaves get_current_profile_id() null and every RPC fails with "not authenticated".
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) {
     const { error } = await supabase.auth.signInAnonymously();
     if (error) throw new Error(error.message);
   }
-  await ensureProfile("older_adult", "user");
+  const profileId = await ensureProfile("older_adult", "user");
+  if (!profileId) throw new Error("could not prepare your profile — please reopen the app");
 }
 
 // --- Older adult (user mode) ---------------------------------------------------
