@@ -7,6 +7,8 @@ Full schema for the HiNikki backend, applied in filename order:
 | `20260709120000_schema.sql` | Base schema: 24 tables, RLS on every table, identity/permission functions |
 | `20260709120010_groups.sql` | Household groups, stable join code, pairing/recovery RPCs (idempotent) |
 | `20260709120020_storage_family_photos.sql` | Private `family-photos` storage bucket + RLS scoped to `can_view/can_manage_older_adult()` |
+| `20260709130000_event_input_fields.sql` | Additive `calendar_events` columns: `companion`, `announce_lead_minutes` |
+| `20260709140000_person_call_flag.sql` | Additive `family_people.can_be_called_by_nikki` flag |
 
 On a fresh project these reproduce the entire backend:
 

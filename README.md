@@ -9,6 +9,9 @@ One Expo (React Native + TypeScript) app, two routed experiences:
 
 ## Run it
 
+> New to the team? **[DEVELOPMENT.md](DEVELOPMENT.md)** is the plain-language guide: one-time
+> setup, the daily loop, and when (re)builds are actually needed.
+
 ```bash
 npm install                  # .npmrc pins legacy-peer-deps (ElevenLabs/LiveKit peer skew)
 npx expo start --dev-client  # daily loop: JS hot-reloads into the installed dev build
@@ -62,6 +65,9 @@ function secrets — is documented in `elevenlabs/README.md`. The API key only e
 - **Weather** — `MockWeatherProvider` behind `WeatherProvider` (`src/services/weatherService.ts`).
   Drop in Open-Meteo (keyless) later.
 - **Location** — real `expo-location` (foreground / on-demand only for MVP; background is deferred).
+- **Push notifications** — real (`expo-notifications` + Expo's push service,
+  `src/features/notifications/push.ts`); like voice, they need the dev build on a physical
+  device — web and simulators get a friendly no-op.
 
 ## Design
 
