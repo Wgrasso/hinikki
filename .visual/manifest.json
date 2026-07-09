@@ -1,0 +1,14 @@
+{
+  "capturedAt": "2026-06-29T13:32:12.378Z",
+  "appDir": "C:\\Users\\wpggr\\Desktop\\projecten ai\\automatic _app_machine\\generated-apps\\hinikki",
+  "screens": [
+    {
+      "label": "landing",
+      "file": "landing.png",
+      "render": {
+        "status": "ok",
+        "reason": "content rendered"
+      }
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "cli": {
+    "version": ">=12.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "production": {
+      "ios": {
+        "autoIncrement": true
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://bvzplrphnkjiarwcyfpr.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2enBscnBobmtqaWFyd2N5ZnByIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExOTg4ODgsImV4cCI6MjA5Njc3NDg4OH0.rkS5JQJyeQAKy8VWqLwi3tuAbvo9KOdjkKyVHYrWXdI"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleTeamId": "AL7SQ4HRT6",
+        "ascApiKeyPath": "C:\\Users\\wpggr\\Desktop\\projecten ai\\automatic _app_machine\\credentials\\asc-api-key.p8",
+        "ascApiKeyId": "PT322UY52G",
+        "ascApiKeyIssuerId": "47b023fc-cef9-4b3c-8f6e-c5f2e701605d",
+        "ascAppId": "6785546152"
+      }
+    }
+  }
+}

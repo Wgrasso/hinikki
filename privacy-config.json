@@ -1,0 +1,16 @@
+{
+  "appName": "HiNikki",
+  "contactEmail": "wpggrasso@gmail.com",
+  "dataCollected": [
+    "Names, relationships and notes about the older adult and their family",
+    "Family photos uploaded by caregivers",
+    "Home and familiar addresses, and safe-place locations",
+    "Precise device location of the older adult (foreground, shared with linked family)",
+    "Messages exchanged with the Nikki assistant",
+    "Account email and password for caregiver/admin accounts"
+  ],
+  "permissions": ["location-when-in-use", "photo-library"],
+  "backend": "Supabase (Postgres with row-level security, authentication, and private file storage)",
+  "usesAnalytics": false,
+  "effectiveDate": "2026-06-29"
+}

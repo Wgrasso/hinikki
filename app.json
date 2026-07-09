@@ -1,0 +1,61 @@
+{
+  "expo": {
+    "name": "HiNikki",
+    "slug": "hinikki",
+    "scheme": "hinikki",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FAF4EA"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "HiNikki shares your location with your trusted family so they can help keep you safe and guide you home if you ever feel lost."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "HiNikki uses your photos so family can add familiar faces that Nikki can show you."
+        }
+      ],
+      "expo-status-bar",
+      "expo-splash-screen"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.willemgrasso.hinikki",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "edgeToEdgeEnabled": true,
+      "package": "com.willemgrasso.hinikki",
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "19ad2020-f9ca-45c8-9e67-bef64a8d8d3a"
+      },
+      "ascAppId": "6785546152"
+    },
+    "owner": "willem_grasso"
+  }
+}
