@@ -4,6 +4,14 @@
     "appVersionSource": "remote"
   },
   "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://ealeydrwcowpypvkjbfs.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVhbGV5ZHJ3Y293cHlwdmtqYmZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1ODMwODUsImV4cCI6MjA5OTE1OTA4NX0.Ybk_0cGYg5gUVB0QShVNh-PgIeImhJVGqXYhQczDko8"
+      }
+    },
     "production": {
       "ios": {
         "autoIncrement": true
