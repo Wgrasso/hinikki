@@ -30,7 +30,8 @@
         }
       ],
       "expo-status-bar",
-      "expo-splash-screen"
+      "expo-splash-screen",
+      "expo-notifications"
     ],
     "ios": {
       "supportsTablet": false,

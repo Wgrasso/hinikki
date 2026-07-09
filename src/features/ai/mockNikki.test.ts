@@ -67,6 +67,7 @@ describe("MockNikkiAI", () => {
           conversation_hints: null,
           can_nikki_mention: true,
           can_contact_in_emergency: true,
+          can_be_called_by_nikki: false,
           is_admin: false,
           preferred_contact_method: null,
           primary_photo_path: null,

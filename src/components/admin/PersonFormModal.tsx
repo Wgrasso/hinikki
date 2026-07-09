@@ -26,7 +26,7 @@ export default function PersonFormModal({ visible, olderAdultId, person, initial
   const [hints, setHints] = useState("");
   const [phone, setPhone] = useState("");
   const [emergency, setEmergency] = useState(false);
-  const [nikkiMention, setNikkiMention] = useState(true);
+  const [canBeCalled, setCanBeCalled] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +40,7 @@ export default function PersonFormModal({ visible, olderAdultId, person, initial
     setHints(person?.conversation_hints ?? "");
     setPhone(person?.phone ?? "");
     setEmergency(person?.can_contact_in_emergency ?? false);
-    setNikkiMention(person?.can_nikki_mention ?? true);
+    setCanBeCalled(person?.can_be_called_by_nikki ?? false);
     setPhotoUri(null);
     setError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -69,7 +69,8 @@ export default function PersonFormModal({ visible, olderAdultId, person, initial
         conversation_hints: hints.trim() || null,
         phone: phone.trim() || null,
         can_contact_in_emergency: emergency,
-        can_nikki_mention: nikkiMention,
+        can_nikki_mention: true,
+        can_be_called_by_nikki: canBeCalled,
       };
       let personId = person?.id;
       if (person) {
@@ -124,9 +125,9 @@ export default function PersonFormModal({ visible, olderAdultId, person, initial
               <Icon name={emergency ? "check" : "add"} color={emergency ? "success" : "textTertiary"} />
               <Text variant="body">Can be contacted in an emergency</Text>
             </Pressable>
-            <Pressable accessibilityRole="switch" accessibilityState={{ checked: nikkiMention }} accessibilityLabel="Nikki may talk about this person" onPress={() => setNikkiMention((v) => !v)} style={styles.toggleRow}>
-              <Icon name={nikkiMention ? "check" : "add"} color={nikkiMention ? "success" : "textTertiary"} />
-              <Text variant="body">Nikki may talk about this person</Text>
+            <Pressable accessibilityRole="switch" accessibilityState={{ checked: canBeCalled }} accessibilityLabel="This person may be called by Nikki" onPress={() => setCanBeCalled((v) => !v)} style={styles.toggleRow}>
+              <Icon name={canBeCalled ? "check" : "add"} color={canBeCalled ? "success" : "textTertiary"} />
+              <Text variant="body">This person may be called by Nikki</Text>
             </Pressable>
 
             <Stack gap="sm" style={styles.actions}>

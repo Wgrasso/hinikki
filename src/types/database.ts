@@ -69,6 +69,7 @@ export type FamilyPerson = {
   conversation_hints: string | null;
   can_nikki_mention: boolean;
   can_contact_in_emergency: boolean;
+  can_be_called_by_nikki: boolean;
   is_admin: boolean;
   preferred_contact_method: string | null;
   primary_photo_path: string | null;

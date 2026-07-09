@@ -6,7 +6,7 @@ import { getDemoState, mutateDemo, newId } from "../data/demoDb";
 import type { FamilyPerson, FamilyRelationship } from "../types/database";
 
 const PERSON_COLUMNS =
-  "id, older_adult_id, full_name, preferred_name, relationship_label, phone, address, location_description, visit_frequency, important_notes, conversation_hints, can_nikki_mention, can_contact_in_emergency, is_admin, preferred_contact_method";
+  "id, older_adult_id, full_name, preferred_name, relationship_label, phone, address, location_description, visit_frequency, important_notes, conversation_hints, can_nikki_mention, can_contact_in_emergency, can_be_called_by_nikki, is_admin, preferred_contact_method";
 
 export type NewPerson = {
   full_name: string;
@@ -19,6 +19,7 @@ export type NewPerson = {
   conversation_hints?: string | null;
   can_nikki_mention?: boolean;
   can_contact_in_emergency?: boolean;
+  can_be_called_by_nikki?: boolean;
 };
 
 export async function listPeople(olderAdultId: string): Promise<FamilyPerson[]> {
@@ -75,6 +76,7 @@ export async function createPerson(olderAdultId: string, input: NewPerson): Prom
       conversation_hints: input.conversation_hints ?? null,
       can_nikki_mention: input.can_nikki_mention ?? true,
       can_contact_in_emergency: input.can_contact_in_emergency ?? false,
+      can_be_called_by_nikki: input.can_be_called_by_nikki ?? false,
       is_admin: false,
       preferred_contact_method: null,
       primary_photo_path: null,
