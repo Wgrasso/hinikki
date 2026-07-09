@@ -14,3 +14,6 @@ CLAUDE.md
 supabase/.temp/
 supabase/.branches/
 
+# Local tooling artifacts
+.playwright-mcp/
+app-state.png

@@ -38,7 +38,8 @@
           "cameraPermission": "HiNikki does not use the camera for calls; this permission is required by the voice engine."
         }
       ],
-      "@livekit/react-native-expo-plugin"
+      "@livekit/react-native-expo-plugin",
+      "expo-notifications"
     ],
     "ios": {
       "supportsTablet": false,

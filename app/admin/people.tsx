@@ -17,8 +17,9 @@ type PeopleData = { people: FamilyPerson[]; photos: Record<string, string | null
 export default function AdminPeople(): React.ReactElement {
   const { olderAdultId } = useAppState();
   const id = olderAdultId ?? "";
-  const [editing, setEditing] = useState<FamilyPerson | null>(null);
-  const [adding, setAdding] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingPerson, setEditingPerson] = useState<FamilyPerson | null>(null);
+  const [editPhotoUrl, setEditPhotoUrl] = useState<string | null>(null);
 
   const { state, reload } = useAsync<PeopleData>(async () => {
     const people = await listPeople(id);
@@ -26,10 +27,21 @@ export default function AdminPeople(): React.ReactElement {
     return { people, photos: Object.fromEntries(entries) };
   }, [id]);
 
+  function openAdd(): void {
+    setEditingPerson(null);
+    setEditPhotoUrl(null);
+    setFormOpen(true);
+  }
+  function openEdit(person: FamilyPerson, photoUrl: string | null): void {
+    setEditingPerson(person);
+    setEditPhotoUrl(photoUrl);
+    setFormOpen(true);
+  }
+
   return (
     <Screen padded={false}>
       <View style={styles.bar}>
-        <AppBar title="People" subtitle="Build Nikki's family memory." rightLabel="Add" onRightPress={() => setAdding(true)} onRefresh={reload} />
+        <AppBar title="People" subtitle="Build Nikki's family memory." rightLabel="Add" onRightPress={openAdd} onRefresh={reload} />
       </View>
       <StateView
         state={state}
@@ -40,7 +52,7 @@ export default function AdminPeople(): React.ReactElement {
         emptyTitle="No people yet"
         emptySubtitle="Add the family, friends and carers Nikki should know about."
         emptyActionLabel="Add the first person"
-        onEmptyAction={() => setAdding(true)}
+        onEmptyAction={openAdd}
       >
         {(data) => (
           <FlatList
@@ -53,15 +65,21 @@ export default function AdminPeople(): React.ReactElement {
                 title={item.preferred_name ?? item.full_name}
                 subtitle={item.relationship_label ?? "Family"}
                 leading={<Avatar name={item.full_name} photoUri={data.photos[item.id]} size={52} />}
-                onPress={() => setEditing(item)}
+                onPress={() => openEdit(item, data.photos[item.id] ?? null)}
               />
             )}
           />
         )}
       </StateView>
 
-      <PersonFormModal visible={adding} olderAdultId={id} onClose={() => setAdding(false)} onSaved={reload} />
-      <PersonFormModal visible={editing !== null} olderAdultId={id} person={editing} onClose={() => setEditing(null)} onSaved={reload} />
+      <PersonFormModal
+        visible={formOpen}
+        olderAdultId={id}
+        person={editingPerson}
+        initialPhotoUrl={editPhotoUrl}
+        onClose={() => setFormOpen(false)}
+        onSaved={reload}
+      />
     </Screen>
   );
 }

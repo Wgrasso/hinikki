@@ -69,6 +69,7 @@ export type FamilyPerson = {
   conversation_hints: string | null;
   can_nikki_mention: boolean;
   can_contact_in_emergency: boolean;
+  can_be_called_by_nikki: boolean;
   is_admin: boolean;
   preferred_contact_method: string | null;
   primary_photo_path: string | null;
@@ -94,6 +95,8 @@ export type CalendarEvent = {
   location_address: string | null;
   what_to_bring: string | null;
   transport_notes: string | null;
+  companion: string | null;
+  announce_lead_minutes: number | null;
   nikki_before_event_message: string | null;
   calming_explanation: string | null;
   user_friendly_summary: string | null;
