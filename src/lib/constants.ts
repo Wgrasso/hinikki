@@ -21,13 +21,9 @@ export const SUPABASE_ANON_KEY = firstNonEmpty(process.env.EXPO_PUBLIC_SUPABASE_
 export const HAS_SUPABASE = SUPABASE_URL.length > 0 && SUPABASE_ANON_KEY.length > 0;
 
 // Voice (ElevenLabs) — the conversation token is minted server-side by the `elevenlabs-token`
-// Edge Function, so voice needs a real Supabase backend and a native platform (the RN SDK rides on
-// LiveKit's native WebRTC module; there is no web or demo-mode voice). The agent id below is ONLY
-// for the voice-lab spike against a public test agent — production sessions never need it client-side.
-export const ELEVENLABS_SPIKE_AGENT_ID = firstNonEmpty(
-  process.env.EXPO_PUBLIC_ELEVENLABS_AGENT_ID,
-  extra.elevenlabsAgentId,
-);
+// Edge Function (the agent is private; no agent id or key ever lives client-side), so voice needs
+// a real Supabase backend and a native platform (the RN SDK rides on LiveKit's native WebRTC
+// module; there is no web or demo-mode voice).
 export const HAS_VOICE = HAS_SUPABASE && Platform.OS !== "web";
 
 export const PHOTO_BUCKET = "family-photos";

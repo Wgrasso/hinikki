@@ -29,9 +29,10 @@ Renaming or adding a variable is a two-sided change: this prompt **and**
 
 1. Create the agent in the ElevenLabs dashboard (Agents → New agent) using the prompt,
    first message, and settings from `agent.json`.
-2. **Enable authentication** on the agent (Security tab) — the app only connects through
-   conversation tokens minted by the `elevenlabs-token` Edge Function; an unauthenticated
-   agent would be callable by anyone with the agent id.
+2. **Enable authentication** on the agent (Security tab; done for the live agent on
+   2026-07-09) — the app only connects through conversation tokens minted by the
+   `elevenlabs-token` Edge Function; an unauthenticated agent would be callable by anyone
+   with the agent id.
 3. Set the Supabase function secrets:
    ```bash
    supabase secrets set ELEVENLABS_API_KEY=xi-... ELEVENLABS_AGENT_ID=agent-...
@@ -42,8 +43,3 @@ Renaming or adding a variable is a two-sided change: this prompt **and**
    emergency trail (`emergency_events`) is still written by the Help screen's buttons;
    wiring the agent into it (webhook → Edge Function) is a known follow-up.
 
-## Spike-only note
-
-The hidden `/voice-lab` route talks to a **public** test agent via
-`EXPO_PUBLIC_ELEVENLABS_AGENT_ID` in `.env` — that agent should contain no real data and
-can be deleted once the private production agent is verified.
