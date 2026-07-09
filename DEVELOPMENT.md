@@ -11,7 +11,7 @@ the code, save, and your phone updates **within seconds**. No rebuilding, no rei
 ## One-time setup (per person)
 
 1. Install the HiNikki dev build on your iPhone — your phone must
-   be registered first, which you've already done).
+   be registered first, which you've already done.
 2. On your laptop: install [Node.js](https://nodejs.org) (LTS version) and clone this repo.
 3. In the project folder, run: `npm install`
 
