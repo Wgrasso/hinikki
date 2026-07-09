@@ -106,6 +106,7 @@ export async function getOlderAdult(olderAdultId: string): Promise<OlderAdultPro
 export async function updateOlderAdultProfile(
   olderAdultId: string,
   patch: {
+    display_name?: string;
     preferred_name?: string | null;
     date_of_birth?: string | null;
     home_address?: string | null;

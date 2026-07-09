@@ -3,7 +3,7 @@
 // another device MOVES it here after a confirmation (the join code is the trust boundary —
 // this is the login-free device recovery the claim RPC was built for).
 import React, { useRef, useState } from "react";
-import { ActivityIndicator, Alert } from "react-native";
+import { Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { useAppState } from "../../src/auth/appState";
 import { AppBar, Button, Card, Field, Icon, Screen, Stack, Text } from "../../src/primitives";
@@ -24,13 +24,16 @@ export default function UserPairing(): React.ReactElement {
   const [error, setError] = useState<string | null>(null);
   const [showJoinNew, setShowJoinNew] = useState(false);
   const [newName, setNewName] = useState("");
+  const [soloName, setSoloName] = useState("");
   const handle = useRef<{ groupId: string; joinCode: string } | null>(null);
   const soloOlderAdultId = useRef<string | null>(null);
 
-  async function showMyCode(): Promise<void> {
-    setView("show"); setBusy(true); setError(null);
+  async function createMyCode(): Promise<void> {
+    const name = soloName.trim();
+    if (name.length === 0) { setError("Please enter your name first."); return; }
+    setBusy(true); setError(null);
     try {
-      const h = await startSoloOlderAdult();
+      const h = await startSoloOlderAdult(name);
       soloOlderAdultId.current = h.olderAdultId;
       handle.current = { groupId: h.groupId, joinCode: h.joinCode };
       setCode(h.joinCode);
@@ -39,6 +42,11 @@ export default function UserPairing(): React.ReactElement {
     } finally {
       setBusy(false);
     }
+  }
+
+  function openSolo(): void {
+    setError(null);
+    setView("show");
   }
 
   async function finishSolo(): Promise<void> {
@@ -108,7 +116,7 @@ export default function UserPairing(): React.ReactElement {
 
       {view === "choose" ? (
         <Stack gap="lg">
-          <Card elevation="card" onPress={showMyCode} accessibilityLabel="Start on my own">
+          <Card elevation="card" onPress={openSolo} accessibilityLabel="Start on my own">
             <Stack direction="row" gap="lg" align="center">
               <Icon name="sparkle" color="primary" size={theme.iconSize.lg} />
               <Stack flex gap="xs">
@@ -131,21 +139,17 @@ export default function UserPairing(): React.ReactElement {
 
       {view === "show" ? (
         <Stack gap="lg">
-          {busy ? (
-            <Stack align="center" gap="md" padding="xl">
-              <ActivityIndicator color={theme.colors.primary} size="large" />
-              <Text variant="body" tone="textSecondary">Creating your code…</Text>
-            </Stack>
-          ) : error ? (
-            <Stack gap="md">
-              <Text variant="body" tone="danger">{error}</Text>
-              <Button label="Try again" onPress={showMyCode} />
-            </Stack>
-          ) : (
+          {code ? (
             <>
               <PairingCode code={code} />
               <Text variant="body" tone="textSecondary">Give this one code to your family. Then tap below to start.</Text>
               <Button label="I'm ready to start" icon="check" onPress={finishSolo} />
+            </>
+          ) : (
+            <>
+              <Text variant="body" tone="textSecondary">First, what is your name? Your family will see it when they join you.</Text>
+              <Field label="Your name" value={soloName} onChangeText={setSoloName} placeholder="e.g. Anna" autoCapitalize="words" error={error} />
+              <Button label="Create my code" icon="check" loading={busy} onPress={createMyCode} />
             </>
           )}
         </Stack>

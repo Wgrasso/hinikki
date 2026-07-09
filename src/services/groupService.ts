@@ -43,10 +43,12 @@ export async function joinGroupAsAdmin(code: string, relationship?: string): Pro
   return { ok: true, value: { groupId: d.group_id, olderAdultId: d.older_adult_ids[0] ?? "" } };
 }
 
-export async function startSoloOlderAdult(): Promise<GroupHandle> {
+export async function startSoloOlderAdult(displayName: string): Promise<GroupHandle> {
   if (!supabase) return { groupId: "demo-group", joinCode: DEMO_CODE, olderAdultId: DEMO_OLDER_ADULT_ID };
   await ensureAnonSession();
-  const { data, error } = await supabase.rpc("start_solo_older_adult", { p_display_name: "My profile" });
+  const { data, error } = await supabase.rpc("start_solo_older_adult", {
+    p_display_name: displayName.trim() || "My profile",
+  });
   if (error) throw new Error(error.message);
   const d = data as { group_id: string; join_code: string; older_adult_id: string };
   return { groupId: d.group_id, joinCode: d.join_code, olderAdultId: d.older_adult_id };
