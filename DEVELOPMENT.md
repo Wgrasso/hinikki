@@ -23,16 +23,17 @@ automatically (the sensitive keys live safely on the server, never on laptops).
 ```bash
 git pull          # get the latest code
 npm install       # only needed when someone added a package
-npx expo start --dev-client
+npx expo start --dev-client --tunnel
 ```
 
 A **QR code** appears in the terminal. Scan it with your iPhone camera → HiNikki opens and
 loads the app. Now edit code; every save shows up on the phone in a second or two.
 
-**Requirements for the phone↔laptop connection:**
-- Phone and laptop on the **same Wi-Fi**.
-- Wi-Fi being difficult (office networks often block this)? Use
-  `npx expo start --dev-client --tunnel` instead — slower, but works anywhere.
+**About `--tunnel`:** it routes the connection through Expo's servers, so it works on any
+network — and it is REQUIRED on WSL2 (Windows + Linux terminal), where the plain same-Wi-Fi
+mode advertises an address the phone can't reach. Tunnel needs an Expo login
+(`npx expo login`, or an `EXPO_TOKEN` in your shell). If phone and laptop are on the same
+Wi-Fi on a plain Mac/Windows setup, you can drop `--tunnel` for a slightly faster connection.
 
 **Quick checks before pushing code:**
 ```bash
