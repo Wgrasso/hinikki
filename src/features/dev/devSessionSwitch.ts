@@ -93,6 +93,13 @@ export async function switchSession(from: AppMode, to: AppMode): Promise<SwitchR
   }
 }
 
+// Clear only the LOCAL mode/link cache (session untouched) — used when re-pairing the
+// current role into a different family group.
+export async function resetLocalModeCache(): Promise<void> {
+  if (!__DEV__) return;
+  await clearSession();
+}
+
 // One-time setup path: keep the current session stashed, then drop to onboarding so the
 // tester can sign in as the other role. LOCAL sign-out only — a global sign-out would
 // revoke the refresh token we just stashed.

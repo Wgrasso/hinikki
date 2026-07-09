@@ -2,9 +2,9 @@
 // or join their family by code and tap their name. Tapping a name that is already set up on
 // another device MOVES it here after a confirmation (the join code is the trust boundary —
 // this is the login-free device recovery the claim RPC was built for).
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Alert } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAppState } from "../../src/auth/appState";
 import { AppBar, Button, Card, Field, Icon, Screen, Stack, Text } from "../../src/primitives";
 import PairingCode from "../../src/components/shared/PairingCode";
@@ -15,6 +15,7 @@ type View = "choose" | "show" | "enter" | "pick";
 
 export default function UserPairing(): React.ReactElement {
   const router = useRouter();
+  const { code: codeParam } = useLocalSearchParams<{ code?: string }>();
   const { completeSetupWithGroup } = useAppState();
   const [view, setView] = useState<View>("choose");
   const [busy, setBusy] = useState(false);
@@ -57,15 +58,29 @@ export default function UserPairing(): React.ReactElement {
     router.replace("/user/nikki");
   }
 
-  async function loadRoster(): Promise<void> {
+  async function loadRoster(codeOverride?: string): Promise<void> {
+    const joinCode = (codeOverride ?? entered).trim().toUpperCase();
     setBusy(true); setError(null);
-    const r = await getGroupRoster(entered.trim().toUpperCase());
+    const r = await getGroupRoster(joinCode);
     setBusy(false);
     if (!r.ok) { setError(r.message); return; }
-    handle.current = { groupId: r.value.groupId, joinCode: entered.trim().toUpperCase() };
+    handle.current = { groupId: r.value.groupId, joinCode };
     setRoster(r.value.olderAdults);
     setView("pick");
   }
+
+  // Arriving with ?code= (e.g. from the dev switcher's re-pair path) skips the typing:
+  // straight to "who are you?" for that family.
+  const autoloadedRef = useRef(false);
+  useEffect(() => {
+    if (typeof codeParam === "string" && codeParam.length > 0 && !autoloadedRef.current) {
+      autoloadedRef.current = true;
+      setEntered(codeParam.toUpperCase());
+      setView("enter");
+      void loadRoster(codeParam);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [codeParam]);
 
   async function claimEntry(entry: RosterEntry): Promise<void> {
     setBusy(true); setError(null);

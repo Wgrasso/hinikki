@@ -2,12 +2,12 @@
 // elder ("user") and admin sides with real auth sessions (src/features/dev/devSessionSwitch).
 // Renders nothing in release builds. Deliberately small and slightly ugly: it is scaffolding.
 import React, { useState } from "react";
-import { Alert, Pressable, StyleSheet, Text as RNText } from "react-native";
+import { Alert, Pressable, StyleSheet, Text as RNText, type AlertButton } from "react-native";
 import { useRouter } from "expo-router";
 import { theme } from "../../theme";
 import { useAppState } from "../../auth/appState";
 import { supabase } from "../../lib/supabase";
-import { prepareLoginAsOther, switchSession } from "../../features/dev/devSessionSwitch";
+import { prepareLoginAsOther, resetLocalModeCache, switchSession } from "../../features/dev/devSessionSwitch";
 import type { AppMode } from "../../types/database";
 
 export default function DevModeSwitch(): React.ReactElement | null {
@@ -29,13 +29,27 @@ export default function DevModeSwitch(): React.ReactElement | null {
         return;
       }
       if (result.kind === "group-mismatch") {
+        const buttons: AlertButton[] = [
+          { text: "Stay where I was", style: "cancel", onPress: () => { void result.revert().then(refresh); } },
+          { text: "Switch anyway", style: "destructive", onPress: () => { void result.proceed().then(refresh).then(() => router.replace("/")); } },
+        ];
+        // The common dev case: flip admin→user, but the user identity belongs to another
+        // family. Offer the actual fix — re-pair the user into the CURRENT family, with
+        // the code carried over so it is two taps (name → move to this phone).
+        if (target === "user" && result.fromCode) {
+          buttons.push({
+            text: `Re-pair user in ${result.fromCode}`,
+            onPress: () => {
+              void resetLocalModeCache()
+                .then(refresh)
+                .then(() => router.replace(`/onboarding/user-pairing?code=${result.fromCode}`));
+            },
+          });
+        }
         Alert.alert(
           "Different family groups!",
-          `This ${mode} is in family ${result.fromCode ?? "(none)"} but the ${target} is in ${result.toCode ?? "(none)"}. Cross-side testing needs BOTH in the same family — re-pair one of them with the same code.`,
-          [
-            { text: "Stay where I was", style: "cancel", onPress: () => { void result.revert().then(refresh); } },
-            { text: "Switch anyway", style: "destructive", onPress: () => { void result.proceed().then(refresh).then(() => router.replace("/")); } },
-          ],
+          `This ${mode} is in family ${result.fromCode ?? "(none)"} but the ${target} is in ${result.toCode ?? "(none)"}. Cross-side testing needs BOTH in the same family.`,
+          buttons,
         );
         return;
       }
