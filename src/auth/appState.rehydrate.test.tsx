@@ -19,6 +19,7 @@ function baseDeps(overrides: Partial<BootDeps>): BootDeps {
     readMode: async (): Promise<null> => null,
     readOlderAdultId: async (): Promise<null> => null,
     readOnboardingComplete: async (): Promise<boolean> => false,
+    verifyOlderAdult: async (): Promise<boolean> => true,
     readGroupId: async (): Promise<null> => null,
     readJoinCode: async (): Promise<null> => null,
     fetchGroup: async (): Promise<null> => null,

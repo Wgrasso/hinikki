@@ -2,7 +2,7 @@
 // On launch: restore session → selected mode → linked profile → route. Survives restarts.
 // If the session is active but the local link is missing, re-derives identity from the server.
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { hasActiveSession, signOutAll } from "../services/profileService";
+import { getOlderAdult, hasActiveSession, signOutAll } from "../services/profileService";
 import { getMyGroup } from "../services/groupService";
 import type { MyGroup } from "../services/groupService";
 import {
@@ -50,6 +50,7 @@ export type BootDeps = {
   readMode: () => Promise<AppMode | null>;
   readOlderAdultId: () => Promise<string | null>;
   readOnboardingComplete: () => Promise<boolean>;
+  verifyOlderAdult: (id: string) => Promise<boolean>;
   readGroupId: () => Promise<string | null>;
   readJoinCode: () => Promise<string | null>;
   fetchGroup: () => Promise<MyGroup | null>;
@@ -77,13 +78,20 @@ export async function resolveBootState(deps: BootDeps): Promise<BootState> {
     deps.readJoinCode(),
   ]);
   if (onboarded && storedMode && linkedId) {
-    return {
-      status: "ready",
-      mode: storedMode,
-      olderAdultId: linkedId,
-      groupId: cachedGroup,
-      joinCode: cachedCode,
-    };
+    // Trust the cache only if that older adult still exists — a profile deleted or
+    // re-claimed elsewhere would leave a dangling id here, and every later write would
+    // fail its foreign key with a confusing generic error. Verification failure falls
+    // through to the server re-derivation below, which self-heals the cache.
+    const stillExists = await deps.verifyOlderAdult(linkedId).catch(() => true);
+    if (stillExists) {
+      return {
+        status: "ready",
+        mode: storedMode,
+        olderAdultId: linkedId,
+        groupId: cachedGroup,
+        joinCode: cachedCode,
+      };
+    }
   }
   // Session exists but the local link is missing/incomplete → re-derive it from the server.
   const mine = await deps.fetchGroup();
@@ -117,6 +125,7 @@ const REAL_BOOT_DEPS: BootDeps = {
   readMode: getSelectedMode,
   readOlderAdultId: getLinkedOlderAdultId,
   readOnboardingComplete: getOnboardingComplete,
+  verifyOlderAdult: async (id) => (await getOlderAdult(id)) !== null,
   readGroupId: getGroupId,
   readJoinCode: getJoinCode,
   fetchGroup: getMyGroup,

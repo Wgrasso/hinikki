@@ -131,8 +131,11 @@ export default function PersonFormModal({ visible, olderAdultId, person, initial
           if (ok) onSaved();
         });
       }
-    } catch {
-      setError("We could not save just now. Please try again.");
+    } catch (e) {
+      // Dev builds show the underlying cause — a swallowed RLS/foreign-key message cost
+      // us a debugging session once; release keeps the warm copy.
+      const detail = __DEV__ && e instanceof Error ? ` (${e.message})` : "";
+      setError(`We could not save just now. Please try again.${detail}`);
     } finally {
       setSaving(false);
     }
