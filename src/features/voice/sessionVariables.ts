@@ -207,7 +207,9 @@ export async function buildSessionVariables(
   }
 
   return {
-    preferred_name: profile?.preferred_name ?? preferredName ?? "friend",
+    // FR-2: preferred_name, else the display_name the family gave at household setup,
+    // else the caller's value — "friend" only when nobody ever named them anywhere.
+    preferred_name: profile?.preferred_name ?? profile?.display_name ?? preferredName ?? "friend",
     today_date: formatTodayDate(),
     local_time: formatTime(new Date().toISOString()),
     language_name,
