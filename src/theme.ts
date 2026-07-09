@@ -76,6 +76,7 @@ const iconGlyphs = {
   clock: "time",
   pill: "medkit",
   send: "arrow-up",
+  mic: "mic",
   sparkle: "sparkles",
   refresh: "refresh",
   edit: "pencil",
