@@ -30,7 +30,15 @@
         }
       ],
       "expo-status-bar",
-      "expo-splash-screen"
+      "expo-splash-screen",
+      [
+        "@config-plugins/react-native-webrtc",
+        {
+          "microphonePermission": "HiNikki uses the microphone so you can talk with Nikki, your voice companion.",
+          "cameraPermission": "HiNikki does not use the camera for calls; this permission is required by the voice engine."
+        }
+      ],
+      "@livekit/react-native-expo-plugin"
     ],
     "ios": {
       "supportsTablet": false,

@@ -1,4 +1,5 @@
 // src/lib/constants.ts — app-wide constants (no secrets here; env comes from expo-public vars).
+import { Platform } from "react-native";
 import Constants from "expo-constants";
 
 const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, string | undefined>;
@@ -18,6 +19,16 @@ export const SUPABASE_URL = firstNonEmpty(process.env.EXPO_PUBLIC_SUPABASE_URL, 
 export const SUPABASE_ANON_KEY = firstNonEmpty(process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY, extra.supabaseAnonKey);
 
 export const HAS_SUPABASE = SUPABASE_URL.length > 0 && SUPABASE_ANON_KEY.length > 0;
+
+// Voice (ElevenLabs) — the conversation token is minted server-side by the `elevenlabs-token`
+// Edge Function, so voice needs a real Supabase backend and a native platform (the RN SDK rides on
+// LiveKit's native WebRTC module; there is no web or demo-mode voice). The agent id below is ONLY
+// for the voice-lab spike against a public test agent — production sessions never need it client-side.
+export const ELEVENLABS_SPIKE_AGENT_ID = firstNonEmpty(
+  process.env.EXPO_PUBLIC_ELEVENLABS_AGENT_ID,
+  extra.elevenlabsAgentId,
+);
+export const HAS_VOICE = HAS_SUPABASE && Platform.OS !== "web";
 
 export const PHOTO_BUCKET = "family-photos";
 
