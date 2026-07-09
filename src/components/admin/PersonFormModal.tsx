@@ -1,6 +1,8 @@
-// src/components/admin/PersonFormModal.tsx — add or edit a family person, with an optional photo.
-import React, { useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+// src/components/admin/PersonFormModal.tsx — add or edit a family person.
+// Prefills on open (fast + correct for edit); the chosen photo shows immediately as a preview and
+// uploads in the background so saving feels instant.
+import React, { useEffect, useState } from "react";
+import { Image, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { theme } from "../../theme";
 import { Button, Field, Icon, Stack, Text } from "../../primitives";
@@ -11,21 +13,40 @@ type Props = {
   visible: boolean;
   olderAdultId: string;
   person?: FamilyPerson | null;
+  initialPhotoUrl?: string | null;
   onClose: () => void;
   onSaved: () => void;
 };
 
-export default function PersonFormModal({ visible, olderAdultId, person, onClose, onSaved }: Props): React.ReactElement {
-  const [fullName, setFullName] = useState(person?.full_name ?? "");
-  const [relationship, setRelationship] = useState(person?.relationship_label ?? "");
-  const [location, setLocation] = useState(person?.location_description ?? "");
-  const [visit, setVisit] = useState(person?.visit_frequency ?? "");
-  const [hints, setHints] = useState(person?.conversation_hints ?? "");
-  const [phone, setPhone] = useState(person?.phone ?? "");
-  const [emergency, setEmergency] = useState(person?.can_contact_in_emergency ?? false);
+export default function PersonFormModal({ visible, olderAdultId, person, initialPhotoUrl, onClose, onSaved }: Props): React.ReactElement {
+  const [fullName, setFullName] = useState("");
+  const [relationship, setRelationship] = useState("");
+  const [location, setLocation] = useState("");
+  const [visit, setVisit] = useState("");
+  const [hints, setHints] = useState("");
+  const [phone, setPhone] = useState("");
+  const [emergency, setEmergency] = useState(false);
+  const [nikkiMention, setNikkiMention] = useState(true);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!visible) return;
+    setFullName(person?.full_name ?? "");
+    setRelationship(person?.relationship_label ?? "");
+    setLocation(person?.location_description ?? "");
+    setVisit(person?.visit_frequency ?? "");
+    setHints(person?.conversation_hints ?? "");
+    setPhone(person?.phone ?? "");
+    setEmergency(person?.can_contact_in_emergency ?? false);
+    setNikkiMention(person?.can_nikki_mention ?? true);
+    setPhotoUri(null);
+    setError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
+
+  const previewUri = photoUri ?? initialPhotoUrl ?? null;
 
   async function pickPhoto(): Promise<void> {
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.7 });
@@ -48,6 +69,7 @@ export default function PersonFormModal({ visible, olderAdultId, person, onClose
         conversation_hints: hints.trim() || null,
         phone: phone.trim() || null,
         can_contact_in_emergency: emergency,
+        can_nikki_mention: nikkiMention,
       };
       let personId = person?.id;
       if (person) {
@@ -56,9 +78,15 @@ export default function PersonFormModal({ visible, olderAdultId, person, onClose
         const created = await createPerson(olderAdultId, patch);
         personId = created.id;
       }
-      if (photoUri && personId) await uploadPersonPhoto(olderAdultId, personId, photoUri);
+      const localPhoto = photoUri;
       onSaved();
       onClose();
+      // Upload the photo in the background so saving feels instant; refresh again when it lands.
+      if (localPhoto && personId) {
+        void uploadPersonPhoto(olderAdultId, personId, localPhoto).then((ok) => {
+          if (ok) onSaved();
+        });
+      }
     } catch {
       setError("We could not save just now. Please try again.");
     } finally {
@@ -77,29 +105,28 @@ export default function PersonFormModal({ visible, olderAdultId, person, onClose
               Tell Nikki who this is so they can help your loved one remember.
             </Text>
 
-            <Pressable accessibilityRole="button" accessibilityLabel="Add a photo" onPress={pickPhoto} style={({ pressed }) => [styles.photoBtn, pressed ? styles.pressed : null]}>
+            {previewUri ? <Image source={{ uri: previewUri }} style={styles.photoPreview} /> : null}
+            <Pressable accessibilityRole="button" accessibilityLabel={previewUri ? "Change photo" : "Add a photo"} onPress={pickPhoto} style={({ pressed }) => [styles.photoBtn, pressed ? styles.pressed : null]}>
               <Icon name="camera" color="primary" size={theme.iconSize.lg} />
               <Text variant="bodyStrong" tone="primary">
-                {photoUri ? "Photo selected" : "Add a photo"}
+                {previewUri ? "Change photo" : "Add a photo"}
               </Text>
             </Pressable>
 
             <Field label="Full name" value={fullName} onChangeText={setFullName} placeholder="e.g. Sophie de Vries" autoCapitalize="words" error={error} />
             <Field label="Relationship" value={relationship} onChangeText={setRelationship} placeholder="e.g. Daughter" autoCapitalize="words" />
-            <Field label="Where they live" value={location} onChangeText={setLocation} placeholder="e.g. in Amsterdam" />
+            <Field label="Hometown" value={location} onChangeText={setLocation} placeholder="e.g. Amsterdam" />
             <Field label="How often they visit" value={visit} onChangeText={setVisit} placeholder="e.g. Usually on Thursdays" />
-            <Field label="What Nikki should know" value={hints} onChangeText={setHints} placeholder="e.g. Loves to hear about the garden" multiline />
+            <Field label="Conversation hints for Nikki" value={hints} onChangeText={setHints} placeholder="e.g. Loves to hear about the garden" multiline />
             <Field label="Phone" value={phone} onChangeText={setPhone} placeholder="Optional" keyboardType="phone-pad" autoCapitalize="none" />
 
-            <Pressable
-              accessibilityRole="switch"
-              accessibilityState={{ checked: emergency }}
-              accessibilityLabel="Can be contacted in an emergency"
-              onPress={() => setEmergency((e) => !e)}
-              style={styles.toggleRow}
-            >
+            <Pressable accessibilityRole="switch" accessibilityState={{ checked: emergency }} accessibilityLabel="Can be contacted in an emergency" onPress={() => setEmergency((e) => !e)} style={styles.toggleRow}>
               <Icon name={emergency ? "check" : "add"} color={emergency ? "success" : "textTertiary"} />
               <Text variant="body">Can be contacted in an emergency</Text>
+            </Pressable>
+            <Pressable accessibilityRole="switch" accessibilityState={{ checked: nikkiMention }} accessibilityLabel="Nikki may talk about this person" onPress={() => setNikkiMention((v) => !v)} style={styles.toggleRow}>
+              <Icon name={nikkiMention ? "check" : "add"} color={nikkiMention ? "success" : "textTertiary"} />
+              <Text variant="body">Nikki may talk about this person</Text>
             </Pressable>
 
             <Stack gap="sm" style={styles.actions}>
@@ -124,6 +151,7 @@ const styles = StyleSheet.create({
   },
   handle: { alignSelf: "center", width: 44, height: 5, borderRadius: theme.radius.pill, backgroundColor: theme.colors.border, marginBottom: theme.spacing.sm },
   content: { padding: theme.spacing.lg, gap: theme.spacing.md, paddingBottom: theme.spacing.xxl },
+  photoPreview: { width: 104, height: 104, borderRadius: theme.radius.pill, alignSelf: "center", backgroundColor: theme.colors.surfaceAlt },
   photoBtn: {
     flexDirection: "row",
     alignItems: "center",

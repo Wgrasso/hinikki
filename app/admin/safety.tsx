@@ -132,6 +132,7 @@ export default function AdminSafety(): React.ReactElement {
       <QuickAddModal
         visible={contactVisible}
         title={editContact ? "Edit emergency contact" : "Add an emergency contact"}
+        note="This phone number is used to call the contact directly."
         submitLabel={editContact ? "Save changes" : "Save"}
         initialValues={editContact ? { name: editContact.name, phone: editContact.phone ?? "", relationship: editContact.relationship ?? "" } : undefined}
         fields={[

@@ -13,6 +13,8 @@ const event: CalendarEvent = {
   location_address: null,
   what_to_bring: "your insurance card",
   transport_notes: null,
+  companion: null,
+  announce_lead_minutes: null,
   nikki_before_event_message: "Today you have a doctor's appointment at 11:30. Mark will pick you up.",
   calming_explanation: null,
   user_friendly_summary: "Doctor appointment",

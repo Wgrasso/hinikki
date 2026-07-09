@@ -142,6 +142,8 @@ export function buildDemoEvents(): CalendarEvent[] {
       location_address: "Gezondheidscentrum, Utrecht",
       what_to_bring: "your insurance card and your blue medication list",
       transport_notes: "Mark will pick you up at 11:00.",
+      companion: "Mark",
+      announce_lead_minutes: 30,
       nikki_before_event_message:
         "Today you have a doctor's appointment at 11:30. Mark will pick you up at 11:00. You do not need to worry, he knows where to go. Please bring your insurance card and your blue medication list.",
       calming_explanation: "It is just a routine check. Mark will be with you the whole time.",
@@ -161,6 +163,8 @@ export function buildDemoEvents(): CalendarEvent[] {
       location_address: "Lindenlaan 14",
       what_to_bring: null,
       transport_notes: null,
+      companion: "Greet",
+      announce_lead_minutes: null,
       nikki_before_event_message: "This afternoon Greet from next door is coming over for a cup of tea at half past three.",
       calming_explanation: "A nice, relaxed visit at home.",
       user_friendly_summary: "Tea with Greet at home",

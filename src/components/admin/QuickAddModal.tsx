@@ -18,11 +18,12 @@ type Props = {
   fields: QuickField[];
   initialValues?: Record<string, string>;
   submitLabel?: string;
+  note?: string;
   onClose: () => void;
   onSubmit: (values: Record<string, string>) => Promise<void>;
 };
 
-export default function QuickAddModal({ visible, title, fields, initialValues, submitLabel = "Save", onClose, onSubmit }: Props): React.ReactElement {
+export default function QuickAddModal({ visible, title, fields, initialValues, submitLabel = "Save", note, onClose, onSubmit }: Props): React.ReactElement {
   const [values, setValues] = useState<Record<string, string>>(initialValues ?? {});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +66,11 @@ export default function QuickAddModal({ visible, title, fields, initialValues, s
           <View style={styles.handle} />
           <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <Text variant="title">{title}</Text>
+            {note ? (
+              <Text variant="body" tone="textSecondary">
+                {note}
+              </Text>
+            ) : null}
             {fields.map((f, index) => (
               <Field
                 key={f.key}

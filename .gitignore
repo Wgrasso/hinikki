@@ -12,3 +12,7 @@ android/
 # Supabase CLI local state
 supabase/.temp/
 supabase/.branches/
+
+# Local tooling artifacts
+.playwright-mcp/
+app-state.png

@@ -4,7 +4,7 @@ import { getDemoState, mutateDemo, newId } from "../data/demoDb";
 import type { CalendarEvent } from "../types/database";
 
 const EVENT_COLUMNS =
-  "id, older_adult_id, title, event_type, start_at, end_at, location_name, location_address, what_to_bring, transport_notes, nikki_before_event_message, calming_explanation, user_friendly_summary, priority_level, may_cause_stress, completion_status";
+  "id, older_adult_id, title, event_type, start_at, end_at, location_name, location_address, what_to_bring, transport_notes, companion, announce_lead_minutes, nikki_before_event_message, calming_explanation, user_friendly_summary, priority_level, may_cause_stress, completion_status";
 
 function isSameDay(iso: string, ref: Date): boolean {
   const d = new Date(iso);
@@ -47,9 +47,12 @@ export async function getNextEvent(olderAdultId: string): Promise<CalendarEvent 
 export type NewEvent = {
   title: string;
   start_at: string;
+  end_at?: string | null;
   location_name?: string | null;
   what_to_bring?: string | null;
   transport_notes?: string | null;
+  companion?: string | null;
+  announce_lead_minutes?: number | null;
   nikki_before_event_message?: string | null;
   user_friendly_summary?: string | null;
   priority_level?: "low" | "normal" | "high";
@@ -63,11 +66,13 @@ export async function createEvent(olderAdultId: string, input: NewEvent): Promis
       title: input.title,
       event_type: null,
       start_at: input.start_at,
-      end_at: null,
+      end_at: input.end_at ?? null,
       location_name: input.location_name ?? null,
       location_address: null,
       what_to_bring: input.what_to_bring ?? null,
       transport_notes: input.transport_notes ?? null,
+      companion: input.companion ?? null,
+      announce_lead_minutes: input.announce_lead_minutes ?? null,
       nikki_before_event_message: input.nikki_before_event_message ?? null,
       calming_explanation: null,
       user_friendly_summary: input.user_friendly_summary ?? input.title,

@@ -94,6 +94,8 @@ export type CalendarEvent = {
   location_address: string | null;
   what_to_bring: string | null;
   transport_notes: string | null;
+  companion: string | null;
+  announce_lead_minutes: number | null;
   nikki_before_event_message: string | null;
   calming_explanation: string | null;
   user_friendly_summary: string | null;
