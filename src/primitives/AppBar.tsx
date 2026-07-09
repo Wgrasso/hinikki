@@ -11,9 +11,10 @@ type AppBarProps = {
   onBack?: () => void;
   rightLabel?: string;
   onRightPress?: () => void;
+  onRefresh?: () => void;
 };
 
-export default function AppBar({ title, subtitle, onBack, rightLabel, onRightPress }: AppBarProps): React.ReactElement {
+export default function AppBar({ title, subtitle, onBack, rightLabel, onRightPress, onRefresh }: AppBarProps): React.ReactElement {
   return (
     <View style={styles.container}>
       <View style={styles.row}>
@@ -30,19 +31,32 @@ export default function AppBar({ title, subtitle, onBack, rightLabel, onRightPre
         ) : (
           <View style={styles.backSpacer} />
         )}
-        {rightLabel && onRightPress ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={rightLabel}
-            onPress={onRightPress}
-            hitSlop={12}
-            style={({ pressed }) => [pressed ? styles.pressed : null]}
-          >
-            <Text variant="bodyStrong" tone="primary">
-              {rightLabel}
-            </Text>
-          </Pressable>
-        ) : null}
+        <View style={styles.rightGroup}>
+          {onRefresh ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Refresh"
+              onPress={onRefresh}
+              hitSlop={12}
+              style={({ pressed }) => [pressed ? styles.pressed : null]}
+            >
+              <Icon name="refresh" color="primary" size={theme.iconSize.lg} />
+            </Pressable>
+          ) : null}
+          {rightLabel && onRightPress ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={rightLabel}
+              onPress={onRightPress}
+              hitSlop={12}
+              style={({ pressed }) => [pressed ? styles.pressed : null]}
+            >
+              <Text variant="bodyStrong" tone="primary">
+                {rightLabel}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
       </View>
       <Text variant="display">{title}</Text>
       {subtitle ? (
@@ -66,6 +80,7 @@ const styles = StyleSheet.create({
     minHeight: theme.iconSize.lg,
     marginBottom: theme.spacing.sm,
   },
+  rightGroup: { flexDirection: "row", alignItems: "center", gap: theme.spacing.lg },
   backBtn: { marginLeft: -theme.spacing.xs },
   backSpacer: { height: theme.iconSize.lg },
   subtitle: { marginTop: theme.spacing.xs },

@@ -68,3 +68,15 @@ export async function confirmReminder(reminderId: string, olderAdultId: string):
     .insert({ reminder_id: reminderId, older_adult_id: olderAdultId, confirmation_method: "tap" });
   if (error) throw new Error(error.message);
 }
+
+export async function updateReminder(reminderId: string, patch: Partial<NewReminder>): Promise<void> {
+  if (!supabase) {
+    await mutateDemo((s) => {
+      const i = s.reminders.findIndex((r) => r.id === reminderId);
+      if (i >= 0) s.reminders[i] = { ...s.reminders[i], ...patch };
+    });
+    return;
+  }
+  const { error } = await supabase.from("reminders").update(patch).eq("id", reminderId);
+  if (error) throw new Error(error.message);
+}

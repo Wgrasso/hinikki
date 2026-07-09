@@ -6,14 +6,18 @@ import { useAppState } from "../../src/auth/appState";
 import { AppBar, Button, Card, Icon, Screen, Stack, Text } from "../../src/primitives";
 import PairingCode from "../../src/components/shared/PairingCode";
 import QuickAddModal from "../../src/components/admin/QuickAddModal";
+import { useAsync } from "../../src/utils/useAsync";
 import { theme } from "../../src/theme";
-import { saveWeatherAdvice } from "../../src/services/weatherService";
+import { getWeatherAdvice, saveWeatherAdvice } from "../../src/services/weatherService";
 
 export default function AdminSettings(): React.ReactElement {
   const { olderAdultId, joinCode, signOut } = useAppState();
   const id = olderAdultId ?? "";
   const router = useRouter();
   const [editingAdvice, setEditingAdvice] = useState(false);
+
+  const { state, reload } = useAsync<string>(() => getWeatherAdvice(id), [id]);
+  const advice = state.status === "loaded" ? state.data : "";
 
   async function doSignOut(): Promise<void> {
     await signOut();
@@ -22,13 +26,13 @@ export default function AdminSettings(): React.ReactElement {
 
   return (
     <Screen scroll>
-      <AppBar title="Settings" subtitle="Fine-tune how Nikki helps." />
+      <AppBar title="Settings" subtitle="Fine-tune how Nikki helps." onRefresh={reload} />
       <Stack gap="lg">
         <InfoCard
           icon="weather"
           title="Weather advice"
-          body="Add a personal note Nikki uses, like “wear the brown winter coat under 8°C.”"
-          actionLabel="Edit advice"
+          body={advice ? advice : "Add a personal note Nikki uses, like “wear the brown winter coat under 8°C.”"}
+          actionLabel={advice ? "Edit advice" : "Add advice"}
           onAction={() => setEditingAdvice(true)}
         />
 
@@ -59,10 +63,13 @@ export default function AdminSettings(): React.ReactElement {
       <QuickAddModal
         visible={editingAdvice}
         title="Weather advice"
+        submitLabel="Save"
+        initialValues={advice ? { advice } : undefined}
         fields={[{ key: "advice", label: "Advice for Nikki", placeholder: "e.g. Wear the brown coat under 8°C", required: true }]}
         onClose={() => setEditingAdvice(false)}
         onSubmit={async (v) => {
           await saveWeatherAdvice(id, v.advice);
+          reload();
         }}
       />
     </Screen>

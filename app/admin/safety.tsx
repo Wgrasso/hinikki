@@ -10,8 +10,8 @@ import QuickAddModal from "../../src/components/admin/QuickAddModal";
 import { useAsync } from "../../src/utils/useAsync";
 import { theme } from "../../src/theme";
 import { relativeTimeLabel } from "../../src/utils/format";
-import { createSafeLocation, getLatestLocation, listSafeLocations } from "../../src/services/locationService";
-import { createEmergencyContact, listEmergencyContacts, listEmergencyEvents } from "../../src/services/emergencyService";
+import { createSafeLocation, getLatestLocation, listSafeLocations, updateSafeLocation } from "../../src/services/locationService";
+import { createEmergencyContact, listEmergencyContacts, listEmergencyEvents, updateEmergencyContact } from "../../src/services/emergencyService";
 import type { EmergencyContact, EmergencyEvent, LocationUpdate, SafeLocation } from "../../src/types/database";
 
 type SafetyData = {
@@ -26,6 +26,8 @@ export default function AdminSafety(): React.ReactElement {
   const id = olderAdultId ?? "";
   const [addingPlace, setAddingPlace] = useState(false);
   const [addingContact, setAddingContact] = useState(false);
+  const [editPlace, setEditPlace] = useState<SafeLocation | null>(null);
+  const [editContact, setEditContact] = useState<EmergencyContact | null>(null);
 
   const { state, reload } = useAsync<SafetyData>(async () => {
     const [latest, safe, contacts, events] = await Promise.all([
@@ -37,9 +39,12 @@ export default function AdminSafety(): React.ReactElement {
     return { latest, safe, contacts, events };
   }, [id]);
 
+  const placeVisible = addingPlace || editPlace !== null;
+  const contactVisible = addingContact || editContact !== null;
+
   return (
     <Screen scroll>
-      <AppBar title="Safety" subtitle="Where they are, and who to call." />
+      <AppBar title="Safety" subtitle="Where they are, and who to call." onRefresh={reload} />
       <StateView state={state} onRetry={reload} loadingLabel="Loading safety…">
         {(data) => (
           <Stack gap="lg">
@@ -66,7 +71,9 @@ export default function AdminSafety(): React.ReactElement {
                 {data.safe.length === 0 ? (
                   <EmptyHint text="Add home and other familiar places." />
                 ) : (
-                  data.safe.map((s) => <ListRow key={s.id} title={s.name} subtitle={s.address ?? s.location_type ?? "Safe place"} showChevron={false} />)
+                  data.safe.map((s) => (
+                    <ListRow key={s.id} title={s.name} subtitle={s.address ?? s.location_type ?? "Safe place"} onPress={() => setEditPlace(s)} accessibilityLabel={`Edit ${s.name}`} />
+                  ))
                 )}
               </Stack>
             </View>
@@ -77,7 +84,9 @@ export default function AdminSafety(): React.ReactElement {
                 {data.contacts.length === 0 ? (
                   <EmptyHint text="Add the people to call first if something is wrong." />
                 ) : (
-                  data.contacts.map((c) => <ListRow key={c.id} title={c.name} subtitle={`${c.relationship ?? "Contact"}${c.phone ? ` · ${c.phone}` : ""}`} showChevron={false} />)
+                  data.contacts.map((c) => (
+                    <ListRow key={c.id} title={c.name} subtitle={`${c.relationship ?? "Contact"}${c.phone ? ` · ${c.phone}` : ""}`} onPress={() => setEditContact(c)} accessibilityLabel={`Edit ${c.name}`} />
+                  ))
                 )}
               </Stack>
             </View>
@@ -99,29 +108,47 @@ export default function AdminSafety(): React.ReactElement {
       </StateView>
 
       <QuickAddModal
-        visible={addingPlace}
-        title="Add a safe place"
+        visible={placeVisible}
+        title={editPlace ? "Edit safe place" : "Add a safe place"}
+        submitLabel={editPlace ? "Save changes" : "Save"}
+        initialValues={editPlace ? { name: editPlace.name, address: editPlace.address ?? "" } : undefined}
         fields={[
           { key: "name", label: "Name", placeholder: "e.g. Home", required: true },
           { key: "address", label: "Address", placeholder: "Optional" },
         ]}
-        onClose={() => setAddingPlace(false)}
+        onClose={() => {
+          setAddingPlace(false);
+          setEditPlace(null);
+        }}
         onSubmit={async (v) => {
-          await createSafeLocation(id, { name: v.name, address: v.address ?? null, location_type: "familiar" });
+          if (editPlace) {
+            await updateSafeLocation(editPlace.id, { name: v.name, address: v.address || null });
+          } else {
+            await createSafeLocation(id, { name: v.name, address: v.address ?? null, location_type: "familiar" });
+          }
           reload();
         }}
       />
       <QuickAddModal
-        visible={addingContact}
-        title="Add an emergency contact"
+        visible={contactVisible}
+        title={editContact ? "Edit emergency contact" : "Add an emergency contact"}
+        submitLabel={editContact ? "Save changes" : "Save"}
+        initialValues={editContact ? { name: editContact.name, phone: editContact.phone ?? "", relationship: editContact.relationship ?? "" } : undefined}
         fields={[
           { key: "name", label: "Name", placeholder: "e.g. Mark", required: true },
           { key: "phone", label: "Phone", placeholder: "e.g. +31 6 …", keyboardType: "phone-pad" },
           { key: "relationship", label: "Relationship", placeholder: "e.g. Son" },
         ]}
-        onClose={() => setAddingContact(false)}
+        onClose={() => {
+          setAddingContact(false);
+          setEditContact(null);
+        }}
         onSubmit={async (v) => {
-          await createEmergencyContact(id, { name: v.name, phone: v.phone ?? null, relationship: v.relationship ?? null });
+          if (editContact) {
+            await updateEmergencyContact(editContact.id, { name: v.name, phone: v.phone || null, relationship: v.relationship || null });
+          } else {
+            await createEmergencyContact(id, { name: v.name, phone: v.phone ?? null, relationship: v.relationship ?? null });
+          }
           reload();
         }}
       />

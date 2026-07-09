@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { FlatList, Pressable, StyleSheet, View } from "react-native";
 import { useAppState } from "../../src/auth/appState";
-import { AppBar, Card, Screen, Stack, Text } from "../../src/primitives";
+import { AppBar, Card, Screen, Text } from "../../src/primitives";
 import ListRow from "../../src/components/shared/ListRow";
 import StateView from "../../src/components/shared/StateView";
 import ScheduleFormModal from "../../src/components/admin/ScheduleFormModal";
@@ -21,16 +21,27 @@ export default function AdminSchedule(): React.ReactElement {
   const id = olderAdultId ?? "";
   const [segment, setSegment] = useState<Segment>("events");
   const [adding, setAdding] = useState(false);
+  const [editEvent, setEditEvent] = useState<CalendarEvent | null>(null);
+  const [editReminder, setEditReminder] = useState<Reminder | null>(null);
 
   const { state, reload } = useAsync<ScheduleData>(async () => {
     const [events, reminders] = await Promise.all([listEvents(id), listReminders(id)]);
     return { events, reminders };
   }, [id]);
 
+  const kind = segment === "events" ? "event" : "reminder";
+  const formVisible = adding || editEvent !== null || editReminder !== null;
+
+  function closeForm(): void {
+    setAdding(false);
+    setEditEvent(null);
+    setEditReminder(null);
+  }
+
   return (
     <Screen padded={false}>
       <View style={styles.bar}>
-        <AppBar title="Schedule" subtitle="What's coming up, in Nikki's words." rightLabel="Add" onRightPress={() => setAdding(true)} />
+        <AppBar title="Schedule" subtitle="What's coming up, in Nikki's words." rightLabel="Add" onRightPress={() => setAdding(true)} onRefresh={reload} />
         <View style={styles.segments}>
           {(["events", "reminders"] as Segment[]).map((seg) => (
             <Pressable
@@ -59,7 +70,12 @@ export default function AdminSchedule(): React.ReactElement {
               ItemSeparatorComponent={() => <View style={styles.sep} />}
               ListEmptyComponent={<EmptyHint text="No events yet. Add one so Nikki can prepare your loved one calmly." />}
               renderItem={({ item }) => (
-                <ListRow title={item.user_friendly_summary ?? item.title} subtitle={`${formatTime(item.start_at)}${item.what_to_bring ? ` · bring ${item.what_to_bring}` : ""}`} showChevron={false} />
+                <ListRow
+                  title={item.user_friendly_summary ?? item.title}
+                  subtitle={`${formatTime(item.start_at)}${item.what_to_bring ? ` · bring ${item.what_to_bring}` : ""}`}
+                  onPress={() => setEditEvent(item)}
+                  accessibilityLabel={`Edit ${item.title}`}
+                />
               )}
             />
           ) : (
@@ -69,13 +85,28 @@ export default function AdminSchedule(): React.ReactElement {
               contentContainerStyle={styles.list}
               ItemSeparatorComponent={() => <View style={styles.sep} />}
               ListEmptyComponent={<EmptyHint text="No reminders yet. Add medication, hydration or visit reminders." />}
-              renderItem={({ item }) => <ListRow title={item.title} subtitle={item.scheduled_at ? formatTime(item.scheduled_at) : "Anytime"} showChevron={false} />}
+              renderItem={({ item }) => (
+                <ListRow
+                  title={item.title}
+                  subtitle={item.scheduled_at ? formatTime(item.scheduled_at) : "Anytime"}
+                  onPress={() => setEditReminder(item)}
+                  accessibilityLabel={`Edit ${item.title}`}
+                />
+              )}
             />
           )
         }
       </StateView>
 
-      <ScheduleFormModal visible={adding} kind={segment === "events" ? "event" : "reminder"} olderAdultId={id} onClose={() => setAdding(false)} onSaved={reload} />
+      <ScheduleFormModal
+        visible={formVisible}
+        kind={kind}
+        olderAdultId={id}
+        event={editEvent}
+        reminder={editReminder}
+        onClose={closeForm}
+        onSaved={reload}
+      />
     </Screen>
   );
 }

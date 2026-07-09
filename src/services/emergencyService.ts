@@ -105,3 +105,18 @@ export async function listEmergencyEvents(olderAdultId: string): Promise<Emergen
   if (error) throw new Error(error.message);
   return (data ?? []) as EmergencyEvent[];
 }
+
+export async function updateEmergencyContact(
+  id: string,
+  patch: { name?: string; phone?: string | null; relationship?: string | null; priority_order?: number },
+): Promise<void> {
+  if (!supabase) {
+    await mutateDemo((s) => {
+      const i = s.emergencyContacts.findIndex((c) => c.id === id);
+      if (i >= 0) s.emergencyContacts[i] = { ...s.emergencyContacts[i], ...patch };
+    });
+    return;
+  }
+  const { error } = await supabase.from("emergency_contacts").update(patch).eq("id", id);
+  if (error) throw new Error(error.message);
+}

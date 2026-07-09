@@ -55,13 +55,13 @@ export default function NikkiScreen(): React.ReactElement {
   return (
     <Screen padded={false}>
       <StateView state={state} onRetry={reload} loadingLabel="Waking Nikki up…">
-        {(data) => <NikkiConversation id={id} data={data} initialAsk={initialAsk} />}
+        {(data) => <NikkiConversation id={id} data={data} initialAsk={initialAsk} onRefresh={reload} />}
       </StateView>
     </Screen>
   );
 }
 
-function NikkiConversation({ id, data, initialAsk }: { id: string; data: NikkiData; initialAsk: string | null }): React.ReactElement {
+function NikkiConversation({ id, data, initialAsk, onRefresh }: { id: string; data: NikkiData; initialAsk: string | null; onRefresh: () => void }): React.ReactElement {
   const name = data.adult?.preferred_name ?? null;
   const [messages, setMessages] = useState<ChatMessage[]>(data.chat);
   const [input, setInput] = useState("");
@@ -107,7 +107,7 @@ function NikkiConversation({ id, data, initialAsk }: { id: string; data: NikkiDa
         data={messages}
         keyExtractor={(m) => m.id}
         contentContainerStyle={styles.list}
-        ListHeaderComponent={<NikkiHeader name={name} nextEvent={data.nextEvent} weather={data.weather} hasChat={messages.length > 0} />}
+        ListHeaderComponent={<NikkiHeader name={name} nextEvent={data.nextEvent} weather={data.weather} hasChat={messages.length > 0} onRefresh={onRefresh} />}
         renderItem={({ item }) => <ChatBubble message={item} />}
         onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
         keyboardShouldPersistTaps="handled"
@@ -144,11 +144,13 @@ function NikkiHeader({
   nextEvent,
   weather,
   hasChat,
+  onRefresh,
 }: {
   name: string | null;
   nextEvent: CalendarEvent | null;
   weather: Weather;
   hasChat: boolean;
+  onRefresh: () => void;
 }): React.ReactElement {
   const intro = name ? `${greeting()}, ${name}.` : `${greeting()}.`;
   const eventLine = nextEvent
@@ -157,7 +159,20 @@ function NikkiHeader({
 
   return (
     <Stack gap="lg" style={styles.header}>
-      <Text variant="display">{intro}</Text>
+      <View style={styles.introRow}>
+        <Text variant="display" style={styles.introText}>
+          {intro}
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Refresh"
+          onPress={onRefresh}
+          hitSlop={12}
+          style={({ pressed }) => [styles.refreshBtn, pressed ? styles.pressed : null]}
+        >
+          <Icon name="refresh" color="primary" size={theme.iconSize.lg} />
+        </Pressable>
+      </View>
       <Stack direction="row" gap="md" wrap>
         <View style={styles.pill}>
           <Icon name="calendar" color="primary" size={theme.iconSize.sm} />
@@ -183,6 +198,9 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   list: { paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.lg },
   header: { paddingTop: theme.spacing.md, paddingBottom: theme.spacing.lg },
+  introRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: theme.spacing.md },
+  introText: { flex: 1 },
+  refreshBtn: { paddingTop: theme.spacing.xs },
   pill: {
     flexDirection: "row",
     alignItems: "center",

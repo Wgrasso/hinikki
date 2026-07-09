@@ -38,7 +38,7 @@ export default function HelpScreen(): React.ReactElement {
 
   return (
     <Screen scroll>
-      <AppBar title="Help" subtitle="Tap any button. I am here to help." />
+      <AppBar title="Help" subtitle="Tap any button. I am here to help." onRefresh={reload} />
       <StateView state={state} onRetry={reload} loadingLabel="Getting help ready…">
         {(contacts) => (
           <Stack gap="md">

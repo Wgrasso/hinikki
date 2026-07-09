@@ -35,3 +35,15 @@ export async function saveWeatherAdvice(olderAdultId: string, advice: string): P
     .upsert({ older_adult_id: olderAdultId, custom_weather_advice: advice }, { onConflict: "older_adult_id" });
   if (error) throw new Error(error.message);
 }
+
+// The current family-entered advice (empty string if none set yet).
+export async function getWeatherAdvice(olderAdultId: string): Promise<string> {
+  if (!supabase) return "";
+  const { data, error } = await supabase
+    .from("weather_preferences")
+    .select("custom_weather_advice")
+    .eq("older_adult_id", olderAdultId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data?.custom_weather_advice as string | null) ?? "";
+}

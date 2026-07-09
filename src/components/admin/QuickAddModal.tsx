@@ -1,5 +1,5 @@
-// src/components/admin/QuickAddModal.tsx — a small, reusable add form (safe place, contact, etc.).
-import React, { useState } from "react";
+// src/components/admin/QuickAddModal.tsx — a small, reusable add/edit form (safe place, contact, etc.).
+import React, { useEffect, useState } from "react";
 import { KeyboardTypeOptions, Modal, ScrollView, StyleSheet, View } from "react-native";
 import { theme } from "../../theme";
 import { Button, Field, Stack, Text } from "../../primitives";
@@ -16,14 +16,25 @@ type Props = {
   visible: boolean;
   title: string;
   fields: QuickField[];
+  initialValues?: Record<string, string>;
+  submitLabel?: string;
   onClose: () => void;
   onSubmit: (values: Record<string, string>) => Promise<void>;
 };
 
-export default function QuickAddModal({ visible, title, fields, onClose, onSubmit }: Props): React.ReactElement {
-  const [values, setValues] = useState<Record<string, string>>({});
+export default function QuickAddModal({ visible, title, fields, initialValues, submitLabel = "Save", onClose, onSubmit }: Props): React.ReactElement {
+  const [values, setValues] = useState<Record<string, string>>(initialValues ?? {});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Load current values each time the sheet opens: empty for "add", prefilled for "edit".
+  useEffect(() => {
+    if (visible) {
+      setValues(initialValues ?? {});
+      setError(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
 
   function setValue(key: string, value: string): void {
     setValues((v) => ({ ...v, [key]: value }));
@@ -39,7 +50,6 @@ export default function QuickAddModal({ visible, title, fields, onClose, onSubmi
     setError(null);
     try {
       await onSubmit(values);
-      setValues({});
       onClose();
     } catch {
       setError("We could not save just now. Please try again.");
@@ -67,7 +77,7 @@ export default function QuickAddModal({ visible, title, fields, onClose, onSubmi
               />
             ))}
             <Stack gap="sm" style={styles.actions}>
-              <Button label="Save" icon="check" loading={saving} onPress={submit} />
+              <Button label={submitLabel} icon="check" loading={saving} onPress={submit} />
               <Button label="Cancel" variant="secondary" onPress={onClose} />
             </Stack>
           </ScrollView>

@@ -77,6 +77,9 @@ const iconGlyphs = {
   pill: "medkit",
   send: "arrow-up",
   sparkle: "sparkles",
+  refresh: "refresh",
+  edit: "pencil",
+  copy: "copy-outline",
 } as const;
 
 const iconSize = { sm: 18, md: 24, lg: 32, xl: 48 } as const;

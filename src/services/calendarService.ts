@@ -88,3 +88,15 @@ export async function createEvent(olderAdultId: string, input: NewEvent): Promis
   if (error) throw new Error(error.message);
   return data as CalendarEvent;
 }
+
+export async function updateEvent(eventId: string, patch: Partial<NewEvent>): Promise<void> {
+  if (!supabase) {
+    await mutateDemo((s) => {
+      const i = s.events.findIndex((e) => e.id === eventId);
+      if (i >= 0) s.events[i] = { ...s.events[i], ...patch };
+    });
+    return;
+  }
+  const { error } = await supabase.from("calendar_events").update(patch).eq("id", eventId);
+  if (error) throw new Error(error.message);
+}

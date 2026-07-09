@@ -58,7 +58,7 @@ export default function AdminDashboard(): React.ReactElement {
       <StateView state={state} onRetry={reload} loadingLabel="Loading the dashboard…">
         {(data) => (
           <Stack gap="lg">
-            <AppBar title={`${data.adult?.preferred_name ?? data.adult?.display_name ?? "Your"}${data.adult?.preferred_name ? "'s" : ""} day`} subtitle="Everything Nikki is helping with today." />
+            <AppBar title={`${data.adult?.preferred_name ?? data.adult?.display_name ?? "Your"}${data.adult?.preferred_name ? "'s" : ""} day`} subtitle="Everything Nikki is helping with today." onRefresh={reload} />
 
             {data.alerts.length > 0 ? (
               <Card tone="surface" elevation="lg" style={styles.alert}>

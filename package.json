@@ -12,7 +12,9 @@
   },
   "jest": {
     "preset": "jest-expo",
-    "setupFiles": ["<rootDir>/jest-setup.js"],
+    "setupFiles": [
+      "<rootDir>/jest-setup.js"
+    ],
     "transformIgnorePatterns": [
       "node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo/vector-icons|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|@supabase/.*))"
     ]
@@ -24,6 +26,7 @@
     "@react-native-async-storage/async-storage": "2.2.0",
     "@supabase/supabase-js": "^2.108.2",
     "expo": "56.0.12",
+    "expo-clipboard": "~56.0.4",
     "expo-constants": "~56.0.18",
     "expo-font": "~56.0.7",
     "expo-image-picker": "~56.0.18",

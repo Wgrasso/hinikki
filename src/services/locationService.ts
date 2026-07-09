@@ -94,3 +94,18 @@ export async function createSafeLocation(
   if (error) throw new Error(error.message);
   return data as SafeLocation;
 }
+
+export async function updateSafeLocation(
+  id: string,
+  patch: { name?: string; address?: string | null; location_type?: string | null },
+): Promise<void> {
+  if (!supabase) {
+    await mutateDemo((s) => {
+      const i = s.safeLocations.findIndex((l) => l.id === id);
+      if (i >= 0) s.safeLocations[i] = { ...s.safeLocations[i], ...patch };
+    });
+    return;
+  }
+  const { error } = await supabase.from("safe_locations").update(patch).eq("id", id);
+  if (error) throw new Error(error.message);
+}

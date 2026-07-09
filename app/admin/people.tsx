@@ -29,7 +29,7 @@ export default function AdminPeople(): React.ReactElement {
   return (
     <Screen padded={false}>
       <View style={styles.bar}>
-        <AppBar title="People" subtitle="Build Nikki's family memory." rightLabel="Add" onRightPress={() => setAdding(true)} />
+        <AppBar title="People" subtitle="Build Nikki's family memory." rightLabel="Add" onRightPress={() => setAdding(true)} onRefresh={reload} />
       </View>
       <StateView
         state={state}
