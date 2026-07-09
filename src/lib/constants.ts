@@ -3,10 +3,19 @@ import Constants from "expo-constants";
 
 const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, string | undefined>;
 
-export const SUPABASE_URL =
-  process.env.EXPO_PUBLIC_SUPABASE_URL ?? extra.supabaseUrl ?? "";
-export const SUPABASE_ANON_KEY =
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? extra.supabaseAnonKey ?? "";
+// Prefer EXPO_PUBLIC_* env (from .env locally, or the EAS build env); otherwise fall back to
+// app.json `extra` so a fresh clone with no .env still connects on Expo Go. Empty strings count
+// as "unset" — some bundlers inline an undefined EXPO_PUBLIC_* var as "", which would defeat `??`
+// and silently drop the app into demo mode even when app.json has the config.
+function firstNonEmpty(...vals: Array<string | undefined>): string {
+  for (const v of vals) {
+    if (typeof v === "string" && v.trim().length > 0) return v;
+  }
+  return "";
+}
+
+export const SUPABASE_URL = firstNonEmpty(process.env.EXPO_PUBLIC_SUPABASE_URL, extra.supabaseUrl);
+export const SUPABASE_ANON_KEY = firstNonEmpty(process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY, extra.supabaseAnonKey);
 
 export const HAS_SUPABASE = SUPABASE_URL.length > 0 && SUPABASE_ANON_KEY.length > 0;
 
