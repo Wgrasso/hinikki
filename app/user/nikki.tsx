@@ -2,14 +2,15 @@
 // and the voice conversation with Nikki (one big talk button; captions of what she says).
 // The `ask` param (from Help's "I am lost" or People's "Who is …?") auto-starts the session
 // and speaks that phrase on the user's behalf.
-import React from "react";
+import React, { useCallback, useEffect } from "react";
 import { StyleSheet, View } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useAppState } from "../../src/auth/appState";
 import { Icon, Screen, Stack, Text } from "../../src/primitives";
 import VoiceExperience from "../../src/components/user/VoiceExperience";
 import StateView from "../../src/components/shared/StateView";
 import { useAsync } from "../../src/utils/useAsync";
+import { subscribeLive } from "../../src/features/sync/liveChannel";
 import { theme } from "../../src/theme";
 import { greeting, formatTime } from "../../src/utils/format";
 import { getNextEvent } from "../../src/services/calendarService";
@@ -38,6 +39,17 @@ export default function NikkiScreen(): React.ReactElement {
     ]);
     return { adult, nextEvent, weather };
   }, [id]);
+
+  // Refetch on focus and on live changes; stale-while-refresh keeps it flicker-free.
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+    }, [reload]),
+  );
+  useEffect(() => {
+    if (!id) return;
+    return subscribeLive(id, () => reload());
+  }, [id, reload]);
 
   return (
     <Screen scroll>

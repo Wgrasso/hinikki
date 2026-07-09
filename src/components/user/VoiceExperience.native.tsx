@@ -12,6 +12,7 @@ import { useNikkiSession } from "../../features/voice/useNikkiSession";
 import VoiceOrb from "./VoiceOrb";
 import VoiceCaptions from "./VoiceCaptions";
 import NikkiCard from "./NikkiCard";
+import RecapCard from "./RecapCard";
 
 export type VoiceExperienceProps = {
   olderAdultId: string;
@@ -60,7 +61,13 @@ function VoiceSession({ olderAdultId, preferredName, initialAsk }: VoiceExperien
           message={`I am Nikki, and I am here for you${preferredName ? `, ${preferredName}` : ""}. Tap the big button and just talk to me — about your day, your family, or the weather.`}
         />
       ) : null}
-      {session.phase === "ended" ? <NikkiCard message="It was lovely talking with you. Tap the button whenever you would like to talk again." /> : null}
+      {session.phase === "ended" ? (
+        session.recap ? (
+          <RecapCard summary={session.recap.summary} changes={session.recap.changes} />
+        ) : (
+          <NikkiCard message="It was lovely talking with you. Tap the button whenever you would like to talk again." />
+        )
+      ) : null}
       {session.phase === "error" && session.errorMessage ? <NikkiCard message={session.errorMessage} /> : null}
 
       <VoiceCaptions captions={session.captions} />

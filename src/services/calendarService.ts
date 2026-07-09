@@ -37,6 +37,30 @@ export async function listTodayEvents(olderAdultId: string): Promise<CalendarEve
   return all.filter((e) => isSameDay(e.start_at, today));
 }
 
+// Events starting between now and `hours` from now (default 48 h) — the context snapshot window.
+export async function listUpcomingEvents(olderAdultId: string, hours = 48): Promise<CalendarEvent[]> {
+  const now = new Date();
+  const until = new Date(now.getTime() + hours * 60 * 60 * 1000);
+  if (!supabase) {
+    const s = await getDemoState();
+    return [...s.events]
+      .filter((e) => {
+        const start = new Date(e.start_at).getTime();
+        return e.older_adult_id === olderAdultId && start >= now.getTime() && start <= until.getTime();
+      })
+      .sort((a, b) => a.start_at.localeCompare(b.start_at));
+  }
+  const { data, error } = await supabase
+    .from("calendar_events")
+    .select(EVENT_COLUMNS)
+    .eq("older_adult_id", olderAdultId)
+    .gte("start_at", now.toISOString())
+    .lte("start_at", until.toISOString())
+    .order("start_at", { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as CalendarEvent[];
+}
+
 export async function getNextEvent(olderAdultId: string): Promise<CalendarEvent | null> {
   const today = await listTodayEvents(olderAdultId);
   const now = Date.now();

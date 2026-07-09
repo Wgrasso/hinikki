@@ -1,11 +1,14 @@
 // src/utils/useAsync.ts — standardizes the loading → (error | loaded) lifecycle so every data
 // view can render the four states honestly. Every await is wrapped; errors set a real error state.
+// Reloads are stale-while-refresh: once data has loaded we keep showing it (with refreshing: true)
+// instead of dropping back to a full loading state, and a failed refresh keeps the stale data
+// (the failure is surfaced non-intrusively via refreshError for callers that want it).
 import { useCallback, useEffect, useState } from "react";
 
 export type AsyncState<T> =
   | { status: "loading"; data: null; error: null }
   | { status: "error"; data: null; error: string }
-  | { status: "loaded"; data: T; error: null };
+  | { status: "loaded"; data: T; error: null; refreshing?: boolean; refreshError?: string | null };
 
 export function useAsync<T>(loader: () => Promise<T>, deps: ReadonlyArray<unknown> = []): {
   state: AsyncState<T>;
@@ -18,7 +21,12 @@ export function useAsync<T>(loader: () => Promise<T>, deps: ReadonlyArray<unknow
 
   useEffect(() => {
     let active = true;
-    setState({ status: "loading", data: null, error: null });
+    // First load shows the full loading state; later loads keep the stale data on screen.
+    setState((prev) =>
+      prev.status === "loaded"
+        ? { ...prev, refreshing: true, refreshError: null }
+        : { status: "loading", data: null, error: null }
+    );
     loader()
       .then((data) => {
         if (active) setState({ status: "loaded", data, error: null });
@@ -26,7 +34,12 @@ export function useAsync<T>(loader: () => Promise<T>, deps: ReadonlyArray<unknow
       .catch((err: unknown) => {
         if (active) {
           const message = err instanceof Error ? err.message : "Something went wrong.";
-          setState({ status: "error", data: null, error: message });
+          // A failed refresh keeps the stale data; only a failed first load shows the error state.
+          setState((prev) =>
+            prev.status === "loaded"
+              ? { ...prev, refreshing: false, refreshError: message }
+              : { status: "error", data: null, error: message }
+          );
         }
       });
     return () => {

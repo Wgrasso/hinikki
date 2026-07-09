@@ -1,12 +1,13 @@
 // app/user/help.tsx — the simplest, most reachable screen: big help actions that always work.
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Linking, StyleSheet, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useAppState } from "../../src/auth/appState";
 import { AppBar, Screen, Stack, Text } from "../../src/primitives";
 import BigHelpButton from "../../src/components/user/BigHelpButton";
 import StateView from "../../src/components/shared/StateView";
 import { useAsync } from "../../src/utils/useAsync";
+import { subscribeLive } from "../../src/features/sync/liveChannel";
 import { theme } from "../../src/theme";
 import { createEmergencyEvent, listEmergencyContacts } from "../../src/services/emergencyService";
 import { captureAndStoreLocation } from "../../src/features/safety/locationCapture";
@@ -19,6 +20,17 @@ export default function HelpScreen(): React.ReactElement {
   const [note, setNote] = useState<string | null>(null);
 
   const { state, reload } = useAsync<EmergencyContact[]>(() => listEmergencyContacts(id), [id]);
+
+  // Refetch on focus and on live changes; stale-while-refresh keeps it flicker-free.
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+    }, [reload]),
+  );
+  useEffect(() => {
+    if (!id) return;
+    return subscribeLive(id, () => reload());
+  }, [id, reload]);
 
   async function callFirst(contacts: EmergencyContact[], asEmergency: boolean): Promise<void> {
     const contact = contacts.find((c) => c.phone);

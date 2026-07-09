@@ -1,23 +1,53 @@
-// app/admin/settings.tsx — weather advice, dignified location sharing, family invites, and sign out.
-import React, { useState } from "react";
+// app/admin/settings.tsx — about the elder, weather advice, dignified location sharing, family
+// invites, and sign out.
+import React, { useCallback, useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useAppState } from "../../src/auth/appState";
 import { AppBar, Button, Card, Icon, Screen, Stack, Text } from "../../src/primitives";
 import PairingCode from "../../src/components/shared/PairingCode";
 import QuickAddModal from "../../src/components/admin/QuickAddModal";
+import AboutFormModal from "../../src/components/admin/AboutFormModal";
 import { useAsync } from "../../src/utils/useAsync";
+import { subscribeLive } from "../../src/features/sync/liveChannel";
 import { theme } from "../../src/theme";
 import { getWeatherAdvice, saveWeatherAdvice } from "../../src/services/weatherService";
+import { getOlderAdult } from "../../src/services/profileService";
+import type { OlderAdultProfile } from "../../src/types/database";
 
 export default function AdminSettings(): React.ReactElement {
   const { olderAdultId, joinCode, signOut } = useAppState();
   const id = olderAdultId ?? "";
   const router = useRouter();
   const [editingAdvice, setEditingAdvice] = useState(false);
+  const [editingAbout, setEditingAbout] = useState(false);
 
   const { state, reload } = useAsync<string>(() => getWeatherAdvice(id), [id]);
   const advice = state.status === "loaded" ? state.data : "";
+
+  const { state: profileState, reload: reloadProfile } = useAsync<OlderAdultProfile | null>(() => getOlderAdult(id), [id]);
+  const profile = profileState.status === "loaded" ? profileState.data : null;
+  const elderName = profile?.preferred_name ?? profile?.display_name ?? "your loved one";
+
+  function reloadAll(): void {
+    reload();
+    reloadProfile();
+  }
+
+  // Refetch both loads on focus and on live changes; stale-while-refresh keeps it flicker-free.
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+      reloadProfile();
+    }, [reload, reloadProfile]),
+  );
+  useEffect(() => {
+    if (!id) return;
+    return subscribeLive(id, () => {
+      reload();
+      reloadProfile();
+    });
+  }, [id, reload, reloadProfile]);
 
   async function doSignOut(): Promise<void> {
     await signOut();
@@ -26,8 +56,16 @@ export default function AdminSettings(): React.ReactElement {
 
   return (
     <Screen scroll>
-      <AppBar title="Settings" subtitle="Fine-tune how Nikki helps." onRefresh={reload} />
+      <AppBar title="Settings" subtitle="Fine-tune how Nikki helps." onRefresh={reloadAll} />
       <Stack gap="lg">
+        <InfoCard
+          icon="heart"
+          title={`About ${elderName}`}
+          body="Their name, birthday, home address, and language — the little details that help Nikki greet them warmly."
+          actionLabel="Edit details"
+          onAction={() => setEditingAbout(true)}
+        />
+
         <InfoCard
           icon="weather"
           title="Weather advice"
@@ -72,6 +110,13 @@ export default function AdminSettings(): React.ReactElement {
           reload();
         }}
       />
+
+      <AboutFormModal
+        visible={editingAbout}
+        profile={profile}
+        onClose={() => setEditingAbout(false)}
+        onSaved={reloadProfile}
+      />
     </Screen>
   );
 }
@@ -83,7 +128,7 @@ function InfoCard({
   actionLabel,
   onAction,
 }: {
-  icon: "weather" | "location";
+  icon: "heart" | "weather" | "location";
   title: string;
   body: string;
   actionLabel?: string;

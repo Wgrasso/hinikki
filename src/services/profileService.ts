@@ -100,6 +100,23 @@ export async function getOlderAdult(olderAdultId: string): Promise<OlderAdultPro
   return data as OlderAdultProfile;
 }
 
+// Update the elder's "About" details (name, birthday, address, language).
+// RLS allows the elder themselves or a managing family member to write these columns;
+// getOlderAdult above already selects every column we write here, so reads stay in sync.
+export async function updateOlderAdultProfile(
+  olderAdultId: string,
+  patch: {
+    preferred_name?: string | null;
+    date_of_birth?: string | null;
+    home_address?: string | null;
+    primary_language?: string;
+  },
+): Promise<void> {
+  if (!supabase) return; // demo has no persistent store for the elder profile — saving is a friendly no-op
+  const { error } = await supabase.from("older_adult_profiles").update(patch).eq("id", olderAdultId);
+  if (error) throw new Error(error.message);
+}
+
 export async function signOutAll(): Promise<void> {
   if (supabase) await supabase.auth.signOut();
 }

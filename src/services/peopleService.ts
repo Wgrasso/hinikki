@@ -6,12 +6,28 @@ import { getDemoState, mutateDemo, newId } from "../data/demoDb";
 import type { FamilyPerson, FamilyRelationship } from "../types/database";
 
 const PERSON_COLUMNS =
-  "id, older_adult_id, full_name, preferred_name, relationship_label, phone, address, location_description, visit_frequency, important_notes, conversation_hints, can_nikki_mention, can_contact_in_emergency, can_be_called_by_nikki, is_admin, preferred_contact_method";
+  "id, older_adult_id, full_name, preferred_name, relationship_label, date_of_birth, pronunciation_help, phone, address, location_description, visit_frequency, important_notes, conversation_hints, can_nikki_mention, can_contact_in_emergency, can_be_called_by_nikki, is_admin, preferred_contact_method";
+
+const RELATIONSHIP_COLUMNS = "id, older_adult_id, person_a_id, person_b_id, relationship_type, notes";
+
+// D5 relationship vocabulary. A stored row reads "person_a is <type> person_b":
+// Tom child_of Mark; Els carer_of Anna means Els cares for Anna. Symmetric types
+// carry no direction, so we store each pair exactly once (ids in ascending order).
+export const RELATIONSHIP_TYPES = {
+  directional: ["child_of", "carer_of"],
+  symmetric: ["spouse_of", "sibling_of", "friend_of", "neighbour_of"],
+} as const;
+
+export type RelationshipType =
+  | (typeof RELATIONSHIP_TYPES.directional)[number]
+  | (typeof RELATIONSHIP_TYPES.symmetric)[number];
 
 export type NewPerson = {
   full_name: string;
   preferred_name?: string | null;
   relationship_label?: string | null;
+  date_of_birth?: string | null;
+  pronunciation_help?: string | null;
   phone?: string | null;
   location_description?: string | null;
   visit_frequency?: string | null;
@@ -68,6 +84,8 @@ export async function createPerson(olderAdultId: string, input: NewPerson): Prom
       full_name: input.full_name,
       preferred_name: input.preferred_name ?? null,
       relationship_label: input.relationship_label ?? null,
+      date_of_birth: input.date_of_birth ?? null,
+      pronunciation_help: input.pronunciation_help ?? null,
       phone: input.phone ?? null,
       address: null,
       location_description: input.location_description ?? null,
@@ -114,10 +132,54 @@ export async function listRelationships(olderAdultId: string): Promise<FamilyRel
   }
   const { data, error } = await supabase
     .from("family_relationships")
-    .select("id, older_adult_id, person_a_id, person_b_id, relationship_type, notes")
+    .select(RELATIONSHIP_COLUMNS)
     .eq("older_adult_id", olderAdultId);
   if (error) throw new Error(error.message);
   return (data ?? []) as FamilyRelationship[];
+}
+
+export async function createRelationship(
+  olderAdultId: string,
+  personAId: string,
+  personBId: string,
+  type: RelationshipType,
+): Promise<FamilyRelationship> {
+  // Symmetric pairs are stored once with ids in ascending order, so "Emma spouse_of Mark"
+  // and "Mark spouse_of Emma" can never both exist.
+  const symmetric = (RELATIONSHIP_TYPES.symmetric as readonly string[]).includes(type);
+  const [a, b] = symmetric && personBId < personAId ? [personBId, personAId] : [personAId, personBId];
+  if (!supabase) {
+    const row: FamilyRelationship = {
+      id: newId("r"),
+      older_adult_id: olderAdultId,
+      person_a_id: a,
+      person_b_id: b,
+      relationship_type: type,
+      notes: null,
+    };
+    await mutateDemo((s) => {
+      s.relationships.push(row);
+    });
+    return row;
+  }
+  const { data, error } = await supabase
+    .from("family_relationships")
+    .insert({ older_adult_id: olderAdultId, person_a_id: a, person_b_id: b, relationship_type: type })
+    .select(RELATIONSHIP_COLUMNS)
+    .single();
+  if (error) throw new Error(error.message);
+  return data as FamilyRelationship;
+}
+
+export async function deleteRelationship(relationshipId: string): Promise<void> {
+  if (!supabase) {
+    await mutateDemo((s) => {
+      s.relationships = s.relationships.filter((r) => r.id !== relationshipId);
+    });
+    return;
+  }
+  const { error } = await supabase.from("family_relationships").delete().eq("id", relationshipId);
+  if (error) throw new Error(error.message);
 }
 
 export async function uploadPersonPhoto(
@@ -136,6 +198,10 @@ export async function uploadPersonPhoto(
     });
     if (error) return false;
     await supabase.from("person_photos").insert({ person_id: personId, storage_path: path, is_primary: true });
+    // person_photos has no older_adult_id, so its realtime events can't be filtered per
+    // family — touch the parent row instead so the family_people UPDATE event carries the
+    // photo invalidation to every subscribed screen (plan §5.3).
+    await supabase.from("family_people").update({ updated_at: new Date().toISOString() }).eq("id", personId);
     return true;
   } catch {
     return false;

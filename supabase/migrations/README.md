@@ -9,6 +9,7 @@ Full schema for the HiNikki backend, applied in filename order:
 | `20260709120020_storage_family_photos.sql` | Private `family-photos` storage bucket + RLS scoped to `can_view/can_manage_older_adult()` |
 | `20260709130000_event_input_fields.sql` | Additive `calendar_events` columns: `companion`, `announce_lead_minutes` |
 | `20260709140000_person_call_flag.sql` | Additive `family_people.can_be_called_by_nikki` flag |
+| `20260710120000_nikki_brain.sql` | Additive brain layer: `nikki_proposals` (approval queue + guard trigger), `push_tokens` (admin push, active-link-scoped RLS), realtime publication entries. Applied to live on 2026-07-09 |
 
 On a fresh project these reproduce the entire backend:
 

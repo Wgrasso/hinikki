@@ -1,12 +1,13 @@
 // app/user/people.tsx — the older adult sees familiar faces and can ask Nikki about anyone.
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { FlatList, Modal, Pressable, StyleSheet, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useAppState } from "../../src/auth/appState";
 import { AppBar, Button, Icon, Screen, Stack, Text } from "../../src/primitives";
 import Avatar from "../../src/components/shared/Avatar";
 import StateView from "../../src/components/shared/StateView";
 import { useAsync } from "../../src/utils/useAsync";
+import { subscribeLive } from "../../src/features/sync/liveChannel";
 import { theme } from "../../src/theme";
 import { getPhotoUrl, listPeople } from "../../src/services/peopleService";
 import type { FamilyPerson } from "../../src/types/database";
@@ -26,6 +27,17 @@ export default function PeopleScreen(): React.ReactElement {
     );
     return { people, photos: Object.fromEntries(entries) };
   }, [id]);
+
+  // Refetch on focus and on live changes; stale-while-refresh keeps it flicker-free.
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+    }, [reload]),
+  );
+  useEffect(() => {
+    if (!id) return;
+    return subscribeLive(id, () => reload());
+  }, [id, reload]);
 
   function askNikki(person: FamilyPerson): void {
     setSelected(null);

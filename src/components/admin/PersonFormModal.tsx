@@ -1,12 +1,15 @@
 // src/components/admin/PersonFormModal.tsx — add or edit a family person.
 // Prefills on open (fast + correct for edit); the chosen photo shows immediately as a preview and
-// uploads in the background so saving feels instant.
+// uploads in the background so saving feels instant. Editing also shows the Connections section
+// (family_relationships); on create it appears once the person is saved.
 import React, { useEffect, useState } from "react";
 import { Image, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { theme } from "../../theme";
 import { Button, Field, Icon, Stack, Text } from "../../primitives";
-import { createPerson, updatePerson, uploadPersonPhoto } from "../../services/peopleService";
+import { createPerson, listPeople, updatePerson, uploadPersonPhoto } from "../../services/peopleService";
+import { parseBirthday } from "../../utils/parseBirthday";
+import ConnectionsEditor from "./ConnectionsEditor";
 import type { FamilyPerson } from "../../types/database";
 
 type Props = {
@@ -20,31 +23,60 @@ type Props = {
 
 export default function PersonFormModal({ visible, olderAdultId, person, initialPhotoUrl, onClose, onSaved }: Props): React.ReactElement {
   const [fullName, setFullName] = useState("");
+  const [preferredName, setPreferredName] = useState("");
   const [relationship, setRelationship] = useState("");
+  const [pronunciation, setPronunciation] = useState("");
+  const [birthday, setBirthday] = useState("");
   const [location, setLocation] = useState("");
   const [visit, setVisit] = useState("");
+  const [notes, setNotes] = useState("");
   const [hints, setHints] = useState("");
   const [phone, setPhone] = useState("");
   const [emergency, setEmergency] = useState(false);
   const [canBeCalled, setCanBeCalled] = useState(false);
+  const [canMention, setCanMention] = useState(true);
+  const [people, setPeople] = useState<FamilyPerson[]>([]);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [birthdayError, setBirthdayError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!visible) return;
     setFullName(person?.full_name ?? "");
+    setPreferredName(person?.preferred_name ?? "");
     setRelationship(person?.relationship_label ?? "");
+    setPronunciation(person?.pronunciation_help ?? "");
+    setBirthday(person?.date_of_birth ?? "");
     setLocation(person?.location_description ?? "");
     setVisit(person?.visit_frequency ?? "");
+    setNotes(person?.important_notes ?? "");
     setHints(person?.conversation_hints ?? "");
     setPhone(person?.phone ?? "");
     setEmergency(person?.can_contact_in_emergency ?? false);
     setCanBeCalled(person?.can_be_called_by_nikki ?? false);
+    setCanMention(person?.can_nikki_mention ?? true);
     setPhotoUri(null);
     setError(null);
+    setBirthdayError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
+
+  // The Connections editor needs everyone's names; load them only when editing (create has no id yet).
+  useEffect(() => {
+    if (!visible || !person) return;
+    let cancelled = false;
+    void listPeople(olderAdultId)
+      .then((rows) => {
+        if (!cancelled) setPeople(rows);
+      })
+      .catch(() => {
+        // names fall back to "Someone" inside the editor
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, person, olderAdultId]);
 
   const previewUri = photoUri ?? initialPhotoUrl ?? null;
 
@@ -58,18 +90,29 @@ export default function PersonFormModal({ visible, olderAdultId, person, initial
       setError("Please enter a name.");
       return;
     }
+    // The birthday is free text; never wipe a stored date because we could not read an edit.
+    const dateOfBirth = parseBirthday(birthday);
+    if (birthday.trim().length > 0 && dateOfBirth === null) {
+      setBirthdayError("We could not read this date. Try e.g. 3 May 1952 or 1952-05-03.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
       const patch = {
         full_name: fullName.trim(),
+        preferred_name: preferredName.trim() || null,
         relationship_label: relationship.trim() || null,
+        pronunciation_help: pronunciation.trim() || null,
+        date_of_birth: dateOfBirth,
         location_description: location.trim() || null,
         visit_frequency: visit.trim() || null,
+        important_notes: notes.trim() || null,
         conversation_hints: hints.trim() || null,
         phone: phone.trim() || null,
         can_contact_in_emergency: emergency,
-        can_nikki_mention: true,
+        // Written from the toggle, never forced true: Nikki's never-raise list relies on it.
+        can_nikki_mention: canMention,
         can_be_called_by_nikki: canBeCalled,
       };
       let personId = person?.id;
@@ -115,9 +158,23 @@ export default function PersonFormModal({ visible, olderAdultId, person, initial
             </Pressable>
 
             <Field label="Full name" value={fullName} onChangeText={setFullName} placeholder="e.g. Sophie de Vries" autoCapitalize="words" error={error} />
+            <Field label="What Nikki calls them" value={preferredName} onChangeText={setPreferredName} placeholder="e.g. Sophie" autoCapitalize="words" />
             <Field label="Relationship" value={relationship} onChangeText={setRelationship} placeholder="e.g. Daughter" autoCapitalize="words" />
+            <Field label="How to say their name" value={pronunciation} onChangeText={setPronunciation} placeholder="e.g. so-FEE" autoCapitalize="none" />
+            <Field
+              label="Birthday"
+              value={birthday}
+              onChangeText={(text) => {
+                setBirthday(text);
+                setBirthdayError(null);
+              }}
+              placeholder="e.g. 3 May 1952 or 1952-05-03"
+              autoCapitalize="none"
+              error={birthdayError}
+            />
             <Field label="Hometown" value={location} onChangeText={setLocation} placeholder="e.g. Amsterdam" />
             <Field label="How often they visit" value={visit} onChangeText={setVisit} placeholder="e.g. Usually on Thursdays" />
+            <Field label="Important notes" value={notes} onChangeText={setNotes} placeholder="e.g. Brings fresh flowers and stays for lunch" multiline />
             <Field label="Conversation hints for Nikki" value={hints} onChangeText={setHints} placeholder="e.g. Loves to hear about the garden" multiline />
             <Field label="Phone" value={phone} onChangeText={setPhone} placeholder="Optional" keyboardType="phone-pad" autoCapitalize="none" />
 
@@ -129,6 +186,18 @@ export default function PersonFormModal({ visible, olderAdultId, person, initial
               <Icon name={canBeCalled ? "check" : "add"} color={canBeCalled ? "success" : "textTertiary"} />
               <Text variant="body">This person may be called by Nikki</Text>
             </Pressable>
+            <Pressable accessibilityRole="switch" accessibilityState={{ checked: canMention }} accessibilityLabel="Nikki may talk about this person" onPress={() => setCanMention((v) => !v)} style={styles.toggleRow}>
+              <Icon name={canMention ? "check" : "add"} color={canMention ? "success" : "textTertiary"} />
+              <Text variant="body">Nikki may talk about this person</Text>
+            </Pressable>
+
+            {person ? (
+              <ConnectionsEditor olderAdultId={olderAdultId} personId={person.id} people={people} />
+            ) : (
+              <Text variant="caption" tone="textTertiary">
+                Save first to add connections.
+              </Text>
+            )}
 
             <Stack gap="sm" style={styles.actions}>
               <Button label={person ? "Save changes" : "Add person"} icon="check" loading={saving} onPress={save} />

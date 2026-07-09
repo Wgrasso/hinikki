@@ -1,6 +1,7 @@
 // app/admin/safety.tsx — location, safe places, emergency contacts, and the alert log in one place.
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { View } from "react-native";
+import { useFocusEffect } from "expo-router";
 import { useAppState } from "../../src/auth/appState";
 import { AppBar, Card, Icon, Screen, Stack, Text } from "../../src/primitives";
 import SectionHeader from "../../src/components/admin/SectionHeader";
@@ -8,6 +9,7 @@ import ListRow from "../../src/components/shared/ListRow";
 import StateView from "../../src/components/shared/StateView";
 import QuickAddModal from "../../src/components/admin/QuickAddModal";
 import { useAsync } from "../../src/utils/useAsync";
+import { subscribeLive } from "../../src/features/sync/liveChannel";
 import { theme } from "../../src/theme";
 import { relativeTimeLabel } from "../../src/utils/format";
 import { createSafeLocation, getLatestLocation, listSafeLocations, updateSafeLocation } from "../../src/services/locationService";
@@ -38,6 +40,17 @@ export default function AdminSafety(): React.ReactElement {
     ]);
     return { latest, safe, contacts, events };
   }, [id]);
+
+  // Refetch on focus and on live changes; stale-while-refresh keeps it flicker-free.
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+    }, [reload]),
+  );
+  useEffect(() => {
+    if (!id) return;
+    return subscribeLive(id, () => reload());
+  }, [id, reload]);
 
   const placeVisible = addingPlace || editPlace !== null;
   const contactVisible = addingContact || editContact !== null;

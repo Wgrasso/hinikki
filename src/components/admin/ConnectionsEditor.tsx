@@ -1,0 +1,261 @@
+// src/components/admin/ConnectionsEditor.tsx — view, add and remove one person's connections
+// to the other people around the same older adult (family_relationships, D5 vocabulary).
+// Direction convention: a stored row reads "person_a is <type> person_b" (Tom child_of Mark;
+// Els carer_of Anna = Els cares for Anna). The chips read from the edited person's perspective,
+// so "cared for by" saves the OTHER person as person_a (the carer). Each pick saves immediately.
+import React, { useCallback, useEffect, useState } from "react";
+import { Pressable, StyleSheet, View } from "react-native";
+import { theme } from "../../theme";
+import { Icon, Text } from "../../primitives";
+import { RELATIONSHIP_TYPES, createRelationship, deleteRelationship, listRelationships } from "../../services/peopleService";
+import type { RelationshipType } from "../../services/peopleService";
+import type { FamilyPerson, FamilyRelationship } from "../../types/database";
+
+type Props = {
+  olderAdultId: string;
+  personId: string;
+  people: FamilyPerson[];
+};
+
+// One chip per D5 type, phrased as "{edited person} is <label> {picked person}".
+// editedIs says which side of the stored row the edited person takes.
+type ChipOption = { label: string; type: RelationshipType; editedIs: "a" | "b" };
+
+const CHIP_OPTIONS: ChipOption[] = [
+  { label: "child of", type: "child_of", editedIs: "a" },
+  { label: "cared for by", type: "carer_of", editedIs: "b" },
+  { label: "spouse of", type: "spouse_of", editedIs: "a" },
+  { label: "sibling of", type: "sibling_of", editedIs: "a" },
+  { label: "friend of", type: "friend_of", editedIs: "a" },
+  { label: "neighbour of", type: "neighbour_of", editedIs: "a" },
+];
+
+export default function ConnectionsEditor({ olderAdultId, personId, people }: Props): React.ReactElement {
+  const [connections, setConnections] = useState<FamilyRelationship[]>([]);
+  const [pending, setPending] = useState<ChipOption | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const all = await listRelationships(olderAdultId);
+      setConnections(all.filter((r) => r.person_a_id === personId || r.person_b_id === personId));
+    } catch {
+      // keep whatever we had; the next successful load repaints
+    }
+  }, [olderAdultId, personId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const nameOf = useCallback(
+    (id: string): string => {
+      const p = people.find((x) => x.id === id);
+      return p ? (p.preferred_name ?? p.full_name) : "Someone";
+    },
+    [people],
+  );
+
+  const editedName = nameOf(personId);
+  const others = people.filter((p) => p.id !== personId);
+
+  // "Tom — child of Marieke" style: the other person's name, then how the two relate.
+  function describe(rel: FamilyRelationship): string {
+    const editedIsA = rel.person_a_id === personId;
+    const other = nameOf(editedIsA ? rel.person_b_id : rel.person_a_id);
+    switch (rel.relationship_type) {
+      case "child_of":
+        return editedIsA ? `${other} — parent of ${editedName}` : `${other} — child of ${editedName}`;
+      case "carer_of":
+        return editedIsA ? `${other} — cared for by ${editedName}` : `${other} — cares for ${editedName}`;
+      case "spouse_of":
+        return `${other} — spouse of ${editedName}`;
+      case "sibling_of":
+        return `${other} — sibling of ${editedName}`;
+      case "friend_of":
+        return `${other} — friend of ${editedName}`;
+      case "neighbour_of":
+        return `${other} — neighbour of ${editedName}`;
+      default:
+        return `${other} — connected to ${editedName}`;
+    }
+  }
+
+  async function add(other: FamilyPerson): Promise<void> {
+    if (!pending || busy) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const a = pending.editedIs === "a" ? personId : other.id;
+      const b = pending.editedIs === "a" ? other.id : personId;
+      // createRelationship stores symmetric pairs with ids ascending, so compare the same
+      // canonical ordering here; directional edges compare exactly a→b.
+      const symmetric = (RELATIONSHIP_TYPES.symmetric as readonly string[]).includes(pending.type);
+      const [wantA, wantB] = symmetric && b < a ? [b, a] : [a, b];
+      const exists = connections.some(
+        (r) => r.relationship_type === pending.type && r.person_a_id === wantA && r.person_b_id === wantB,
+      );
+      if (exists) {
+        setNotice("They are already connected that way.");
+        setPending(null);
+        return;
+      }
+      await createRelationship(olderAdultId, a, b, pending.type);
+      setPending(null);
+      await load();
+    } catch {
+      setError("We could not save that connection just now. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove(rel: FamilyRelationship): Promise<void> {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await deleteRelationship(rel.id);
+      await load();
+    } catch {
+      setError("We could not remove that connection just now. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <View style={styles.wrap}>
+      <Text variant="overline" tone="textSecondary" style={styles.label}>
+        CONNECTIONS
+      </Text>
+
+      {connections.length === 0 ? (
+        <Text variant="caption" tone="textTertiary">
+          No connections yet — link {editedName} to the rest of the family below.
+        </Text>
+      ) : (
+        connections.map((rel) => (
+          <View key={rel.id} style={styles.row}>
+            <Text variant="body" style={styles.rowLabel}>
+              {describe(rel)}
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Remove: ${describe(rel)}`}
+              onPress={() => void remove(rel)}
+              hitSlop={10}
+              style={({ pressed }) => [pressed ? styles.pressed : null]}
+            >
+              <Icon name="close" color="textTertiary" size={theme.iconSize.sm} />
+            </Pressable>
+          </View>
+        ))
+      )}
+
+      {others.length > 0 ? (
+        <>
+          <Text variant="caption" tone="textSecondary">
+            {pending ? `${editedName} is ${pending.label}…` : `Add a connection — ${editedName} is…`}
+          </Text>
+          {pending == null ? (
+            <View style={styles.chipRow}>
+              {CHIP_OPTIONS.map((opt) => (
+                <Pressable
+                  key={opt.label}
+                  accessibilityRole="button"
+                  accessibilityLabel={opt.label}
+                  onPress={() => setPending(opt)}
+                  style={({ pressed }) => [styles.chip, pressed ? styles.pressed : null]}
+                >
+                  <Text variant="bodyStrong" tone="textSecondary">
+                    {opt.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.chipRow}>
+              {others.map((p) => {
+                const name = p.preferred_name ?? p.full_name;
+                return (
+                  <Pressable
+                    key={p.id}
+                    accessibilityRole="button"
+                    accessibilityLabel={name}
+                    onPress={() => void add(p)}
+                    style={({ pressed }) => [styles.chip, styles.chipPerson, pressed ? styles.pressed : null]}
+                  >
+                    <Text variant="bodyStrong" tone="onPrimary">
+                      {name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Never mind"
+                onPress={() => setPending(null)}
+                style={({ pressed }) => [styles.chip, pressed ? styles.pressed : null]}
+              >
+                <Text variant="bodyStrong" tone="textSecondary">
+                  never mind
+                </Text>
+              </Pressable>
+            </View>
+          )}
+        </>
+      ) : (
+        <Text variant="caption" tone="textTertiary">
+          Add more people first, then link them here.
+        </Text>
+      )}
+
+      {error ? (
+        <Text variant="caption" tone="danger">
+          {error}
+        </Text>
+      ) : null}
+
+      {notice ? (
+        <Text variant="caption" tone="textTertiary">
+          {notice}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  wrap: { gap: theme.spacing.sm },
+  label: { marginLeft: theme.spacing.xs },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    minHeight: 48,
+  },
+  rowLabel: { flex: 1 },
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.sm },
+  chip: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radius.pill,
+    backgroundColor: theme.colors.surfaceAlt,
+    minHeight: 44,
+    justifyContent: "center",
+  },
+  chipPerson: { backgroundColor: theme.colors.primary },
+  pressed: { opacity: 0.9 },
+});

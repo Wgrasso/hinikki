@@ -61,6 +61,8 @@ export type FamilyPerson = {
   full_name: string;
   preferred_name: string | null;
   relationship_label: string | null;
+  date_of_birth: string | null;
+  pronunciation_help: string | null;
   phone: string | null;
   address: string | null;
   location_description: string | null;
@@ -110,12 +112,77 @@ export type Reminder = {
   older_adult_id: string;
   title: string;
   reminder_type: string | null;
+  recurrence_rule: string | null;
   scheduled_at: string | null;
   nikki_message: string | null;
   instructions: string | null;
   requires_confirmation: boolean;
   priority_level: "low" | "normal" | "high";
   active: boolean;
+};
+
+export type ReminderConfirmation = {
+  id: string;
+  reminder_id: string;
+  older_adult_id: string;
+  confirmed_at: string;
+  confirmation_method: string | null;
+  notes: string | null;
+};
+
+export type PersonMemory = {
+  id: string;
+  older_adult_id: string;
+  person_id: string | null;
+  title: string;
+  description: string | null;
+  approximate_date: string | null;
+  can_nikki_mention: boolean;
+};
+
+// nikki_proposals — the human-in-the-loop write-back queue (docs/plans/nikki-brain.md §4).
+// 'session_recap' rows (status 'fyi') are the Conversations feed, never reviewable.
+export type ProposalType =
+  | "new_person"
+  | "person_update"
+  | "relationship"
+  | "memory"
+  | "fact"
+  | "event"
+  | "reminder"
+  | "profile_update"
+  | "safe_location"
+  | "session_recap";
+export type ProposalStatus = "pending" | "approved" | "declined" | "applied" | "failed" | "fyi";
+export type DeclineReason = "already_known" | "not_true" | "family_prefers_not";
+
+export type RecapChange = {
+  kind: "proposed" | "confirmed" | "called" | "help";
+  label: string;
+  ref_id?: string;
+};
+
+export type NikkiProposal = {
+  id: string;
+  older_adult_id: string;
+  proposal_type: ProposalType;
+  target_id: string | null;
+  payload: Record<string, unknown>;
+  source_quote: string | null;
+  agent_note: string | null;
+  status: ProposalStatus;
+  decline_reason: DeclineReason | null;
+  review_note: string | null;
+  reviewed_by_admin_id: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+};
+
+export type PushTokenRow = {
+  id: string;
+  profile_id: string;
+  expo_push_token: string;
+  platform: string | null;
 };
 
 export type SafeLocation = {

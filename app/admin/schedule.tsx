@@ -1,20 +1,32 @@
 // app/admin/schedule.tsx — calendar events and reminders, as two segments of one screen.
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { FlatList, Pressable, StyleSheet, View } from "react-native";
+import { useFocusEffect } from "expo-router";
 import { useAppState } from "../../src/auth/appState";
 import { AppBar, Card, Screen, Text } from "../../src/primitives";
 import ListRow from "../../src/components/shared/ListRow";
 import StateView from "../../src/components/shared/StateView";
 import ScheduleFormModal from "../../src/components/admin/ScheduleFormModal";
 import { useAsync } from "../../src/utils/useAsync";
+import { subscribeLive } from "../../src/features/sync/liveChannel";
 import { theme } from "../../src/theme";
 import { formatTime } from "../../src/utils/format";
 import { listEvents } from "../../src/services/calendarService";
-import { listReminders } from "../../src/services/reminderService";
+import { listLatestConfirmations, listReminders, type LatestConfirmation } from "../../src/services/reminderService";
 import type { CalendarEvent, Reminder } from "../../src/types/database";
 
 type Segment = "events" | "reminders";
-type ScheduleData = { events: CalendarEvent[]; reminders: Reminder[] };
+type ScheduleData = {
+  events: CalendarEvent[];
+  reminders: Reminder[];
+  confirmations: Record<string, LatestConfirmation>;
+};
+
+// "Confirmed 5:32 pm by voice" — the quiet line under reminders the elder has confirmed.
+function confirmationLine(conf: LatestConfirmation): string {
+  const method = conf.confirmation_method === "voice" ? " by voice" : conf.confirmation_method === "tap" ? " in the app" : "";
+  return `Confirmed ${formatTime(conf.confirmed_at)}${method}`;
+}
 
 export default function AdminSchedule(): React.ReactElement {
   const { olderAdultId } = useAppState();
@@ -25,9 +37,24 @@ export default function AdminSchedule(): React.ReactElement {
   const [editReminder, setEditReminder] = useState<Reminder | null>(null);
 
   const { state, reload } = useAsync<ScheduleData>(async () => {
-    const [events, reminders] = await Promise.all([listEvents(id), listReminders(id)]);
-    return { events, reminders };
+    const [events, reminders, confirmations] = await Promise.all([
+      listEvents(id),
+      listReminders(id),
+      listLatestConfirmations(id),
+    ]);
+    return { events, reminders, confirmations };
   }, [id]);
+
+  // Refetch on focus and on live changes; stale-while-refresh keeps it flicker-free.
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+    }, [reload]),
+  );
+  useEffect(() => {
+    if (!id) return;
+    return subscribeLive(id, () => reload());
+  }, [id, reload]);
 
   const kind = segment === "events" ? "event" : "reminder";
   const formVisible = adding || editEvent !== null || editReminder !== null;
@@ -85,14 +112,24 @@ export default function AdminSchedule(): React.ReactElement {
               contentContainerStyle={styles.list}
               ItemSeparatorComponent={() => <View style={styles.sep} />}
               ListEmptyComponent={<EmptyHint text="No reminders yet. Add medication, hydration or visit reminders." />}
-              renderItem={({ item }) => (
-                <ListRow
-                  title={item.title}
-                  subtitle={item.scheduled_at ? formatTime(item.scheduled_at) : "Anytime"}
-                  onPress={() => setEditReminder(item)}
-                  accessibilityLabel={`Edit ${item.title}`}
-                />
-              )}
+              renderItem={({ item }) => {
+                const conf = item.requires_confirmation ? data.confirmations[item.id] : undefined;
+                return (
+                  <View>
+                    <ListRow
+                      title={item.title}
+                      subtitle={item.scheduled_at ? formatTime(item.scheduled_at) : "Anytime"}
+                      onPress={() => setEditReminder(item)}
+                      accessibilityLabel={`Edit ${item.title}`}
+                    />
+                    {conf ? (
+                      <Text variant="caption" tone="success" style={styles.confirmed}>
+                        {confirmationLine(conf)}
+                      </Text>
+                    ) : null}
+                  </View>
+                );
+              }}
             />
           )
         }
@@ -128,4 +165,5 @@ const styles = StyleSheet.create({
   segmentActive: { backgroundColor: theme.colors.primary },
   list: { paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl },
   sep: { height: theme.spacing.sm },
+  confirmed: { marginTop: theme.spacing.xs, marginLeft: theme.spacing.lg },
 });
