@@ -7,14 +7,20 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { theme } from "../../theme";
 import { Icon, Text } from "../../primitives";
-import { RELATIONSHIP_TYPES, createRelationship, deleteRelationship, listRelationships } from "../../services/peopleService";
+import { RELATIONSHIP_TYPES, createRelationship, deleteRelationship, listRelationships, updatePerson } from "../../services/peopleService";
 import type { RelationshipType } from "../../services/peopleService";
 import type { FamilyPerson, FamilyRelationship } from "../../types/database";
 
 type Props = {
   olderAdultId: string;
+  olderAdultName: string;
   personId: string;
   people: FamilyPerson[];
+  // The person's relationship TO the older adult lives in relationship_label (the elder is
+  // not a family_people row, so it can't be a family_relationships edge). Choosing the elder
+  // as a connection target writes this instead — kept in sync with the form's field.
+  relationshipLabel: string;
+  onRelationshipLabelChange: (label: string | null) => void;
 };
 
 // One chip per D5 type, phrased as "{edited person} is <label> {picked person}".
@@ -30,7 +36,25 @@ const CHIP_OPTIONS: ChipOption[] = [
   { label: "neighbour of", type: "neighbour_of", editedIs: "a" },
 ];
 
-export default function ConnectionsEditor({ olderAdultId, personId, people }: Props): React.ReactElement {
+// When the connection target is the older adult, the D5 type becomes the person's
+// relationship_label (their relation TO the elder), e.g. friend_of → "friend".
+const ELDER_LABEL: Record<RelationshipType, string> = {
+  child_of: "child",
+  carer_of: "carer",
+  spouse_of: "spouse",
+  sibling_of: "sibling",
+  friend_of: "friend",
+  neighbour_of: "neighbour",
+};
+
+export default function ConnectionsEditor({
+  olderAdultId,
+  olderAdultName,
+  personId,
+  people,
+  relationshipLabel,
+  onRelationshipLabelChange,
+}: Props): React.ReactElement {
   const [connections, setConnections] = useState<FamilyRelationship[]>([]);
   const [pending, setPending] = useState<ChipOption | null>(null);
   const [busy, setBusy] = useState(false);
@@ -80,6 +104,40 @@ export default function ConnectionsEditor({ olderAdultId, personId, people }: Pr
         return `${other} — neighbour of ${editedName}`;
       default:
         return `${other} — connected to ${editedName}`;
+    }
+  }
+
+  // Connecting the person to the OLDER ADULT: store it as their relationship_label
+  // (immediate save, like every other action here), and sync the form's field.
+  async function addToElder(): Promise<void> {
+    if (!pending || busy) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const label = ELDER_LABEL[pending.type];
+      await updatePerson(personId, { relationship_label: label });
+      onRelationshipLabelChange(label);
+      setPending(null);
+    } catch {
+      setError("We could not save that connection just now. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function clearElder(): Promise<void> {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await updatePerson(personId, { relationship_label: null });
+      onRelationshipLabelChange(null);
+    } catch {
+      setError("We could not remove that connection just now. Please try again.");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -134,85 +192,105 @@ export default function ConnectionsEditor({ olderAdultId, personId, people }: Pr
         CONNECTIONS
       </Text>
 
-      {connections.length === 0 ? (
+      {connections.length === 0 && !relationshipLabel ? (
         <Text variant="caption" tone="textTertiary">
-          No connections yet — link {editedName} to the rest of the family below.
+          No connections yet — link {editedName} to {olderAdultName} or the rest of the family below.
         </Text>
-      ) : (
-        connections.map((rel) => (
-          <View key={rel.id} style={styles.row}>
-            <Text variant="body" style={styles.rowLabel}>
-              {describe(rel)}
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Remove: ${describe(rel)}`}
-              onPress={() => void remove(rel)}
-              hitSlop={10}
-              style={({ pressed }) => [pressed ? styles.pressed : null]}
-            >
-              <Icon name="close" color="textTertiary" size={theme.iconSize.sm} />
-            </Pressable>
-          </View>
-        ))
-      )}
+      ) : null}
 
-      {others.length > 0 ? (
-        <>
-          <Text variant="caption" tone="textSecondary">
-            {pending ? `${editedName} is ${pending.label}…` : `Add a connection — ${editedName} is…`}
+      {relationshipLabel ? (
+        <View style={styles.row}>
+          <Text variant="body" style={styles.rowLabel}>
+            {`${olderAdultName} — ${relationshipLabel} of ${editedName}`}
           </Text>
-          {pending == null ? (
-            <View style={styles.chipRow}>
-              {CHIP_OPTIONS.map((opt) => (
-                <Pressable
-                  key={opt.label}
-                  accessibilityRole="button"
-                  accessibilityLabel={opt.label}
-                  onPress={() => setPending(opt)}
-                  style={({ pressed }) => [styles.chip, pressed ? styles.pressed : null]}
-                >
-                  <Text variant="bodyStrong" tone="textSecondary">
-                    {opt.label}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          ) : (
-            <View style={styles.chipRow}>
-              {others.map((p) => {
-                const name = p.preferred_name ?? p.full_name;
-                return (
-                  <Pressable
-                    key={p.id}
-                    accessibilityRole="button"
-                    accessibilityLabel={name}
-                    onPress={() => void add(p)}
-                    style={({ pressed }) => [styles.chip, styles.chipPerson, pressed ? styles.pressed : null]}
-                  >
-                    <Text variant="bodyStrong" tone="onPrimary">
-                      {name}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Remove: ${editedName} is ${olderAdultName}'s ${relationshipLabel}`}
+            onPress={() => void clearElder()}
+            hitSlop={10}
+            style={({ pressed }) => [pressed ? styles.pressed : null]}
+          >
+            <Icon name="close" color="textTertiary" size={theme.iconSize.sm} />
+          </Pressable>
+        </View>
+      ) : null}
+
+      {connections.map((rel) => (
+        <View key={rel.id} style={styles.row}>
+          <Text variant="body" style={styles.rowLabel}>
+            {describe(rel)}
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Remove: ${describe(rel)}`}
+            onPress={() => void remove(rel)}
+            hitSlop={10}
+            style={({ pressed }) => [pressed ? styles.pressed : null]}
+          >
+            <Icon name="close" color="textTertiary" size={theme.iconSize.sm} />
+          </Pressable>
+        </View>
+      ))}
+
+      <Text variant="caption" tone="textSecondary">
+        {pending ? `${editedName} is ${pending.label}…` : `Add a connection — ${editedName} is…`}
+      </Text>
+      {pending == null ? (
+        <View style={styles.chipRow}>
+          {CHIP_OPTIONS.map((opt) => (
+            <Pressable
+              key={opt.label}
+              accessibilityRole="button"
+              accessibilityLabel={opt.label}
+              onPress={() => setPending(opt)}
+              style={({ pressed }) => [styles.chip, pressed ? styles.pressed : null]}
+            >
+              <Text variant="bodyStrong" tone="textSecondary">
+                {opt.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : (
+        <View style={styles.chipRow}>
+          {/* The older adult is always a valid target — this is the "friend of {elder}" case. */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${olderAdultName} (the person Nikki helps)`}
+            onPress={() => void addToElder()}
+            style={({ pressed }) => [styles.chip, styles.chipElder, pressed ? styles.pressed : null]}
+          >
+            <Text variant="bodyStrong" tone="onPrimary">
+              {olderAdultName} (Nikki's person)
+            </Text>
+          </Pressable>
+          {others.map((p) => {
+            const name = p.preferred_name ?? p.full_name;
+            return (
               <Pressable
+                key={p.id}
                 accessibilityRole="button"
-                accessibilityLabel="Never mind"
-                onPress={() => setPending(null)}
-                style={({ pressed }) => [styles.chip, pressed ? styles.pressed : null]}
+                accessibilityLabel={name}
+                onPress={() => void add(p)}
+                style={({ pressed }) => [styles.chip, styles.chipPerson, pressed ? styles.pressed : null]}
               >
-                <Text variant="bodyStrong" tone="textSecondary">
-                  never mind
+                <Text variant="bodyStrong" tone="onPrimary">
+                  {name}
                 </Text>
               </Pressable>
-            </View>
-          )}
-        </>
-      ) : (
-        <Text variant="caption" tone="textTertiary">
-          Add more people first, then link them here.
-        </Text>
+            );
+          })}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Never mind"
+            onPress={() => setPending(null)}
+            style={({ pressed }) => [styles.chip, pressed ? styles.pressed : null]}
+          >
+            <Text variant="bodyStrong" tone="textSecondary">
+              never mind
+            </Text>
+          </Pressable>
+        </View>
       )}
 
       {error ? (
@@ -257,5 +335,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   chipPerson: { backgroundColor: theme.colors.primary },
+  chipElder: { backgroundColor: theme.colors.accent },
   pressed: { opacity: 0.9 },
 });

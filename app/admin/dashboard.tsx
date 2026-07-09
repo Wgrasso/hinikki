@@ -246,7 +246,7 @@ export default function AdminDashboard(): React.ReactElement {
               {state.status === "loaded" && state.data.people.length > 0 ? (
                 <Stack gap="sm">
                   {state.data.people.map((p) => (
-                    <ListRow key={p.id} title={p.full_name} subtitle={p.relationship_label ?? "Family"} onPress={() => notify(p)} />
+                    <ListRow key={p.id} title={p.full_name} subtitle={p.relationship_label ?? undefined} onPress={() => notify(p)} />
                   ))}
                 </Stack>
               ) : (

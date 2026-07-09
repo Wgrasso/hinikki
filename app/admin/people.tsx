@@ -80,7 +80,7 @@ export default function AdminPeople(): React.ReactElement {
             renderItem={({ item }) => (
               <ListRow
                 title={item.preferred_name ?? item.full_name}
-                subtitle={item.relationship_label ?? "Family"}
+                subtitle={item.relationship_label ?? undefined}
                 leading={<Avatar name={item.full_name} photoUri={data.photos[item.id]} size={52} />}
                 onPress={() => openEdit(item, data.photos[item.id] ?? null)}
               />

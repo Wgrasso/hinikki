@@ -68,7 +68,7 @@ export default function PeopleScreen(): React.ReactElement {
             renderItem={({ item }) => (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`${item.preferred_name ?? item.full_name}, ${item.relationship_label ?? "family"}`}
+                accessibilityLabel={item.relationship_label ? `${item.preferred_name ?? item.full_name}, ${item.relationship_label}` : (item.preferred_name ?? item.full_name)}
                 onPress={() => setSelected(item)}
                 style={({ pressed }) => [styles.personCard, theme.shadows.card, pressed ? styles.pressed : null]}
               >
@@ -76,9 +76,11 @@ export default function PeopleScreen(): React.ReactElement {
                 <Text variant="bodyStrong" center numberOfLines={1}>
                   {item.preferred_name ?? item.full_name}
                 </Text>
-                <Text variant="caption" tone="textSecondary" center>
-                  {item.relationship_label ?? "Family"}
-                </Text>
+                {item.relationship_label ? (
+                  <Text variant="caption" tone="textSecondary" center>
+                    {item.relationship_label}
+                  </Text>
+                ) : null}
               </Pressable>
             )}
           />
@@ -94,8 +96,9 @@ export default function PeopleScreen(): React.ReactElement {
                 <Stack gap="xs" align="center">
                   <Text variant="title">{selected.preferred_name ?? selected.full_name}</Text>
                   <Text variant="body" tone="textSecondary" center>
-                    Your {(selected.relationship_label ?? "family").toLowerCase()}
-                    {selected.location_description ? ` · lives ${selected.location_description}` : ""}
+                    {selected.relationship_label ? `Your ${selected.relationship_label.toLowerCase()}` : ""}
+                    {selected.relationship_label && selected.location_description ? " · " : ""}
+                    {selected.location_description ? `lives ${selected.location_description}` : ""}
                   </Text>
                 </Stack>
                 {selected.visit_frequency ? (

@@ -8,6 +8,7 @@ import * as ImagePicker from "expo-image-picker";
 import { theme } from "../../theme";
 import { Button, Field, Icon, Stack, Text } from "../../primitives";
 import { createPerson, listPeople, updatePerson, uploadPersonPhoto } from "../../services/peopleService";
+import { getOlderAdult } from "../../services/profileService";
 import { parseBirthday } from "../../utils/parseBirthday";
 import ConnectionsEditor from "./ConnectionsEditor";
 import type { FamilyPerson } from "../../types/database";
@@ -36,6 +37,7 @@ export default function PersonFormModal({ visible, olderAdultId, person, initial
   const [canBeCalled, setCanBeCalled] = useState(false);
   const [canMention, setCanMention] = useState(true);
   const [people, setPeople] = useState<FamilyPerson[]>([]);
+  const [elderName, setElderName] = useState("the person Nikki helps");
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +74,13 @@ export default function PersonFormModal({ visible, olderAdultId, person, initial
       })
       .catch(() => {
         // names fall back to "Someone" inside the editor
+      });
+    void getOlderAdult(olderAdultId)
+      .then((oa) => {
+        if (!cancelled && oa) setElderName(oa.preferred_name ?? oa.display_name);
+      })
+      .catch(() => {
+        // keep the neutral fallback name
       });
     return () => {
       cancelled = true;
@@ -195,7 +204,14 @@ export default function PersonFormModal({ visible, olderAdultId, person, initial
             </Pressable>
 
             {person ? (
-              <ConnectionsEditor olderAdultId={olderAdultId} personId={person.id} people={people} />
+              <ConnectionsEditor
+                olderAdultId={olderAdultId}
+                olderAdultName={elderName}
+                personId={person.id}
+                people={people}
+                relationshipLabel={relationship}
+                onRelationshipLabelChange={(label) => setRelationship(label ?? "")}
+              />
             ) : (
               <Text variant="caption" tone="textTertiary">
                 Save first to add connections.
