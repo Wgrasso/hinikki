@@ -8,3 +8,7 @@ web-build/
 ios/
 android/
 .DS_Store
+
+# Supabase CLI local state
+supabase/.temp/
+supabase/.branches/
