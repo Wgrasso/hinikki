@@ -130,7 +130,14 @@ export function formatPendingItems(topics: string[]): string {
 }
 
 export function formatWeather(weather: WeatherSnapshot, familyAdvice?: string | null): string {
-  const parts = [`${weather.summary}, ${weather.temperatureC}°C (feels like ${weather.feelsLikeC}°C)`, weather.clothingSuggestion];
+  const parts = [`${weather.summary}, ${weather.temperatureC}°C (feels like ${weather.feelsLikeC}°C).`];
+  if (weather.highC != null && weather.lowC != null) {
+    parts.push(`Today ranges from ${weather.lowC}°C to ${weather.highC}°C.`);
+  }
+  if (weather.rainProbability >= 0.2) {
+    parts.push(`There is a ${Math.round(weather.rainProbability * 100)}% chance of rain today.`);
+  }
+  parts.push(weather.clothingSuggestion);
   if (weather.safetySuggestion) parts.push(weather.safetySuggestion);
   if (familyAdvice) parts.push(`Family note: ${familyAdvice}`);
   return parts.join(" ");
@@ -182,11 +189,12 @@ export async function buildSessionVariables(
   const { language_name, register } = languageSettings(profile?.primary_language);
 
   // getWeather stays in weatherService's own fail-soft world; the family's advice line
-  // rides the snapshot (tier day). Weather itself is best-effort.
+  // rides the snapshot (tier day). Weather itself is best-effort — located from the home
+  // address (city only reaches the geocoder), null when unavailable.
   let weatherText = "Weather information is not available right now.";
   try {
     const { getWeather } = await import("../../services/weatherService");
-    const weather = await getWeather(olderAdultId);
+    const weather = await getWeather(profile?.home_address ?? null);
     if (weather) weatherText = formatWeather(weather, tiers?.weatherAdvice);
   } catch {
     // keep default

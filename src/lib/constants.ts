@@ -50,6 +50,8 @@ export const STORE_KEYS = {
   onboardingComplete: "hinikki.onboarding_complete",
   deviceId: "hinikki.device_id",
   demoState: "hinikki.demo_state",
+  weatherGeo: "hinikki.weather_geo",
+  weatherSnapshot: "hinikki.weather_snapshot",
 } as const;
 
 // Pairing code presentation: 6 digits shown as "### ###".

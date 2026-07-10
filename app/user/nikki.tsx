@@ -22,7 +22,7 @@ import type { CalendarEvent, OlderAdultProfile } from "../../src/types/database"
 type NikkiData = {
   adult: OlderAdultProfile | null;
   nextEvent: CalendarEvent | null;
-  weather: Weather;
+  weather: Weather | null;
 };
 
 export default function NikkiScreen(): React.ReactElement {
@@ -32,11 +32,9 @@ export default function NikkiScreen(): React.ReactElement {
   const initialAsk = typeof params.ask === "string" ? params.ask : null;
 
   const { state, reload } = useAsync<NikkiData>(async () => {
-    const [adult, nextEvent, weather] = await Promise.all([
-      getOlderAdult(id),
-      getNextEvent(id),
-      getWeather(id),
-    ]);
+    const [adult, nextEvent] = await Promise.all([getOlderAdult(id), getNextEvent(id)]);
+    // Weather needs the home address; the service caches, so this is instant after first load.
+    const weather = await getWeather(adult?.home_address ?? null);
     return { adult, nextEvent, weather };
   }, [id]);
 
@@ -75,7 +73,7 @@ function NikkiHeader({
 }: {
   name: string | null;
   nextEvent: CalendarEvent | null;
-  weather: Weather;
+  weather: Weather | null;
 }): React.ReactElement {
   const intro = name ? `${greeting()}, ${name}.` : `${greeting()}.`;
   const eventLine = nextEvent
@@ -92,12 +90,14 @@ function NikkiHeader({
             {eventLine}
           </Text>
         </View>
-        <View style={styles.pill}>
-          <Icon name="weather" color="primary" size={theme.iconSize.sm} />
-          <Text variant="caption" tone="textSecondary">
-            {weather.temperatureC}°C · {weather.summary}
-          </Text>
-        </View>
+        {weather ? (
+          <View style={styles.pill}>
+            <Icon name="weather" color="primary" size={theme.iconSize.sm} />
+            <Text variant="caption" tone="textSecondary">
+              {weather.temperatureC}°C · {weather.summary}
+            </Text>
+          </View>
+        ) : null}
       </Stack>
     </Stack>
   );

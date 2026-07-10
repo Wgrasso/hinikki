@@ -103,19 +103,31 @@ describe("formatFamily", () => {
 });
 
 describe("formatWeather", () => {
-  it("combines summary, clothing and safety advice", () => {
-    const weather: WeatherSnapshot = {
-      temperatureC: 19,
-      feelsLikeC: 18,
-      rainProbability: 10,
-      windKph: 12,
-      summary: "Mild and sunny",
-      clothingSuggestion: "A light jacket is perfect.",
-      safetySuggestion: "The pavement may be slippery.",
-    };
-    const text = formatWeather(weather);
+  const weather: WeatherSnapshot = {
+    temperatureC: 19,
+    feelsLikeC: 18,
+    rainProbability: 0.6,
+    windKph: 12,
+    highC: 21,
+    lowC: 12,
+    summary: "Mild and sunny",
+    clothingSuggestion: "A light jacket is perfect.",
+    safetySuggestion: "The pavement may be slippery.",
+  };
+
+  it("combines summary, day range, rain chance, clothing and safety advice", () => {
+    const text = formatWeather(weather, "Wear the brown coat under 8°.");
     expect(text).toContain("Mild and sunny, 19°C (feels like 18°C)");
+    expect(text).toContain("Today ranges from 12°C to 21°C.");
+    expect(text).toContain("60% chance of rain");
     expect(text).toContain("A light jacket is perfect.");
     expect(text).toContain("The pavement may be slippery.");
+    expect(text).toContain("Family note: Wear the brown coat under 8°.");
+  });
+
+  it("omits the range and rain lines when there is nothing to say", () => {
+    const text = formatWeather({ ...weather, highC: null, lowC: null, rainProbability: 0.05 });
+    expect(text).not.toContain("ranges from");
+    expect(text).not.toContain("chance of rain");
   });
 });
