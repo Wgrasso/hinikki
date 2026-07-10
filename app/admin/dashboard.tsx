@@ -25,7 +25,7 @@ import { listPeople } from "../../src/services/peopleService";
 import { listPendingProposals, listRecaps } from "../../src/services/proposalService";
 import { registerAndSaveToken } from "../../src/services/pushService";
 import { registerForPush, sendPush } from "../../src/features/notifications/push";
-import { FEATURE_HELP_TAB } from "../../src/lib/constants";
+import { FEATURE_HELP_TAB, FEATURE_TEST_PUSH_NOTIFICATION } from "../../src/lib/constants";
 import type { CalendarEvent, EmergencyEvent, FamilyPerson, LocationUpdate, NikkiProposal, OlderAdultProfile, RecapChange, Reminder } from "../../src/types/database";
 import type { SetupChecklistItem } from "../../src/types/domain";
 
@@ -59,7 +59,7 @@ export default function AdminDashboard(): React.ReactElement {
   const [pickerOpen, setPickerOpen] = useState(false);
 
   useEffect(() => {
-    void registerForPush().then(setPushToken);
+    if (FEATURE_TEST_PUSH_NOTIFICATION) void registerForPush().then(setPushToken);
     void registerAndSaveToken(); // persist this admin device's token so Nikki's questions can reach it (plan §4.5)
   }, []);
 
@@ -232,34 +232,38 @@ export default function AdminDashboard(): React.ReactElement {
               )}
             </View>
 
-            <View>
-              <SectionHeader title="Notifications" />
-              <Button label="Test push notification" icon="send" variant="secondary" onPress={() => setPickerOpen(true)} />
-            </View>
+            {FEATURE_TEST_PUSH_NOTIFICATION ? (
+              <View>
+                <SectionHeader title="Notifications" />
+                <Button label="Test push notification" icon="send" variant="secondary" onPress={() => setPickerOpen(true)} />
+              </View>
+            ) : null}
           </Stack>
         )}
       </StateView>
 
-      <BottomSheetModal
-        visible={pickerOpen}
-        onClose={() => setPickerOpen(false)}
-        title="Send a test notification"
-        subtitle="Choose someone in the family. A test push notification will be sent to this device."
-        maxHeightPercent={80}
-      >
-        {state.status === "loaded" && state.data.people.length > 0 ? (
-          <Stack gap="sm">
-            {state.data.people.map((p) => (
-              <ListRow key={p.id} title={p.full_name} subtitle={p.relationship_label ?? undefined} onPress={() => notify(p)} />
-            ))}
-          </Stack>
-        ) : (
-          <Text variant="body" tone="textSecondary">
-            Add people first, then you can send them a notification.
-          </Text>
-        )}
-        <Button label="Cancel" variant="secondary" onPress={() => setPickerOpen(false)} />
-      </BottomSheetModal>
+      {FEATURE_TEST_PUSH_NOTIFICATION ? (
+        <BottomSheetModal
+          visible={pickerOpen}
+          onClose={() => setPickerOpen(false)}
+          title="Send a test notification"
+          subtitle="Choose someone in the family. A test push notification will be sent to this device."
+          maxHeightPercent={80}
+        >
+          {state.status === "loaded" && state.data.people.length > 0 ? (
+            <Stack gap="sm">
+              {state.data.people.map((p) => (
+                <ListRow key={p.id} title={p.full_name} subtitle={p.relationship_label ?? undefined} onPress={() => notify(p)} />
+              ))}
+            </Stack>
+          ) : (
+            <Text variant="body" tone="textSecondary">
+              Add people first, then you can send them a notification.
+            </Text>
+          )}
+          <Button label="Cancel" variant="secondary" onPress={() => setPickerOpen(false)} />
+        </BottomSheetModal>
+      ) : null}
     </Screen>
   );
 }

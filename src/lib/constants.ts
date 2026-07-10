@@ -30,6 +30,12 @@ export const HAS_VOICE = HAS_SUPABASE && Platform.OS !== "web";
 // ready to ship. The route (app/user/help.tsx) stays in the codebase either way.
 export const FEATURE_HELP_TAB = false;
 
+// Willem is actively developing the admin dashboard's "send a test push notification" tool;
+// keep it out of the first beta build until it's ready to ship. This does not affect the
+// underlying push infra used to notify admins of Nikki's proposals (src/services/pushService.ts),
+// only this manual test button/section.
+export const FEATURE_TEST_PUSH_NOTIFICATION = false;
+
 export const PHOTO_BUCKET = "family-photos";
 
 // Local-storage keys (AsyncStorage).
