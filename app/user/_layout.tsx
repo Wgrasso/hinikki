@@ -12,6 +12,7 @@ import { markSnapshotDirty } from "../../src/features/voice/snapshot";
 import DevModeSwitch from "../../src/components/shared/DevModeSwitch";
 import { Icon } from "../../src/primitives";
 import { theme } from "../../src/theme";
+import { FEATURE_HELP_TAB } from "../../src/lib/constants";
 
 export default function UserLayout(): React.ReactElement {
   const { olderAdultId } = useAppState();
@@ -66,7 +67,11 @@ export default function UserLayout(): React.ReactElement {
       />
       <Tabs.Screen
         name="help"
-        options={{ title: "Help", tabBarIcon: ({ focused }) => <Icon name="help" color={focused ? "primary" : "textTertiary"} /> }}
+        options={{
+          href: FEATURE_HELP_TAB ? undefined : null,
+          title: "Help",
+          tabBarIcon: ({ focused }) => <Icon name="help" color={focused ? "primary" : "textTertiary"} />,
+        }}
       />
     </Tabs>
     <DevModeSwitch />

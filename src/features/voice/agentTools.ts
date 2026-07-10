@@ -1,4 +1,4 @@
-// src/features/voice/agentTools.ts — the seven ElevenLabs client tools (plan §2.6).
+// src/features/voice/agentTools.ts — the five ElevenLabs client tools (plan §2.6).
 // These run ON THE ELDER'S DEVICE under their own Supabase session; the agent only ever
 // sees the returned strings. Names, not ids, cross the LLM boundary — the compiled context
 // contains no uuids, so every tool resolves people/reminders against the cached snapshot
@@ -7,9 +7,7 @@
 // Tool RESULTS are instructions/acknowledgements for the agent, not user-facing copy.
 // makeAgentTools returns { tools, reset }: reset() MUST be called at each session start —
 // the recap-chip list and the one-push-per-conversation flag are per-conversation state.
-import { Linking } from "react-native";
 import { saveSessionNote } from "../../services/conversationService";
-import { createEmergencyEvent } from "../../services/emergencyService";
 import { confirmReminder } from "../../services/reminderService";
 import {
   createProposal,
@@ -17,7 +15,6 @@ import {
   saveRecap,
 } from "../../services/proposalService";
 import { notifyAdminsOfProposal } from "../../services/pushService";
-import { captureAndStoreLocation } from "../safety/locationCapture";
 import { looksLikeOpinion } from "./factFilter";
 import { getSnapshotTiers, neverRaiseNames } from "./snapshot";
 import type { FamilyPerson, ProposalType, RecapChange, Reminder } from "../../types/database";
@@ -242,49 +239,6 @@ export function makeAgentTools(
       await confirmReminder(hit.reminder.id, olderAdultId, "voice").catch(() => undefined);
       changes.push({ kind: "confirmed", label: hit.reminder.title, ref_id: hit.reminder.id });
       return `Confirmed "${hit.reminder.title}". Acknowledge them warmly.`;
-    },
-
-    // request_help — safety ONLY (lost, hurt, frightened, unwell, wants someone to come).
-    request_help: async (parameters: unknown): Promise<string> => {
-      const p = asParams(parameters);
-      const urgency = asString(p.urgency) === "high" ? "high" : "low";
-      const message = asString(p.message) ?? "Nikki noticed they may need help.";
-      try {
-        await createEmergencyEvent(olderAdultId, {
-          event_type: "distress",
-          user_message: message,
-          detected_urgency: urgency,
-        });
-        void captureAndStoreLocation(olderAdultId, true).catch(() => undefined);
-        changes.push({ kind: "help", label: "asked the family for help" });
-        return "The family is being told. Stay with them: calm, short sentences, no alarm words. Remind them family knows and you are staying right here.";
-      } catch {
-        return "Could not reach the family system just now. Stay calm with them and gently suggest the red help button on the Help screen.";
-      }
-    },
-
-    // call_person — dial ONLY people the family flagged (plan FR-17/D14).
-    call_person: async (parameters: unknown): Promise<string> => {
-      const name = asString(asParams(parameters).name);
-      if (!name) return "Whom to call? Include name.";
-      const tiers = await getSnapshotTiers(olderAdultId);
-      const hit = resolvePerson(tiers.people, name);
-      if (hit.kind === "many") return `More than one person matches: ${hit.names.join(", ")}. Ask kindly which one they mean.`;
-      if (hit.kind === "none") return "No one by that name is on file. Say kindly that you cannot call them, and offer to make a note for the family.";
-      const person = hit.person;
-      const display = person.preferred_name ?? person.full_name;
-      if (!person.can_be_called_by_nikki || !person.phone) {
-        return `You cannot call ${display} — the family has not set that up. Say so kindly and offer what you CAN do: keep them company, make a note, or let the family know if help is needed.`;
-      }
-      try {
-        // "+31 (0)6 1234 5678" → "+31612345678": the (0) national prefix must go.
-        const dialable = person.phone.replace(/\(0\)/g, "").replace(/[^+\d]/g, "");
-        await Linking.openURL(`tel:${dialable}`);
-        changes.push({ kind: "called", label: `called ${display}` });
-        return `The phone is now calling ${display}. Tell them warmly that the call is starting.`;
-      } catch {
-        return `The call to ${display} could not be started. Apologise gently and suggest trying from the Help screen.`;
-      }
     },
 
     // lookup_person — search beyond what fit in the context (never a network call).

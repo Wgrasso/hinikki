@@ -26,6 +26,10 @@ export const HAS_SUPABASE = SUPABASE_URL.length > 0 && SUPABASE_ANON_KEY.length 
 // module; there is no web or demo-mode voice).
 export const HAS_VOICE = HAS_SUPABASE && Platform.OS !== "web";
 
+// Willem is actively developing the user-mode Help tab; keep it out of the tab bar until it's
+// ready to ship. The route (app/user/help.tsx) stays in the codebase either way.
+export const FEATURE_HELP_TAB = false;
+
 export const PHOTO_BUCKET = "family-photos";
 
 // Local-storage keys (AsyncStorage).

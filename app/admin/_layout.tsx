@@ -7,6 +7,7 @@ import { usePendingProposalCount } from "../../src/components/admin/ProposalsSec
 import DevModeSwitch from "../../src/components/shared/DevModeSwitch";
 import { Icon } from "../../src/primitives";
 import { theme } from "../../src/theme";
+import { FEATURE_HELP_TAB } from "../../src/lib/constants";
 
 export default function AdminLayout(): React.ReactElement {
   const { olderAdultId } = useAppState();
@@ -44,7 +45,14 @@ export default function AdminLayout(): React.ReactElement {
       />
       <Tabs.Screen name="people" options={{ title: "People", tabBarIcon: ({ focused }) => <Icon name="people" color={focused ? "primary" : "textTertiary"} /> }} />
       <Tabs.Screen name="schedule" options={{ title: "Schedule", tabBarIcon: ({ focused }) => <Icon name="calendar" color={focused ? "primary" : "textTertiary"} /> }} />
-      <Tabs.Screen name="safety" options={{ title: "Safety", tabBarIcon: ({ focused }) => <Icon name="shield" color={focused ? "primary" : "textTertiary"} /> }} />
+      <Tabs.Screen
+        name="safety"
+        options={{
+          href: FEATURE_HELP_TAB ? undefined : null,
+          title: "Safety",
+          tabBarIcon: ({ focused }) => <Icon name="shield" color={focused ? "primary" : "textTertiary"} />,
+        }}
+      />
       <Tabs.Screen name="settings" options={{ title: "Settings", tabBarIcon: ({ focused }) => <Icon name="settings" color={focused ? "primary" : "textTertiary"} /> }} />
     </Tabs>
     <DevModeSwitch />

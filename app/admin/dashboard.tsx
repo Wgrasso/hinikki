@@ -25,6 +25,7 @@ import { listPeople } from "../../src/services/peopleService";
 import { listPendingProposals, listRecaps } from "../../src/services/proposalService";
 import { registerAndSaveToken } from "../../src/services/pushService";
 import { registerForPush, sendPush } from "../../src/features/notifications/push";
+import { FEATURE_HELP_TAB } from "../../src/lib/constants";
 import type { CalendarEvent, EmergencyEvent, FamilyPerson, LocationUpdate, NikkiProposal, OlderAdultProfile, RecapChange, Reminder } from "../../src/types/database";
 import type { SetupChecklistItem } from "../../src/types/domain";
 
@@ -79,8 +80,12 @@ export default function AdminDashboard(): React.ReactElement {
     const checklist: SetupChecklistItem[] = [
       { key: "people", label: "Add family & friends", done: people.length > 0 },
       { key: "schedule", label: "Add a calendar event", done: events.length > 0 },
-      { key: "safe", label: "Add a safe place", done: safe.length > 0 },
-      { key: "contacts", label: "Add an emergency contact", done: contacts.length > 0 },
+      ...(FEATURE_HELP_TAB
+        ? [
+            { key: "safe", label: "Add a safe place", done: safe.length > 0 },
+            { key: "contacts", label: "Add an emergency contact", done: contacts.length > 0 },
+          ]
+        : []),
     ];
     return { adult, latest, today, reminders, alerts: alerts.filter((a) => a.status === "open"), people, checklist, proposals, recaps };
   }, [id]);

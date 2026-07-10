@@ -2,7 +2,7 @@
 // mic permission → Edge-Function token + dynamic variables → startSession, exposing a small,
 // screen-friendly state machine. Imported ONLY from .native files (the SDK import registers
 // LiveKit's native WebRTC globals and must never reach web bundles or Jest).
-// The brain rides this seam (plan §2.6): the seven client tools execute on-device, every
+// The brain rides this seam (plan §2.6): the five client tools execute on-device, every
 // spoken turn is persisted for continuity, and the end-of-conversation recap surfaces here
 // for the closing card.
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -38,7 +38,7 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
   const captionSeq = useRef(0);
   const openingRef = useRef<string | null>(null);
 
-  // The seven tools, bound to this older adult; onRecap feeds the closing card.
+  // The five tools, bound to this older adult; onRecap feeds the closing card.
   // Per-CONVERSATION state (recap chips, push budget) lives inside and is reset in begin().
   const toolSet: AgentToolSet = useMemo(
     () => makeAgentTools(olderAdultId, { onRecap: setRecap }),

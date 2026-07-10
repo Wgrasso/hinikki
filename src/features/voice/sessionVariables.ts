@@ -78,7 +78,6 @@ export function formatFamily(
       if (p.visit_frequency) parts.push(p.visit_frequency);
       if (p.important_notes) parts.push(p.important_notes);
       if (p.conversation_hints) parts.push(`[conversation hint: ${p.conversation_hints}]`);
-      if (p.can_be_called_by_nikki && p.phone) parts.push("[you MAY call this person]");
       return `- ${parts.join(". ")}`;
     })
     .join("\n");

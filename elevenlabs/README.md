@@ -48,8 +48,6 @@ instructions for the agent to follow, not user-facing text.
 | `lookup_person` | `name` | Searches the cached people (suppressed names → returns do-not-discuss guidance) |
 | `propose_fact` | `proposal_type`, `payload` (object), `source_quote`, `agent_note` | Files a pending row in `nikki_proposals` for family approval; opinion-filtered; deduped; at most ONE push per conversation. People inside `payload` are referenced by `person_name` / `person_a_name` / `person_b_name` |
 | `confirm_reminder` | `reminder_title`, `notes?` | Resolves the reminder by title (asks to clarify on ambiguity) and inserts a `reminder_confirmations` row (`voice`) |
-| `call_person` | `name` | Dials via the device dialer ONLY if the family flagged the person callable and a number exists |
-| `request_help` | `urgency` ("high"/"low"), `message` | Creates the emergency event + location fix (existing Help-screen flow) |
 | `save_session_note` | `note` | Nikki's PRIVATE continuity note (self-only row; admins can never read it) |
 | `save_session_recap` | `summary`, `changes` (array of `{kind, label}`) | The shareable recap: elder closing card + the family's "Conversations" feed (filtered once, shown identically to both) |
 
@@ -61,7 +59,7 @@ instructions for the agent to follow, not user-facing text.
    2026-07-09) — the app only connects through conversation tokens minted by the
    `elevenlabs-token` Edge Function; an unauthenticated agent would be callable by anyone
    with the agent id.
-3. **Declare the seven client tools** (table above) on the agent so the model can call them.
+3. **Declare the five client tools** (table above) on the agent so the model can call them.
 4. Set the Supabase function secrets:
    ```bash
    supabase secrets set ELEVENLABS_API_KEY=xi-... ELEVENLABS_AGENT_ID=agent-...
@@ -75,9 +73,12 @@ instructions for the agent to follow, not user-facing text.
    create a second agent from the same prompt with a Dutch-capable voice/model and route by
    `older_adult_profiles.primary_language` when minting the token (the Edge Function can
    pick the agent id) — tracked as plan §7.8.
-7. Safety escalation: `request_help` (client tool) now writes the `emergency_events` trail
-   from voice — if a platform-side escalation workflow also exists, keep only one to avoid
-   double alerts (plan §7.11).
+7. Safety escalation: voice-triggered escalation (`request_help`/`call_person`) has been
+   removed from this build's scope — Nikki no longer calls anyone or logs emergency events
+   from a conversation. If a platform-side escalation workflow exists on the ElevenLabs
+   agent, disable it too so the persona doesn't promise help it can no longer deliver
+   (see the "In distress" line in the Dutch guide section of the prompt, which still
+   describes the old behavior and needs a product decision on replacement wording).
 
 Prompt size note: the current prompt measures ≈7k chars (≈1.75k tokens by chars÷4). If
 session start latency matters, the per-tool guidance in the YOUR TOOLS block can move into
