@@ -2,7 +2,7 @@
 // and what still needs setup. "Nikki asks" and "Conversations" are the human-in-the-loop
 // review surface (plan §4.3/§4.6); realtime + focus refetch keep them fresh without pull.
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Modal, Platform, ScrollView, StyleSheet, View } from "react-native";
+import { Alert, Platform, StyleSheet, View } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { useAppState } from "../../src/auth/appState";
 import { AppBar, Button, Card, Icon, Screen, Stack, Text } from "../../src/primitives";
@@ -11,6 +11,7 @@ import SectionHeader from "../../src/components/admin/SectionHeader";
 import ProposalsSection from "../../src/components/admin/ProposalsSection";
 import ListRow from "../../src/components/shared/ListRow";
 import StateView from "../../src/components/shared/StateView";
+import BottomSheetModal from "../../src/components/shared/BottomSheetModal";
 import { useAsync } from "../../src/utils/useAsync";
 import { subscribeLive } from "../../src/features/sync/liveChannel";
 import { theme } from "../../src/theme";
@@ -234,31 +235,26 @@ export default function AdminDashboard(): React.ReactElement {
         )}
       </StateView>
 
-      <Modal visible={pickerOpen} animationType="slide" transparent onRequestClose={() => setPickerOpen(false)}>
-        <View style={styles.overlay}>
-          <View style={styles.sheet}>
-            <View style={styles.handle} />
-            <ScrollView contentContainerStyle={styles.sheetContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-              <Text variant="title">Send a test notification</Text>
-              <Text variant="body" tone="textSecondary">
-                Choose someone in the family. A test push notification will be sent to this device.
-              </Text>
-              {state.status === "loaded" && state.data.people.length > 0 ? (
-                <Stack gap="sm">
-                  {state.data.people.map((p) => (
-                    <ListRow key={p.id} title={p.full_name} subtitle={p.relationship_label ?? undefined} onPress={() => notify(p)} />
-                  ))}
-                </Stack>
-              ) : (
-                <Text variant="body" tone="textSecondary">
-                  Add people first, then you can send them a notification.
-                </Text>
-              )}
-              <Button label="Cancel" variant="secondary" onPress={() => setPickerOpen(false)} />
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+      <BottomSheetModal
+        visible={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        title="Send a test notification"
+        subtitle="Choose someone in the family. A test push notification will be sent to this device."
+        maxHeightPercent={80}
+      >
+        {state.status === "loaded" && state.data.people.length > 0 ? (
+          <Stack gap="sm">
+            {state.data.people.map((p) => (
+              <ListRow key={p.id} title={p.full_name} subtitle={p.relationship_label ?? undefined} onPress={() => notify(p)} />
+            ))}
+          </Stack>
+        ) : (
+          <Text variant="body" tone="textSecondary">
+            Add people first, then you can send them a notification.
+          </Text>
+        )}
+        <Button label="Cancel" variant="secondary" onPress={() => setPickerOpen(false)} />
+      </BottomSheetModal>
     </Screen>
   );
 }
@@ -272,8 +268,4 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.pill,
     backgroundColor: theme.colors.surfaceAlt,
   },
-  overlay: { flex: 1, backgroundColor: theme.colors.overlay, justifyContent: "flex-end" },
-  sheet: { backgroundColor: theme.colors.background, borderTopLeftRadius: theme.radius.xl, borderTopRightRadius: theme.radius.xl, maxHeight: "80%", paddingTop: theme.spacing.md },
-  handle: { alignSelf: "center", width: 44, height: 5, borderRadius: theme.radius.pill, backgroundColor: theme.colors.border, marginBottom: theme.spacing.sm },
-  sheetContent: { padding: theme.spacing.lg, gap: theme.spacing.md, paddingBottom: theme.spacing.xxl },
 });

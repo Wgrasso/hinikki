@@ -4,11 +4,12 @@
 // (so Nikki won't re-ask); "remove completely" erases the row for things that should never have
 // been stored. Failed approvals are kept in local state so the admin sees what went wrong.
 import React, { useEffect, useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { theme } from "../../theme";
 import { Button, Card, Icon, Stack, Text } from "../../primitives";
 import SectionHeader from "./SectionHeader";
 import ProposalEditModal from "./ProposalEditModal";
+import BottomSheetModal from "../shared/BottomSheetModal";
 import { approveAndApply, declineProposal, eraseProposal, listPendingProposals } from "../../services/proposalService";
 import { subscribeLive } from "../../features/sync/liveChannel";
 import type { DeclineReason, NikkiProposal } from "../../types/database";
@@ -243,63 +244,57 @@ export default function ProposalsSection({ proposals, onChanged }: Props): React
         onChanged={onChanged}
       />
 
-      <Modal visible={declining !== null} animationType="slide" transparent onRequestClose={() => setDeclining(null)}>
-        <View style={styles.overlay}>
-          <View style={styles.sheet}>
-            <View style={styles.handle} />
-            <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-              <Text variant="title">Not right?</Text>
-              <Text variant="body" tone="textSecondary">
-                Tell Nikki why, so she knows not to bring it up again.
-              </Text>
-              {declining ? <Text variant="caption" tone="textSecondary">{proposalSummary(declining)}</Text> : null}
+      <BottomSheetModal
+        visible={declining !== null}
+        onClose={() => setDeclining(null)}
+        title="Not right?"
+        subtitle="Tell Nikki why, so she knows not to bring it up again."
+      >
+        {declining ? <Text variant="caption" tone="textSecondary">{proposalSummary(declining)}</Text> : null}
 
-              <View style={styles.chipRow}>
-                {DECLINE_REASONS.map(({ reason, label }) => {
-                  const selected = declineReason === reason;
-                  return (
-                    <Pressable
-                      key={reason}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected }}
-                      accessibilityLabel={label}
-                      onPress={() => setDeclineReason(reason)}
-                      style={({ pressed }) => [styles.chip, selected ? styles.chipSelected : null, pressed ? styles.pressed : null]}
-                    >
-                      <Text variant="bodyStrong" tone={selected ? "onPrimary" : "textSecondary"}>
-                        {label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              {declineError ? (
-                <Text variant="caption" tone="danger">
-                  {declineError}
-                </Text>
-              ) : null}
-
-              <Stack gap="sm" style={styles.actions}>
-                <Button label="Decline" icon="close" loading={declineBusy} disabled={!declineReason} onPress={() => void confirmDecline()} />
-                <Button label="Cancel" variant="secondary" onPress={() => setDeclining(null)} />
-              </Stack>
-
+        <View style={styles.chipRow}>
+          {DECLINE_REASONS.map(({ reason, label }) => {
+            const selected = declineReason === reason;
+            return (
               <Pressable
+                key={reason}
                 accessibilityRole="button"
-                accessibilityLabel="Remove completely"
-                onPress={() => void erase()}
-                disabled={declineBusy}
-                style={({ pressed }) => [styles.eraseLink, pressed ? styles.pressed : null]}
+                accessibilityState={{ selected }}
+                accessibilityLabel={label}
+                onPress={() => setDeclineReason(reason)}
+                style={({ pressed }) => [styles.chip, selected ? styles.chipSelected : null, pressed ? styles.pressed : null]}
               >
-                <Text variant="caption" tone="danger" center>
-                  Remove completely — this should never have been kept
+                <Text variant="bodyStrong" tone={selected ? "onPrimary" : "textSecondary"}>
+                  {label}
                 </Text>
               </Pressable>
-            </ScrollView>
-          </View>
+            );
+          })}
         </View>
-      </Modal>
+
+        {declineError ? (
+          <Text variant="caption" tone="danger">
+            {declineError}
+          </Text>
+        ) : null}
+
+        <Stack gap="sm" style={styles.actions}>
+          <Button label="Decline" icon="close" loading={declineBusy} disabled={!declineReason} onPress={() => void confirmDecline()} />
+          <Button label="Cancel" variant="secondary" onPress={() => setDeclining(null)} />
+        </Stack>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Remove completely"
+          onPress={() => void erase()}
+          disabled={declineBusy}
+          style={({ pressed }) => [styles.eraseLink, pressed ? styles.pressed : null]}
+        >
+          <Text variant="caption" tone="danger" center>
+            Remove completely — this should never have been kept
+          </Text>
+        </Pressable>
+      </BottomSheetModal>
     </View>
   );
 }
@@ -307,10 +302,6 @@ export default function ProposalsSection({ proposals, onChanged }: Props): React
 const styles = StyleSheet.create({
   quote: { fontStyle: "italic" },
   failedCard: { borderLeftWidth: 4, borderLeftColor: theme.colors.danger },
-  overlay: { flex: 1, backgroundColor: theme.colors.overlay, justifyContent: "flex-end" },
-  sheet: { backgroundColor: theme.colors.background, borderTopLeftRadius: theme.radius.xl, borderTopRightRadius: theme.radius.xl, maxHeight: "92%", paddingTop: theme.spacing.md },
-  handle: { alignSelf: "center", width: 44, height: 5, borderRadius: theme.radius.pill, backgroundColor: theme.colors.border, marginBottom: theme.spacing.sm },
-  content: { padding: theme.spacing.lg, gap: theme.spacing.md, paddingBottom: theme.spacing.xxl },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.sm },
   chip: {
     paddingHorizontal: theme.spacing.lg,

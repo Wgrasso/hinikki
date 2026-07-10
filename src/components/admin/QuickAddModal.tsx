@@ -1,8 +1,9 @@
 // src/components/admin/QuickAddModal.tsx — a small, reusable add/edit form (safe place, contact, etc.).
 import React, { useEffect, useState } from "react";
-import { KeyboardTypeOptions, Modal, ScrollView, StyleSheet, View } from "react-native";
+import { KeyboardTypeOptions, StyleSheet } from "react-native";
 import { theme } from "../../theme";
-import { Button, Field, Stack, Text } from "../../primitives";
+import { Button, Field, Stack } from "../../primitives";
+import BottomSheetModal from "../shared/BottomSheetModal";
 
 export type QuickField = {
   key: string;
@@ -60,43 +61,26 @@ export default function QuickAddModal({ visible, title, fields, initialValues, s
   }
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={styles.sheet}>
-          <View style={styles.handle} />
-          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-            <Text variant="title">{title}</Text>
-            {note ? (
-              <Text variant="body" tone="textSecondary">
-                {note}
-              </Text>
-            ) : null}
-            {fields.map((f, index) => (
-              <Field
-                key={f.key}
-                label={f.label}
-                value={values[f.key] ?? ""}
-                onChangeText={(v) => setValue(f.key, v)}
-                placeholder={f.placeholder}
-                keyboardType={f.keyboardType}
-                error={index === 0 ? error : null}
-              />
-            ))}
-            <Stack gap="sm" style={styles.actions}>
-              <Button label={submitLabel} icon="check" loading={saving} onPress={submit} />
-              <Button label="Cancel" variant="secondary" onPress={onClose} />
-            </Stack>
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
+    <BottomSheetModal visible={visible} onClose={onClose} title={title} subtitle={note}>
+      {fields.map((f, index) => (
+        <Field
+          key={f.key}
+          label={f.label}
+          value={values[f.key] ?? ""}
+          onChangeText={(v) => setValue(f.key, v)}
+          placeholder={f.placeholder}
+          keyboardType={f.keyboardType}
+          error={index === 0 ? error : null}
+        />
+      ))}
+      <Stack gap="sm" style={styles.actions}>
+        <Button label={submitLabel} icon="check" loading={saving} onPress={submit} />
+        <Button label="Cancel" variant="secondary" onPress={onClose} />
+      </Stack>
+    </BottomSheetModal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: theme.colors.overlay, justifyContent: "flex-end" },
-  sheet: { backgroundColor: theme.colors.background, borderTopLeftRadius: theme.radius.xl, borderTopRightRadius: theme.radius.xl, maxHeight: "92%", paddingTop: theme.spacing.md },
-  handle: { alignSelf: "center", width: 44, height: 5, borderRadius: theme.radius.pill, backgroundColor: theme.colors.border, marginBottom: theme.spacing.sm },
-  content: { padding: theme.spacing.lg, gap: theme.spacing.md, paddingBottom: theme.spacing.xxl },
   actions: { marginTop: theme.spacing.sm },
 });

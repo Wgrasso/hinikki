@@ -3,9 +3,10 @@
 // become the house check-row, anything else shows read-only. Save runs the same guarded
 // apply path as a plain approve, just with the corrected values (edit-then-approve, FR-7).
 import React, { useEffect, useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { theme } from "../../theme";
 import { Button, Field, Icon, Stack, Text } from "../../primitives";
+import BottomSheetModal from "../shared/BottomSheetModal";
 import { approveAndApply } from "../../services/proposalService";
 import type { NikkiProposal } from "../../types/database";
 
@@ -87,78 +88,63 @@ export default function ProposalEditModal({ visible, proposal, onClose, onChange
   }
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={styles.sheet}>
-          <View style={styles.handle} />
-          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-            <Text variant="title">Check & edit</Text>
-            <Text variant="body" tone="textSecondary">
-              Fix anything Nikki misheard, then add it.
-            </Text>
-            {proposal?.source_quote ? (
-              <Text variant="caption" tone="textSecondary" style={styles.quote}>
-                {`“${proposal.source_quote}”`}
-              </Text>
-            ) : null}
+    <BottomSheetModal visible={visible} onClose={onClose} title="Check & edit" subtitle="Fix anything Nikki misheard, then add it.">
+      {proposal?.source_quote ? (
+        <Text variant="caption" tone="textSecondary" style={styles.quote}>
+          {`“${proposal.source_quote}”`}
+        </Text>
+      ) : null}
 
-            {Object.keys(values).map((key) => (
-              <Field
-                key={key}
-                label={humanizeKey(key)}
-                value={values[key]}
-                onChangeText={(v) => setValues((prev) => ({ ...prev, [key]: v }))}
-                autoCapitalize="sentences"
-              />
-            ))}
+      {Object.keys(values).map((key) => (
+        <Field
+          key={key}
+          label={humanizeKey(key)}
+          value={values[key]}
+          onChangeText={(v) => setValues((prev) => ({ ...prev, [key]: v }))}
+          autoCapitalize="sentences"
+        />
+      ))}
 
-            {Object.keys(flags).map((key) => (
-              <Pressable
-                key={key}
-                accessibilityRole="switch"
-                accessibilityState={{ checked: flags[key] }}
-                accessibilityLabel={humanizeKey(key)}
-                onPress={() => setFlags((prev) => ({ ...prev, [key]: !prev[key] }))}
-                style={styles.toggleRow}
-              >
-                <Icon name={flags[key] ? "check" : "add"} color={flags[key] ? "success" : "textTertiary"} />
-                <Text variant="body">{humanizeKey(key)}</Text>
-              </Pressable>
-            ))}
+      {Object.keys(flags).map((key) => (
+        <Pressable
+          key={key}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: flags[key] }}
+          accessibilityLabel={humanizeKey(key)}
+          onPress={() => setFlags((prev) => ({ ...prev, [key]: !prev[key] }))}
+          style={styles.toggleRow}
+        >
+          <Icon name={flags[key] ? "check" : "add"} color={flags[key] ? "success" : "textTertiary"} />
+          <Text variant="body">{humanizeKey(key)}</Text>
+        </Pressable>
+      ))}
 
-            {readOnly.map(([key, value]) => (
-              <View key={key} style={styles.readOnlyRow}>
-                <Text variant="overline" tone="textSecondary">
-                  {humanizeKey(key).toUpperCase()}
-                </Text>
-                <Text variant="body" tone="textSecondary">
-                  {typeof value === "number" ? String(value) : JSON.stringify(value)}
-                </Text>
-              </View>
-            ))}
-
-            {error ? (
-              <Text variant="caption" tone="danger">
-                {error}
-              </Text>
-            ) : null}
-
-            <Stack gap="sm" style={styles.actions}>
-              <Button label="Add this" icon="check" loading={saving} onPress={() => void save()} />
-              <Button label="Cancel" variant="secondary" onPress={onClose} />
-            </Stack>
-          </ScrollView>
+      {readOnly.map(([key, value]) => (
+        <View key={key} style={styles.readOnlyRow}>
+          <Text variant="overline" tone="textSecondary">
+            {humanizeKey(key).toUpperCase()}
+          </Text>
+          <Text variant="body" tone="textSecondary">
+            {typeof value === "number" ? String(value) : JSON.stringify(value)}
+          </Text>
         </View>
-      </View>
-    </Modal>
+      ))}
+
+      {error ? (
+        <Text variant="caption" tone="danger">
+          {error}
+        </Text>
+      ) : null}
+
+      <Stack gap="sm" style={styles.actions}>
+        <Button label="Add this" icon="check" loading={saving} onPress={() => void save()} />
+        <Button label="Cancel" variant="secondary" onPress={onClose} />
+      </Stack>
+    </BottomSheetModal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: theme.colors.overlay, justifyContent: "flex-end" },
-  sheet: { backgroundColor: theme.colors.background, borderTopLeftRadius: theme.radius.xl, borderTopRightRadius: theme.radius.xl, maxHeight: "92%", paddingTop: theme.spacing.md },
-  handle: { alignSelf: "center", width: 44, height: 5, borderRadius: theme.radius.pill, backgroundColor: theme.colors.border, marginBottom: theme.spacing.sm },
-  content: { padding: theme.spacing.lg, gap: theme.spacing.md, paddingBottom: theme.spacing.xxl },
   quote: { fontStyle: "italic" },
   toggleRow: { flexDirection: "row", alignItems: "center", gap: theme.spacing.md, minHeight: 48, paddingVertical: theme.spacing.sm },
   readOnlyRow: { gap: theme.spacing.xs },

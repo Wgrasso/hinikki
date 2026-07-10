@@ -3,9 +3,10 @@
 // we store an ISO date when we can read one; unreadable text shows an inline error instead of
 // silently wiping the stored date. An empty field clears it.
 import React, { useEffect, useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { theme } from "../../theme";
 import { Button, Field, Stack, Text } from "../../primitives";
+import BottomSheetModal from "../shared/BottomSheetModal";
 import { updateOlderAdultProfile } from "../../services/profileService";
 import { parseBirthday } from "../../utils/parseBirthday";
 import type { OlderAdultProfile } from "../../types/database";
@@ -73,81 +74,65 @@ export default function AboutFormModal({ visible, profile, onClose, onSaved }: P
   const name = profile?.preferred_name ?? profile?.display_name ?? "them";
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={styles.sheet}>
-          <View style={styles.handle} />
-          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-            <Text variant="title">About {name}</Text>
-            <Text variant="body" tone="textSecondary">
-              The little details that help Nikki greet your loved one warmly.
-            </Text>
+    <BottomSheetModal visible={visible} onClose={onClose} title={`About ${name}`} subtitle="The little details that help Nikki greet your loved one warmly.">
+      <Field label="What Nikki calls them" value={preferredName} onChangeText={setPreferredName} placeholder="e.g. Anna" autoCapitalize="words" error={error} />
 
-            <Field label="What Nikki calls them" value={preferredName} onChangeText={setPreferredName} placeholder="e.g. Anna" autoCapitalize="words" error={error} />
+      <Field
+        label="Birthday"
+        value={birthday}
+        onChangeText={(text) => {
+          setBirthday(text);
+          setBirthdayError(null);
+        }}
+        placeholder="e.g. 3 May 1942"
+        autoCapitalize="none"
+        error={birthdayError}
+      />
 
-            <Field
-              label="Birthday"
-              value={birthday}
-              onChangeText={(text) => {
-                setBirthday(text);
-                setBirthdayError(null);
-              }}
-              placeholder="e.g. 3 May 1942"
-              autoCapitalize="none"
-              error={birthdayError}
-            />
+      <Stack gap="xs">
+        <Field label="Home address" value={homeAddress} onChangeText={setHomeAddress} placeholder="e.g. Lindenstraat 12, Amsterdam" multiline />
+        <Text variant="caption" tone="textSecondary" style={styles.helper}>
+          Only used by the Help screen — Nikki never speaks the street address.
+        </Text>
+      </Stack>
 
-            <Stack gap="xs">
-              <Field label="Home address" value={homeAddress} onChangeText={setHomeAddress} placeholder="e.g. Lindenstraat 12, Amsterdam" multiline />
-              <Text variant="caption" tone="textSecondary" style={styles.helper}>
-                Only used by the Help screen — Nikki never speaks the street address.
-              </Text>
-            </Stack>
-
-            <Stack gap="xs">
-              <Text variant="overline" tone="textSecondary" style={styles.helper}>
-                LANGUAGE
-              </Text>
-              <View style={styles.chipRow}>
-                {LANGUAGE_OPTIONS.map((option) => {
-                  const selected = language === option.code;
-                  return (
-                    <Pressable
-                      key={option.code}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected }}
-                      accessibilityLabel={option.label}
-                      onPress={() => setLanguage(option.code)}
-                      style={({ pressed }) => [styles.chip, selected ? styles.chipSelected : null, pressed ? styles.pressed : null]}
-                    >
-                      <Text variant="bodyStrong" tone={selected ? "onPrimary" : "textSecondary"}>
-                        {option.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-              <Text variant="caption" tone="textSecondary" style={styles.helper}>
-                In Dutch, “u” is the gentle, formal way to say “you”; “je” is the familiar one. Pick whichever feels natural to them.
-              </Text>
-            </Stack>
-
-            <Stack gap="sm" style={styles.actions}>
-              <Button label="Save" icon="check" loading={saving} onPress={save} />
-              <Button label="Cancel" variant="secondary" onPress={onClose} />
-            </Stack>
-          </ScrollView>
+      <Stack gap="xs">
+        <Text variant="overline" tone="textSecondary" style={styles.helper}>
+          LANGUAGE
+        </Text>
+        <View style={styles.chipRow}>
+          {LANGUAGE_OPTIONS.map((option) => {
+            const selected = language === option.code;
+            return (
+              <Pressable
+                key={option.code}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                accessibilityLabel={option.label}
+                onPress={() => setLanguage(option.code)}
+                style={({ pressed }) => [styles.chip, selected ? styles.chipSelected : null, pressed ? styles.pressed : null]}
+              >
+                <Text variant="bodyStrong" tone={selected ? "onPrimary" : "textSecondary"}>
+                  {option.label}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
-      </View>
-    </Modal>
+        <Text variant="caption" tone="textSecondary" style={styles.helper}>
+          In Dutch, “u” is the gentle, formal way to say “you”; “je” is the familiar one. Pick whichever feels natural to them.
+        </Text>
+      </Stack>
+
+      <Stack gap="sm" style={styles.actions}>
+        <Button label="Save" icon="check" loading={saving} onPress={save} />
+        <Button label="Cancel" variant="secondary" onPress={onClose} />
+      </Stack>
+    </BottomSheetModal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: theme.colors.overlay, justifyContent: "flex-end" },
-  sheet: { backgroundColor: theme.colors.background, borderTopLeftRadius: theme.radius.xl, borderTopRightRadius: theme.radius.xl, maxHeight: "92%", paddingTop: theme.spacing.md },
-  handle: { alignSelf: "center", width: 44, height: 5, borderRadius: theme.radius.pill, backgroundColor: theme.colors.border, marginBottom: theme.spacing.sm },
-  content: { padding: theme.spacing.lg, gap: theme.spacing.md, paddingBottom: theme.spacing.xxl },
   helper: { marginLeft: theme.spacing.xs },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.sm },
   chip: {

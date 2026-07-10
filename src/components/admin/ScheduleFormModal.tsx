@@ -3,9 +3,10 @@
 // HH:MM time — no picker library. Editing keeps the record's original date until the family
 // member actually changes it, and never invents a clock time on an update.
 import React, { useEffect, useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { theme } from "../../theme";
 import { Button, Field, Icon, Stack, Text } from "../../primitives";
+import BottomSheetModal from "../shared/BottomSheetModal";
 import { createEvent, updateEvent } from "../../services/calendarService";
 import { createReminder, updateReminder } from "../../services/reminderService";
 import type { CalendarEvent, Reminder } from "../../types/database";
@@ -335,114 +336,101 @@ export default function ScheduleFormModal({ visible, kind, olderAdultId, event, 
     kind === "event" ? (isEditing ? "Edit event" : "Add an event") : isEditing ? "Edit reminder" : "Add a reminder";
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={styles.sheet}>
-          <View style={styles.handle} />
-          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-            <Text variant="title">{heading}</Text>
+    <BottomSheetModal visible={visible} onClose={onClose} title={heading}>
+      <Field label="Title" value={title} onChangeText={setTitle} placeholder={kind === "event" ? "e.g. Doctor appointment" : "e.g. Morning medication"} autoCapitalize="sentences" error={error} />
 
-            <Field label="Title" value={title} onChangeText={setTitle} placeholder={kind === "event" ? "e.g. Doctor appointment" : "e.g. Morning medication"} autoCapitalize="sentences" error={error} />
-
-            <ChipRow label="Which day" options={kind === "reminder" ? REMINDER_DATE_OPTIONS : DATE_OPTIONS} value={dateMode} onChange={setDateMode} />
-            {dateMode === "pick" ? (
-              <View style={styles.dayMonthRow}>
-                <View style={styles.dayMonthField}>
-                  <Field
-                    label="Day"
-                    value={pickDay}
-                    onChangeText={(v) => {
-                      setPickDay(v);
-                      setPickBase(null);
-                      setDateError(null);
-                    }}
-                    placeholder="e.g. 14"
-                    keyboardType="number-pad"
-                    autoCapitalize="none"
-                    error={dateError}
-                  />
-                </View>
-                <View style={styles.dayMonthField}>
-                  <Field
-                    label="Month"
-                    value={pickMonth}
-                    onChangeText={(v) => {
-                      setPickMonth(v);
-                      setPickBase(null);
-                      setDateError(null);
-                    }}
-                    placeholder="e.g. 7"
-                    keyboardType="number-pad"
-                    autoCapitalize="none"
-                  />
-                </View>
-              </View>
-            ) : null}
-
-            {dateMode === "anytime" ? null : (
-              <Field
-                label="Time"
-                value={time}
-                onChangeText={(v) => {
-                  setTime(v);
-                  setTimeError(null);
-                }}
-                placeholder="e.g. 11:30"
-                keyboardType="numbers-and-punctuation"
-                autoCapitalize="none"
-                error={timeError}
-              />
-            )}
-
-            {kind === "event" ? (
-              <>
-                <Field label="Place" value={place} onChangeText={setPlace} placeholder="e.g. Dr. Jansen's practice" />
-                <CheckRow label="Goes with someone" value={withSomeone} onChange={setWithSomeone} />
-                {withSomeone ? (
-                  <Field label="With whom (person or group)" value={companion} onChangeText={setCompanion} placeholder="e.g. Mark, or the walking group" />
-                ) : null}
-                <Field label="How they get there" value={transport} onChangeText={setTransport} placeholder="e.g. Mark picks them up" multiline />
-                <Field label="Announce how many minutes before" value={leadMinutes} onChangeText={setLeadMinutes} placeholder="e.g. 30" keyboardType="number-pad" autoCapitalize="none" />
-                <Field label="Notes for Nikki (preparation, clothing, things to bring)" value={whatToBring} onChangeText={setWhatToBring} placeholder="Optional" multiline />
-                <Field
-                  label="End time (optional)"
-                  value={endTime}
-                  onChangeText={(v) => {
-                    setEndTime(v);
-                    setEndTimeError(null);
-                  }}
-                  placeholder="e.g. 12:30"
-                  keyboardType="numbers-and-punctuation"
-                  autoCapitalize="none"
-                  error={endTimeError}
-                />
-              </>
-            ) : (
-              <>
-                <ChipRow label="What kind of reminder" options={REMINDER_TYPE_OPTIONS} value={reminderType} onChange={setReminderType} />
-                <Field label="How often it repeats" value={frequency} onChangeText={setFrequency} placeholder="e.g. Every morning" />
-                <Field label="Instructions" value={instructions} onChangeText={setInstructions} placeholder="Optional" multiline />
-                <Field label="What Nikki should say" value={nikkiMessage} onChangeText={setNikkiMessage} placeholder="A calm, warm message" multiline />
-                <CheckRow label="Ask later if it was done" value={requiresConfirmation} onChange={setRequiresConfirmation} />
-              </>
-            )}
-
-            <Stack gap="sm" style={styles.actions}>
-              <Button label={isEditing ? "Save changes" : "Save"} icon="check" loading={saving} onPress={save} />
-              <Button label="Cancel" variant="secondary" onPress={onClose} />
-            </Stack>
-          </ScrollView>
+      <ChipRow label="Which day" options={kind === "reminder" ? REMINDER_DATE_OPTIONS : DATE_OPTIONS} value={dateMode} onChange={setDateMode} />
+      {dateMode === "pick" ? (
+        <View style={styles.dayMonthRow}>
+          <View style={styles.dayMonthField}>
+            <Field
+              label="Day"
+              value={pickDay}
+              onChangeText={(v) => {
+                setPickDay(v);
+                setPickBase(null);
+                setDateError(null);
+              }}
+              placeholder="e.g. 14"
+              keyboardType="number-pad"
+              autoCapitalize="none"
+              error={dateError}
+            />
+          </View>
+          <View style={styles.dayMonthField}>
+            <Field
+              label="Month"
+              value={pickMonth}
+              onChangeText={(v) => {
+                setPickMonth(v);
+                setPickBase(null);
+                setDateError(null);
+              }}
+              placeholder="e.g. 7"
+              keyboardType="number-pad"
+              autoCapitalize="none"
+            />
+          </View>
         </View>
-      </View>
-    </Modal>
+      ) : null}
+
+      {dateMode === "anytime" ? null : (
+        <Field
+          label="Time"
+          value={time}
+          onChangeText={(v) => {
+            setTime(v);
+            setTimeError(null);
+          }}
+          placeholder="e.g. 11:30"
+          keyboardType="numbers-and-punctuation"
+          autoCapitalize="none"
+          error={timeError}
+        />
+      )}
+
+      {kind === "event" ? (
+        <>
+          <Field label="Place" value={place} onChangeText={setPlace} placeholder="e.g. Dr. Jansen's practice" />
+          <CheckRow label="Goes with someone" value={withSomeone} onChange={setWithSomeone} />
+          {withSomeone ? (
+            <Field label="With whom (person or group)" value={companion} onChangeText={setCompanion} placeholder="e.g. Mark, or the walking group" />
+          ) : null}
+          <Field label="How they get there" value={transport} onChangeText={setTransport} placeholder="e.g. Mark picks them up" multiline />
+          <Field label="Announce how many minutes before" value={leadMinutes} onChangeText={setLeadMinutes} placeholder="e.g. 30" keyboardType="number-pad" autoCapitalize="none" />
+          <Field label="Notes for Nikki (preparation, clothing, things to bring)" value={whatToBring} onChangeText={setWhatToBring} placeholder="Optional" multiline />
+          <Field
+            label="End time (optional)"
+            value={endTime}
+            onChangeText={(v) => {
+              setEndTime(v);
+              setEndTimeError(null);
+            }}
+            placeholder="e.g. 12:30"
+            keyboardType="numbers-and-punctuation"
+            autoCapitalize="none"
+            error={endTimeError}
+          />
+        </>
+      ) : (
+        <>
+          <ChipRow label="What kind of reminder" options={REMINDER_TYPE_OPTIONS} value={reminderType} onChange={setReminderType} />
+          <Field label="How often it repeats" value={frequency} onChangeText={setFrequency} placeholder="e.g. Every morning" />
+          <Field label="Instructions" value={instructions} onChangeText={setInstructions} placeholder="Optional" multiline />
+          <Field label="What Nikki should say" value={nikkiMessage} onChangeText={setNikkiMessage} placeholder="A calm, warm message" multiline />
+          <CheckRow label="Ask later if it was done" value={requiresConfirmation} onChange={setRequiresConfirmation} />
+        </>
+      )}
+
+      <Stack gap="sm" style={styles.actions}>
+        <Button label={isEditing ? "Save changes" : "Save"} icon="check" loading={saving} onPress={save} />
+        <Button label="Cancel" variant="secondary" onPress={onClose} />
+      </Stack>
+    </BottomSheetModal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: theme.colors.overlay, justifyContent: "flex-end" },
-  sheet: { backgroundColor: theme.colors.background, borderTopLeftRadius: theme.radius.xl, borderTopRightRadius: theme.radius.xl, maxHeight: "92%", paddingTop: theme.spacing.md },
-  handle: { alignSelf: "center", width: 44, height: 5, borderRadius: theme.radius.pill, backgroundColor: theme.colors.border, marginBottom: theme.spacing.sm },
-  content: { padding: theme.spacing.lg, gap: theme.spacing.md, paddingBottom: theme.spacing.xxl },
   actions: { marginTop: theme.spacing.sm },
   toggleRow: { flexDirection: "row", alignItems: "center", gap: theme.spacing.md, minHeight: 48, paddingVertical: theme.spacing.sm },
   chipWrap: { alignSelf: "stretch", gap: theme.spacing.xs },

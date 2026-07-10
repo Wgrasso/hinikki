@@ -2,11 +2,12 @@
 // Prefills on open (fast + correct for edit); the chosen photo shows immediately as a preview and
 // uploads in the background so saving feels instant. Editing also shows the Connections section
 // (family_relationships); on create it appears once the person is saved.
-import React, { useEffect, useRef, useState } from "react";
-import { Animated, Dimensions, Image, Modal, PanResponder, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Image, Pressable, StyleSheet } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { theme } from "../../theme";
 import { Button, Field, Icon, Stack, Text } from "../../primitives";
+import BottomSheetModal from "../shared/BottomSheetModal";
 import { createPerson, listPeople, updatePerson, uploadPersonPhoto } from "../../services/peopleService";
 import { getOlderAdult } from "../../services/profileService";
 import { parseBirthday } from "../../utils/parseBirthday";
@@ -43,61 +44,8 @@ export default function PersonFormModal({ visible, olderAdultId, person, initial
   const [error, setError] = useState<string | null>(null);
   const [birthdayError, setBirthdayError] = useState<string | null>(null);
 
-  // Swipe-to-dismiss: the pan lives on the sheet HEADER (handle + title), never on the scrolling
-  // body, so it never competes with the ScrollView for the touch — that competition was what made
-  // the earlier version fire only intermittently. Dragging the header down past a threshold closes;
-  // a short drag springs back. The backdrop opacity is derived from the drag so the scrim fades out
-  // as the sheet leaves (instead of a static dark "filter" sitting on screen).
-  const screenHeight = Dimensions.get("window").height;
-  const translateY = useRef(new Animated.Value(0)).current;
-  const backdropOpacity = translateY.interpolate({
-    inputRange: [0, screenHeight],
-    outputRange: [1, 0],
-    extrapolate: "clamp",
-  });
-  // Keep the responder's close callback current without recreating the responder each render.
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
-  const springBack = () => {
-    Animated.spring(translateY, { toValue: 0, useNativeDriver: false }).start();
-  };
-  const dragResponder = useRef(
-    PanResponder.create({
-      // Claim the touch the moment it lands. The header has no tappable children, so this costs
-      // nothing — and it's what makes the drag reliable: waiting for onMoveShouldSetPanResponder
-      // depends on move-time responder negotiation, which does not consistently fire for views
-      // inside a Modal's surface on the new architecture (the handle felt dead on device).
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_e, g) => g.dy > 4 && g.dy > Math.abs(g.dx),
-      // Don't let the scroll view or modal machinery steal the gesture mid-drag.
-      onPanResponderTerminationRequest: () => false,
-      onShouldBlockNativeResponder: () => true,
-      onPanResponderMove: (_e, g) => {
-        if (g.dy > 0) translateY.setValue(g.dy);
-      },
-      onPanResponderRelease: (_e, g) => {
-        // useNativeDriver is false on purpose: the backdrop opacity is a JS-driven interpolation of
-        // this same value, and mixing a native-driven animation with a JS-driven consumer silently
-        // freezes the node so the drag stops moving. Keep every use of translateY on the JS side.
-        if (g.dy > 120 || g.vy > 0.6) {
-          Animated.timing(translateY, {
-            toValue: screenHeight,
-            duration: 200,
-            useNativeDriver: false,
-          }).start(() => onCloseRef.current());
-        } else {
-          springBack();
-        }
-      },
-      // If the OS does take the touch away (e.g. an incoming call sheet), don't leave the sheet
-      // stranded half-dragged.
-      onPanResponderTerminate: springBack,
-    }),
-  ).current;
-
   useEffect(() => {
     if (!visible) return;
-    translateY.setValue(0);
     setFullName(person?.full_name ?? "");
     setPreferredName(person?.preferred_name ?? "");
     setRelationship(person?.relationship_label ?? "");
@@ -204,103 +152,78 @@ export default function PersonFormModal({ visible, olderAdultId, person, initial
   }
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Close" style={StyleSheet.absoluteFill} onPress={onClose} />
-        </Animated.View>
-        <Animated.View style={[styles.sheet, { transform: [{ translateY }] }]}>
-          {/* Drag handle + title form the grab zone; dragging it down dismisses the sheet. */}
-          <View style={styles.header} {...dragResponder.panHandlers}>
-            <View style={styles.handle} />
-            <Text variant="title">{person ? "Edit person" : "Add a person"}</Text>
-            <Text variant="body" tone="textSecondary">
-              Tell Nikki who this is so they can help your loved one remember.
-            </Text>
-          </View>
-          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-            {previewUri ? <Image source={{ uri: previewUri }} style={styles.photoPreview} /> : null}
-            <Pressable accessibilityRole="button" accessibilityLabel={previewUri ? "Change photo" : "Add a photo"} onPress={pickPhoto} style={({ pressed }) => [styles.photoBtn, pressed ? styles.pressed : null]}>
-              <Icon name="camera" color="primary" size={theme.iconSize.lg} />
-              <Text variant="bodyStrong" tone="primary">
-                {previewUri ? "Change photo" : "Add a photo"}
-              </Text>
-            </Pressable>
+    <BottomSheetModal
+      visible={visible}
+      onClose={onClose}
+      title={person ? "Edit person" : "Add a person"}
+      subtitle="Tell Nikki who this is so they can help your loved one remember."
+    >
+      {previewUri ? <Image source={{ uri: previewUri }} style={styles.photoPreview} /> : null}
+      <Pressable accessibilityRole="button" accessibilityLabel={previewUri ? "Change photo" : "Add a photo"} onPress={pickPhoto} style={({ pressed }) => [styles.photoBtn, pressed ? styles.pressed : null]}>
+        <Icon name="camera" color="primary" size={theme.iconSize.lg} />
+        <Text variant="bodyStrong" tone="primary">
+          {previewUri ? "Change photo" : "Add a photo"}
+        </Text>
+      </Pressable>
 
-            <Field label="Full name" value={fullName} onChangeText={setFullName} placeholder="e.g. Sophie de Vries" autoCapitalize="words" error={error} />
-            <Field label="What Nikki calls them" value={preferredName} onChangeText={setPreferredName} placeholder="e.g. Sophie" autoCapitalize="words" />
-            <Field label="Relationship" value={relationship} onChangeText={setRelationship} placeholder="e.g. Daughter" autoCapitalize="words" />
-            <Field label="How to say their name" value={pronunciation} onChangeText={setPronunciation} placeholder="e.g. so-FEE" autoCapitalize="none" />
-            <Field
-              label="Birthday"
-              value={birthday}
-              onChangeText={(text) => {
-                setBirthday(text);
-                setBirthdayError(null);
-              }}
-              placeholder="e.g. 3 May 1952 or 1952-05-03"
-              autoCapitalize="none"
-              error={birthdayError}
-            />
-            <Field label="Hometown" value={location} onChangeText={setLocation} placeholder="e.g. Amsterdam" />
-            <Field label="How often they visit" value={visit} onChangeText={setVisit} placeholder="e.g. Usually on Thursdays" />
-            <Field label="Important notes" value={notes} onChangeText={setNotes} placeholder="e.g. Brings fresh flowers and stays for lunch" multiline />
-            <Field label="Conversation hints for Nikki" value={hints} onChangeText={setHints} placeholder="e.g. Loves to hear about the garden" multiline />
-            <Field label="Phone" value={phone} onChangeText={setPhone} placeholder="Optional" keyboardType="phone-pad" autoCapitalize="none" />
+      <Field label="Full name" value={fullName} onChangeText={setFullName} placeholder="e.g. Sophie de Vries" autoCapitalize="words" error={error} />
+      <Field label="What Nikki calls them" value={preferredName} onChangeText={setPreferredName} placeholder="e.g. Sophie" autoCapitalize="words" />
+      <Field label="Relationship" value={relationship} onChangeText={setRelationship} placeholder="e.g. Daughter" autoCapitalize="words" />
+      <Field label="How to say their name" value={pronunciation} onChangeText={setPronunciation} placeholder="e.g. so-FEE" autoCapitalize="none" />
+      <Field
+        label="Birthday"
+        value={birthday}
+        onChangeText={(text) => {
+          setBirthday(text);
+          setBirthdayError(null);
+        }}
+        placeholder="e.g. 3 May 1952 or 1952-05-03"
+        autoCapitalize="none"
+        error={birthdayError}
+      />
+      <Field label="Hometown" value={location} onChangeText={setLocation} placeholder="e.g. Amsterdam" />
+      <Field label="How often they visit" value={visit} onChangeText={setVisit} placeholder="e.g. Usually on Thursdays" />
+      <Field label="Important notes" value={notes} onChangeText={setNotes} placeholder="e.g. Brings fresh flowers and stays for lunch" multiline />
+      <Field label="Conversation hints for Nikki" value={hints} onChangeText={setHints} placeholder="e.g. Loves to hear about the garden" multiline />
+      <Field label="Phone" value={phone} onChangeText={setPhone} placeholder="Optional" keyboardType="phone-pad" autoCapitalize="none" />
 
-            <Pressable accessibilityRole="switch" accessibilityState={{ checked: emergency }} accessibilityLabel="Can be contacted in an emergency" onPress={() => setEmergency((e) => !e)} style={styles.toggleRow}>
-              <Icon name={emergency ? "check" : "add"} color={emergency ? "success" : "textTertiary"} />
-              <Text variant="body">Can be contacted in an emergency</Text>
-            </Pressable>
-            <Pressable accessibilityRole="switch" accessibilityState={{ checked: canBeCalled }} accessibilityLabel="This person may be called by Nikki" onPress={() => setCanBeCalled((v) => !v)} style={styles.toggleRow}>
-              <Icon name={canBeCalled ? "check" : "add"} color={canBeCalled ? "success" : "textTertiary"} />
-              <Text variant="body">This person may be called by Nikki</Text>
-            </Pressable>
-            <Pressable accessibilityRole="switch" accessibilityState={{ checked: canMention }} accessibilityLabel="Nikki may talk about this person" onPress={() => setCanMention((v) => !v)} style={styles.toggleRow}>
-              <Icon name={canMention ? "check" : "add"} color={canMention ? "success" : "textTertiary"} />
-              <Text variant="body">Nikki may talk about this person</Text>
-            </Pressable>
+      <Pressable accessibilityRole="switch" accessibilityState={{ checked: emergency }} accessibilityLabel="Can be contacted in an emergency" onPress={() => setEmergency((e) => !e)} style={styles.toggleRow}>
+        <Icon name={emergency ? "check" : "add"} color={emergency ? "success" : "textTertiary"} />
+        <Text variant="body">Can be contacted in an emergency</Text>
+      </Pressable>
+      <Pressable accessibilityRole="switch" accessibilityState={{ checked: canBeCalled }} accessibilityLabel="This person may be called by Nikki" onPress={() => setCanBeCalled((v) => !v)} style={styles.toggleRow}>
+        <Icon name={canBeCalled ? "check" : "add"} color={canBeCalled ? "success" : "textTertiary"} />
+        <Text variant="body">This person may be called by Nikki</Text>
+      </Pressable>
+      <Pressable accessibilityRole="switch" accessibilityState={{ checked: canMention }} accessibilityLabel="Nikki may talk about this person" onPress={() => setCanMention((v) => !v)} style={styles.toggleRow}>
+        <Icon name={canMention ? "check" : "add"} color={canMention ? "success" : "textTertiary"} />
+        <Text variant="body">Nikki may talk about this person</Text>
+      </Pressable>
 
-            {person ? (
-              <ConnectionsEditor
-                olderAdultId={olderAdultId}
-                olderAdultName={elderName}
-                personId={person.id}
-                people={people}
-                relationshipLabel={relationship}
-                onRelationshipLabelChange={(label) => setRelationship(label ?? "")}
-              />
-            ) : (
-              <Text variant="caption" tone="textTertiary">
-                Save first to add connections.
-              </Text>
-            )}
+      {person ? (
+        <ConnectionsEditor
+          olderAdultId={olderAdultId}
+          olderAdultName={elderName}
+          personId={person.id}
+          people={people}
+          relationshipLabel={relationship}
+          onRelationshipLabelChange={(label) => setRelationship(label ?? "")}
+        />
+      ) : (
+        <Text variant="caption" tone="textTertiary">
+          Save first to add connections.
+        </Text>
+      )}
 
-            <Stack gap="sm" style={styles.actions}>
-              <Button label={person ? "Save changes" : "Add person"} icon="check" loading={saving} onPress={save} />
-              <Button label="Cancel" variant="secondary" onPress={onClose} />
-            </Stack>
-          </ScrollView>
-        </Animated.View>
-      </View>
-    </Modal>
+      <Stack gap="sm" style={styles.actions}>
+        <Button label={person ? "Save changes" : "Add person"} icon="check" loading={saving} onPress={save} />
+        <Button label="Cancel" variant="secondary" onPress={onClose} />
+      </Stack>
+    </BottomSheetModal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: "flex-end" },
-  backdrop: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.colors.overlay },
-  sheet: {
-    backgroundColor: theme.colors.background,
-    borderTopLeftRadius: theme.radius.xl,
-    borderTopRightRadius: theme.radius.xl,
-    maxHeight: "92%",
-    paddingTop: theme.spacing.md,
-  },
-  // The whole header is the drag grab zone — a generous target that never fights the ScrollView.
-  header: { paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.md, gap: theme.spacing.sm },
-  handle: { alignSelf: "center", width: 44, height: 5, borderRadius: theme.radius.pill, backgroundColor: theme.colors.border, marginBottom: theme.spacing.sm },
-  content: { padding: theme.spacing.lg, gap: theme.spacing.md, paddingBottom: theme.spacing.xxl },
   photoPreview: { width: 104, height: 104, borderRadius: theme.radius.pill, alignSelf: "center", backgroundColor: theme.colors.surfaceAlt },
   photoBtn: {
     flexDirection: "row",
