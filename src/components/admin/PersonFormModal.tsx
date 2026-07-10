@@ -3,12 +3,12 @@
 // uploads in the background so saving feels instant. Editing also shows the Connections section
 // (family_relationships); on create it appears once the person is saved.
 import React, { useEffect, useState } from "react";
-import { Image, Pressable, StyleSheet } from "react-native";
+import { Alert, Image, Pressable, StyleSheet } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { theme } from "../../theme";
 import { Button, Field, Icon, Stack, Text } from "../../primitives";
 import BottomSheetModal from "../shared/BottomSheetModal";
-import { createPerson, listPeople, updatePerson, uploadPersonPhoto } from "../../services/peopleService";
+import { createPerson, deletePerson, listPeople, updatePerson, uploadPersonPhoto } from "../../services/peopleService";
 import { getOlderAdult } from "../../services/profileService";
 import { parseBirthday } from "../../utils/parseBirthday";
 import ConnectionsEditor from "./ConnectionsEditor";
@@ -41,6 +41,7 @@ export default function PersonFormModal({ visible, olderAdultId, person, initial
   const [elderName, setElderName] = useState("the person Nikki helps");
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [birthdayError, setBirthdayError] = useState<string | null>(null);
 
@@ -151,6 +152,32 @@ export default function PersonFormModal({ visible, olderAdultId, person, initial
     }
   }
 
+  async function remove(): Promise<void> {
+    if (!person) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      await deletePerson(person.id);
+      onSaved();
+      onClose();
+    } catch {
+      setError("We could not delete just now. Please try again.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  function confirmDelete(): void {
+    Alert.alert(
+      "Delete this person?",
+      "This can't be undone. Any connections to other family members will also be removed.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: remove },
+      ],
+    );
+  }
+
   return (
     <BottomSheetModal
       visible={visible}
@@ -216,8 +243,11 @@ export default function PersonFormModal({ visible, olderAdultId, person, initial
       )}
 
       <Stack gap="sm" style={styles.actions}>
-        <Button label={person ? "Save changes" : "Add person"} icon="check" loading={saving} onPress={save} />
-        <Button label="Cancel" variant="secondary" onPress={onClose} />
+        <Button label={person ? "Save changes" : "Add person"} icon="check" loading={saving} disabled={deleting} onPress={save} />
+        <Button label="Cancel" variant="secondary" disabled={saving || deleting} onPress={onClose} />
+        {person ? (
+          <Button label="Delete person" variant="danger" loading={deleting} disabled={saving} onPress={confirmDelete} />
+        ) : null}
       </Stack>
     </BottomSheetModal>
   );

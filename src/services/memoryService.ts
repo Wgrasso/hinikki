@@ -53,6 +53,15 @@ export async function createMemory(olderAdultId: string, input: NewMemory): Prom
   return data as PersonMemory;
 }
 
+export async function updateMemory(id: string, patch: Partial<NewMemory>): Promise<void> {
+  if (!supabase) {
+    demoMemories = demoMemories.map((m) => (m.id === id ? { ...m, ...patch } : m));
+    return;
+  }
+  const { error } = await supabase.from("person_memories").update(patch).eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
 export async function deleteMemory(id: string): Promise<void> {
   if (!supabase) {
     demoMemories = demoMemories.filter((m) => m.id !== id);

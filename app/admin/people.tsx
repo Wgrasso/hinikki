@@ -26,6 +26,7 @@ export default function AdminPeople(): React.ReactElement {
   const [editingPerson, setEditingPerson] = useState<FamilyPerson | null>(null);
   const [editPhotoUrl, setEditPhotoUrl] = useState<string | null>(null);
   const [memoryFormOpen, setMemoryFormOpen] = useState(false);
+  const [editingMemory, setEditingMemory] = useState<PersonMemory | null>(null);
 
   const { state, reload } = useAsync<PeopleData>(async () => {
     const [people, memories] = await Promise.all([listPeople(id), listMemories(id)]);
@@ -53,6 +54,18 @@ export default function AdminPeople(): React.ReactElement {
     setEditingPerson(person);
     setEditPhotoUrl(photoUrl);
     setFormOpen(true);
+  }
+  function openAddMemory(): void {
+    setEditingMemory(null);
+    setMemoryFormOpen(true);
+  }
+  function openEditMemory(memory: PersonMemory): void {
+    setEditingMemory(memory);
+    setMemoryFormOpen(true);
+  }
+  function closeMemoryForm(): void {
+    setMemoryFormOpen(false);
+    setEditingMemory(null);
   }
 
   return (
@@ -92,7 +105,7 @@ export default function AdminPeople(): React.ReactElement {
             )}
             ListFooterComponent={
               <View style={styles.memories}>
-                <SectionHeader title="Memories" actionLabel="Add a memory" onAction={() => setMemoryFormOpen(true)} />
+                <SectionHeader title="Memories" actionLabel="Add a memory" onAction={openAddMemory} />
                 {data.memories.length === 0 ? (
                   <Text variant="body" tone="textSecondary">
                     Cherished stories Nikki can gently bring up in conversation.
@@ -100,7 +113,7 @@ export default function AdminPeople(): React.ReactElement {
                 ) : (
                   <View style={styles.memoryList}>
                     {data.memories.map((m) => (
-                      <ListRow key={m.id} title={m.title} subtitle={m.approximate_date ?? undefined} showChevron={false} />
+                      <ListRow key={m.id} title={m.title} subtitle={m.approximate_date ?? undefined} onPress={() => openEditMemory(m)} />
                     ))}
                   </View>
                 )}
@@ -122,7 +135,8 @@ export default function AdminPeople(): React.ReactElement {
         visible={memoryFormOpen}
         olderAdultId={id}
         people={state.status === "loaded" ? state.data.people : []}
-        onClose={() => setMemoryFormOpen(false)}
+        memory={editingMemory}
+        onClose={closeMemoryForm}
         onSaved={reload}
       />
     </Screen>

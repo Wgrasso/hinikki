@@ -2,39 +2,42 @@
 // "Roughly when" is deliberately free text ('the 1970s', 'her wedding day') — memories rarely
 // have exact dates. The person link is an optional single-select chip row (tap again to unselect).
 import React, { useEffect, useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Alert, Pressable, StyleSheet, View } from "react-native";
 import { theme } from "../../theme";
 import { Button, Field, Icon, Stack, Text } from "../../primitives";
 import BottomSheetModal from "../shared/BottomSheetModal";
-import { createMemory } from "../../services/memoryService";
-import type { FamilyPerson } from "../../types/database";
+import { createMemory, deleteMemory, updateMemory } from "../../services/memoryService";
+import type { FamilyPerson, PersonMemory } from "../../types/database";
 
 type Props = {
   visible: boolean;
   olderAdultId: string;
   people: FamilyPerson[];
+  memory?: PersonMemory | null;
   onClose: () => void;
   onSaved: () => void;
 };
 
-export default function MemoryFormModal({ visible, olderAdultId, people, onClose, onSaved }: Props): React.ReactElement {
+export default function MemoryFormModal({ visible, olderAdultId, people, memory, onClose, onSaved }: Props): React.ReactElement {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [approximateDate, setApproximateDate] = useState("");
   const [personId, setPersonId] = useState<string | null>(null);
   const [canMention, setCanMention] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset to a blank form each time the sheet opens.
+  // Prefill from the record each time the sheet opens (add = blank, edit = existing values).
   useEffect(() => {
     if (!visible) return;
-    setTitle("");
-    setDescription("");
-    setApproximateDate("");
-    setPersonId(null);
-    setCanMention(true);
+    setTitle(memory?.title ?? "");
+    setDescription(memory?.description ?? "");
+    setApproximateDate(memory?.approximate_date ?? "");
+    setPersonId(memory?.person_id ?? null);
+    setCanMention(memory?.can_nikki_mention ?? true);
     setError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
   async function save(): Promise<void> {
@@ -45,13 +48,15 @@ export default function MemoryFormModal({ visible, olderAdultId, people, onClose
     setSaving(true);
     setError(null);
     try {
-      await createMemory(olderAdultId, {
+      const patch = {
         person_id: personId,
         title: title.trim(),
         description: description.trim() || null,
         approximate_date: approximateDate.trim() || null,
         can_nikki_mention: canMention,
-      });
+      };
+      if (memory) await updateMemory(memory.id, patch);
+      else await createMemory(olderAdultId, patch);
       onSaved();
       onClose();
     } catch {
@@ -61,8 +66,35 @@ export default function MemoryFormModal({ visible, olderAdultId, people, onClose
     }
   }
 
+  async function remove(): Promise<void> {
+    if (!memory) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      await deleteMemory(memory.id);
+      onSaved();
+      onClose();
+    } catch {
+      setError("We could not delete just now. Please try again.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  function confirmDelete(): void {
+    Alert.alert("Delete this memory?", "This can't be undone.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: remove },
+    ]);
+  }
+
   return (
-    <BottomSheetModal visible={visible} onClose={onClose} title="Add a memory" subtitle="A cherished story Nikki can bring up in conversation.">
+    <BottomSheetModal
+      visible={visible}
+      onClose={onClose}
+      title={memory ? "Edit memory" : "Add a memory"}
+      subtitle="A cherished story Nikki can bring up in conversation."
+    >
       <Field label="Title" value={title} onChangeText={setTitle} placeholder="e.g. The bakery in Jordaan" autoCapitalize="sentences" error={error} />
       <Field label="The story" value={description} onChangeText={setDescription} placeholder="What happened, and why it matters" multiline />
       <Field label="Roughly when" value={approximateDate} onChangeText={setApproximateDate} placeholder="e.g. the 1970s, or her wedding day" autoCapitalize="none" />
@@ -101,8 +133,11 @@ export default function MemoryFormModal({ visible, olderAdultId, people, onClose
       </Pressable>
 
       <Stack gap="sm" style={styles.actions}>
-        <Button label="Save memory" icon="check" loading={saving} onPress={save} />
-        <Button label="Cancel" variant="secondary" onPress={onClose} />
+        <Button label={memory ? "Save changes" : "Save memory"} icon="check" loading={saving} disabled={deleting} onPress={save} />
+        <Button label="Cancel" variant="secondary" disabled={saving || deleting} onPress={onClose} />
+        {memory ? (
+          <Button label="Delete memory" variant="danger" loading={deleting} disabled={saving} onPress={confirmDelete} />
+        ) : null}
       </Stack>
     </BottomSheetModal>
   );

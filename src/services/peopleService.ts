@@ -182,6 +182,20 @@ export async function deleteRelationship(relationshipId: string): Promise<void> 
   if (error) throw new Error(error.message);
 }
 
+export async function deletePerson(personId: string): Promise<void> {
+  if (!supabase) {
+    await mutateDemo((s) => {
+      s.people = s.people.filter((p) => p.id !== personId);
+      s.relationships = s.relationships.filter(
+        (r) => r.person_a_id !== personId && r.person_b_id !== personId,
+      );
+    });
+    return;
+  }
+  const { error } = await supabase.from("family_people").delete().eq("id", personId);
+  if (error) throw new Error(error.message);
+}
+
 export async function uploadPersonPhoto(
   olderAdultId: string,
   personId: string,

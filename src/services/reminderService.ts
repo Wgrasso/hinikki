@@ -107,3 +107,14 @@ export async function updateReminder(reminderId: string, patch: Partial<NewRemin
   const { error } = await supabase.from("reminders").update(patch).eq("id", reminderId);
   if (error) throw new Error(error.message);
 }
+
+export async function deleteReminder(reminderId: string): Promise<void> {
+  if (!supabase) {
+    await mutateDemo((s) => {
+      s.reminders = s.reminders.filter((r) => r.id !== reminderId);
+    });
+    return;
+  }
+  const { error } = await supabase.from("reminders").delete().eq("id", reminderId);
+  if (error) throw new Error(error.message);
+}

@@ -129,3 +129,14 @@ export async function updateEvent(eventId: string, patch: Partial<NewEvent>): Pr
   const { error } = await supabase.from("calendar_events").update(patch).eq("id", eventId);
   if (error) throw new Error(error.message);
 }
+
+export async function deleteEvent(eventId: string): Promise<void> {
+  if (!supabase) {
+    await mutateDemo((s) => {
+      s.events = s.events.filter((e) => e.id !== eventId);
+    });
+    return;
+  }
+  const { error } = await supabase.from("calendar_events").delete().eq("id", eventId);
+  if (error) throw new Error(error.message);
+}

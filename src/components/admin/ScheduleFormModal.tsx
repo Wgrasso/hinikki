@@ -4,13 +4,13 @@
 // Editing keeps the record's original date+time until the family member actually changes it, and
 // never invents a clock time on an update.
 import React, { useEffect, useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Alert, Pressable, StyleSheet, View } from "react-native";
 import { theme } from "../../theme";
 import { Button, Field, Icon, Stack, Text } from "../../primitives";
 import BottomSheetModal from "../shared/BottomSheetModal";
 import DateTimePickerField from "./DateTimePickerField";
-import { createEvent, updateEvent } from "../../services/calendarService";
-import { createReminder, updateReminder } from "../../services/reminderService";
+import { createEvent, deleteEvent, updateEvent } from "../../services/calendarService";
+import { createReminder, deleteReminder, updateReminder } from "../../services/reminderService";
 import type { CalendarEvent, Reminder } from "../../types/database";
 
 type Kind = "event" | "reminder";
@@ -189,6 +189,7 @@ export default function ScheduleFormModal({ visible, kind, olderAdultId, event, 
   const [requiresConfirmation, setRequiresConfirmation] = useState(false);
 
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dateError, setDateError] = useState<string | null>(null);
 
@@ -296,6 +297,29 @@ export default function ScheduleFormModal({ visible, kind, olderAdultId, event, 
     }
   }
 
+  async function remove(): Promise<void> {
+    setDeleting(true);
+    setError(null);
+    try {
+      if (kind === "event" && event) await deleteEvent(event.id);
+      else if (kind === "reminder" && reminder) await deleteReminder(reminder.id);
+      onSaved();
+      onClose();
+    } catch {
+      setError("We could not delete just now. Please try again.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  function confirmDelete(): void {
+    const label = kind === "event" ? "event" : "reminder";
+    Alert.alert(`Delete this ${label}?`, "This can't be undone.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: remove },
+    ]);
+  }
+
   const heading =
     kind === "event" ? (isEditing ? "Edit event" : "Add an event") : isEditing ? "Edit reminder" : "Add a reminder";
 
@@ -375,8 +399,17 @@ export default function ScheduleFormModal({ visible, kind, olderAdultId, event, 
       )}
 
       <Stack gap="sm" style={styles.actions}>
-        <Button label={isEditing ? "Save changes" : "Save"} icon="check" loading={saving} onPress={save} />
-        <Button label="Cancel" variant="secondary" onPress={onClose} />
+        <Button label={isEditing ? "Save changes" : "Save"} icon="check" loading={saving} disabled={deleting} onPress={save} />
+        <Button label="Cancel" variant="secondary" disabled={saving || deleting} onPress={onClose} />
+        {isEditing ? (
+          <Button
+            label={kind === "event" ? "Delete event" : "Delete reminder"}
+            variant="danger"
+            loading={deleting}
+            disabled={saving}
+            onPress={confirmDelete}
+          />
+        ) : null}
       </Stack>
     </BottomSheetModal>
   );
