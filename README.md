@@ -14,7 +14,7 @@ One Expo (React Native + TypeScript) app, two routed experiences:
 
 ```bash
 npm install                  # .npmrc pins legacy-peer-deps (ElevenLabs/LiveKit peer skew)
-npx expo start --dev-client  # daily loop: JS hot-reloads into the installed dev build
+npx expo start --dev-client --tunnel # daily loop: JS hot-reloads into the installed dev build
 npx expo start               # web preview still works for admin-mode UI (voice shows a fallback)
 ```
 
