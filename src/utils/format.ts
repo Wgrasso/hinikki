@@ -25,6 +25,15 @@ export function initials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+export function isSameDay(iso: string, ref: Date = new Date()): boolean {
+  const d = new Date(iso);
+  return (
+    d.getFullYear() === ref.getFullYear() &&
+    d.getMonth() === ref.getMonth() &&
+    d.getDate() === ref.getDate()
+  );
+}
+
 export function relativeTimeLabel(iso: string | null, now: Date = new Date()): string {
   if (!iso) return "not yet shared";
   const then = new Date(iso).getTime();

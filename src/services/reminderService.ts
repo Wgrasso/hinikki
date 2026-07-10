@@ -2,6 +2,7 @@
 import { supabase } from "../lib/supabase";
 import { getDemoState, mutateDemo, newId } from "../data/demoDb";
 import type { Reminder } from "../types/database";
+import { isSameDay } from "../utils/format";
 
 const REMINDER_COLUMNS =
   "id, older_adult_id, title, reminder_type, recurrence_rule, scheduled_at, nikki_message, instructions, requires_confirmation, priority_level, active";
@@ -21,6 +22,14 @@ export async function listReminders(olderAdultId: string): Promise<Reminder[]> {
     .order("scheduled_at", { ascending: true });
   if (error) throw new Error(error.message);
   return (data ?? []) as Reminder[];
+}
+
+// Reminders relevant to today's dashboard: recurring and "anytime" (no scheduled_at)
+// reminders apply every day, but a one-off reminder only counts on the day it was set for —
+// it should be gone from "today" once that day has passed, same as a calendar event.
+export async function listTodayReminders(olderAdultId: string): Promise<Reminder[]> {
+  const all = await listReminders(olderAdultId);
+  return all.filter((r) => r.recurrence_rule || !r.scheduled_at || isSameDay(r.scheduled_at));
 }
 
 export type NewReminder = {

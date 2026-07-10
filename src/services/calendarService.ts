@@ -2,18 +2,10 @@
 import { supabase } from "../lib/supabase";
 import { getDemoState, mutateDemo, newId } from "../data/demoDb";
 import type { CalendarEvent } from "../types/database";
+import { isSameDay } from "../utils/format";
 
 const EVENT_COLUMNS =
   "id, older_adult_id, title, event_type, start_at, end_at, location_name, location_address, what_to_bring, transport_notes, companion, announce_lead_minutes, nikki_before_event_message, calming_explanation, user_friendly_summary, priority_level, may_cause_stress, completion_status";
-
-function isSameDay(iso: string, ref: Date): boolean {
-  const d = new Date(iso);
-  return (
-    d.getFullYear() === ref.getFullYear() &&
-    d.getMonth() === ref.getMonth() &&
-    d.getDate() === ref.getDate()
-  );
-}
 
 export async function listEvents(olderAdultId: string): Promise<CalendarEvent[]> {
   if (!supabase) {

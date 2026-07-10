@@ -18,7 +18,7 @@ import { theme } from "../../src/theme";
 import { formatTime, relativeTimeLabel } from "../../src/utils/format";
 import { getOlderAdult } from "../../src/services/profileService";
 import { listEvents, listTodayEvents } from "../../src/services/calendarService";
-import { listReminders } from "../../src/services/reminderService";
+import { listTodayReminders } from "../../src/services/reminderService";
 import { getLatestLocation, listSafeLocations } from "../../src/services/locationService";
 import { listEmergencyContacts, listEmergencyEvents } from "../../src/services/emergencyService";
 import { listPeople } from "../../src/services/peopleService";
@@ -68,7 +68,7 @@ export default function AdminDashboard(): React.ReactElement {
       getOlderAdult(id),
       getLatestLocation(id),
       listTodayEvents(id),
-      listReminders(id),
+      listTodayReminders(id),
       listEmergencyEvents(id),
       listPeople(id),
       listEvents(id),
