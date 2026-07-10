@@ -58,7 +58,7 @@ export default function AdminPeople(): React.ReactElement {
   return (
     <Screen padded={false}>
       <View style={styles.bar}>
-        <AppBar title="People" subtitle="Build Nikki's family memory." rightLabel="Add" onRightPress={openAdd} onRefresh={reload} />
+        <AppBar title="People & Memories" subtitle="The people Nikki knows, and moments worth remembering." onRefresh={reload} />
       </View>
       <StateView
         state={state}
@@ -76,6 +76,11 @@ export default function AdminPeople(): React.ReactElement {
             data={data.people}
             keyExtractor={(p) => p.id}
             contentContainerStyle={styles.list}
+            ListHeaderComponent={
+              <View style={styles.peopleHeader}>
+                <SectionHeader title="People" actionLabel="Add a person" onAction={openAdd} />
+              </View>
+            }
             ItemSeparatorComponent={() => <View style={styles.sep} />}
             renderItem={({ item }) => (
               <ListRow
@@ -127,6 +132,7 @@ export default function AdminPeople(): React.ReactElement {
 const styles = StyleSheet.create({
   bar: { paddingHorizontal: theme.spacing.lg },
   list: { paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl },
+  peopleHeader: { marginBottom: theme.spacing.sm },
   sep: { height: theme.spacing.sm },
   memories: { marginTop: theme.spacing.xl, gap: theme.spacing.sm },
   memoryList: { gap: theme.spacing.sm },
