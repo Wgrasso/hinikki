@@ -106,6 +106,18 @@ export async function listEmergencyEvents(olderAdultId: string): Promise<Emergen
   return (data ?? []) as EmergencyEvent[];
 }
 
+export async function resolveEmergencyEvent(id: string): Promise<void> {
+  if (!supabase) {
+    await mutateDemo((s) => {
+      const i = s.emergencyEvents.findIndex((e) => e.id === id);
+      if (i >= 0) s.emergencyEvents[i] = { ...s.emergencyEvents[i], status: "resolved" };
+    });
+    return;
+  }
+  const { error } = await supabase.from("emergency_events").update({ status: "resolved" }).eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
 export async function updateEmergencyContact(
   id: string,
   patch: { name?: string; phone?: string | null; relationship?: string | null; priority_order?: number },

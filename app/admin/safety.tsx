@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { View } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { useAppState } from "../../src/auth/appState";
-import { AppBar, Card, Icon, Screen, Stack, Text } from "../../src/primitives";
+import { AppBar, Button, Card, Icon, Screen, Stack, Text } from "../../src/primitives";
 import SectionHeader from "../../src/components/admin/SectionHeader";
 import ListRow from "../../src/components/shared/ListRow";
 import StateView from "../../src/components/shared/StateView";
@@ -13,7 +13,7 @@ import { subscribeLive } from "../../src/features/sync/liveChannel";
 import { theme } from "../../src/theme";
 import { relativeTimeLabel } from "../../src/utils/format";
 import { createSafeLocation, getLatestLocation, listSafeLocations, updateSafeLocation } from "../../src/services/locationService";
-import { createEmergencyContact, listEmergencyContacts, listEmergencyEvents, updateEmergencyContact } from "../../src/services/emergencyService";
+import { createEmergencyContact, listEmergencyContacts, listEmergencyEvents, resolveEmergencyEvent, updateEmergencyContact } from "../../src/services/emergencyService";
 import type { EmergencyContact, EmergencyEvent, LocationUpdate, SafeLocation } from "../../src/types/database";
 
 type SafetyData = {
@@ -30,6 +30,7 @@ export default function AdminSafety(): React.ReactElement {
   const [addingContact, setAddingContact] = useState(false);
   const [editPlace, setEditPlace] = useState<SafeLocation | null>(null);
   const [editContact, setEditContact] = useState<EmergencyContact | null>(null);
+  const [resolvingId, setResolvingId] = useState<string | null>(null);
 
   const { state, reload } = useAsync<SafetyData>(async () => {
     const [latest, safe, contacts, events] = await Promise.all([
@@ -54,6 +55,16 @@ export default function AdminSafety(): React.ReactElement {
 
   const placeVisible = addingPlace || editPlace !== null;
   const contactVisible = addingContact || editContact !== null;
+
+  async function handleResolve(id: string): Promise<void> {
+    setResolvingId(id);
+    try {
+      await resolveEmergencyEvent(id);
+      reload();
+    } finally {
+      setResolvingId(null);
+    }
+  }
 
   return (
     <Screen scroll>
@@ -111,7 +122,36 @@ export default function AdminSafety(): React.ReactElement {
                   <EmptyHint text="No alerts. You will see lost or emergency moments here." />
                 ) : (
                   data.events.map((e) => (
-                    <ListRow key={e.id} title={alertTitle(e.event_type)} subtitle={`${e.detected_urgency} · ${relativeTimeLabel(e.created_at)}`} showChevron={false} />
+                    <Card key={e.id} elevation="card">
+                      <Stack gap="md">
+                        <Stack direction="row" gap="md" align="center">
+                          <Icon
+                            name={e.status === "resolved" ? "check" : "warning"}
+                            color={e.status === "resolved" ? "success" : "danger"}
+                            size={theme.iconSize.md}
+                          />
+                          <Stack flex gap="xs">
+                            <Text variant="bodyStrong">{alertTitle(e.event_type)}</Text>
+                            <Text variant="caption" tone="textSecondary">
+                              {e.detected_urgency} · {relativeTimeLabel(e.created_at)}
+                            </Text>
+                          </Stack>
+                        </Stack>
+                        {e.status === "resolved" ? (
+                          <Text variant="caption" tone="textSecondary">
+                            Marked as handled
+                          </Text>
+                        ) : (
+                          <Button
+                            label="Mark as handled"
+                            icon="check"
+                            variant="secondary"
+                            loading={resolvingId === e.id}
+                            onPress={() => void handleResolve(e.id)}
+                          />
+                        )}
+                      </Stack>
+                    </Card>
                   ))
                 )}
               </Stack>
