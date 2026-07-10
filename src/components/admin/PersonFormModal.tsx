@@ -2,8 +2,8 @@
 // Prefills on open (fast + correct for edit); the chosen photo shows immediately as a preview and
 // uploads in the background so saving feels instant. Editing also shows the Connections section
 // (family_relationships); on create it appears once the person is saved.
-import React, { useEffect, useState } from "react";
-import { Image, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { Animated, Dimensions, Image, Modal, PanResponder, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { theme } from "../../theme";
 import { Button, Field, Icon, Stack, Text } from "../../primitives";
@@ -43,8 +43,61 @@ export default function PersonFormModal({ visible, olderAdultId, person, initial
   const [error, setError] = useState<string | null>(null);
   const [birthdayError, setBirthdayError] = useState<string | null>(null);
 
+  // Swipe-to-dismiss: the pan lives on the sheet HEADER (handle + title), never on the scrolling
+  // body, so it never competes with the ScrollView for the touch — that competition was what made
+  // the earlier version fire only intermittently. Dragging the header down past a threshold closes;
+  // a short drag springs back. The backdrop opacity is derived from the drag so the scrim fades out
+  // as the sheet leaves (instead of a static dark "filter" sitting on screen).
+  const screenHeight = Dimensions.get("window").height;
+  const translateY = useRef(new Animated.Value(0)).current;
+  const backdropOpacity = translateY.interpolate({
+    inputRange: [0, screenHeight],
+    outputRange: [1, 0],
+    extrapolate: "clamp",
+  });
+  // Keep the responder's close callback current without recreating the responder each render.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const springBack = () => {
+    Animated.spring(translateY, { toValue: 0, useNativeDriver: false }).start();
+  };
+  const dragResponder = useRef(
+    PanResponder.create({
+      // Claim the touch the moment it lands. The header has no tappable children, so this costs
+      // nothing — and it's what makes the drag reliable: waiting for onMoveShouldSetPanResponder
+      // depends on move-time responder negotiation, which does not consistently fire for views
+      // inside a Modal's surface on the new architecture (the handle felt dead on device).
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_e, g) => g.dy > 4 && g.dy > Math.abs(g.dx),
+      // Don't let the scroll view or modal machinery steal the gesture mid-drag.
+      onPanResponderTerminationRequest: () => false,
+      onShouldBlockNativeResponder: () => true,
+      onPanResponderMove: (_e, g) => {
+        if (g.dy > 0) translateY.setValue(g.dy);
+      },
+      onPanResponderRelease: (_e, g) => {
+        // useNativeDriver is false on purpose: the backdrop opacity is a JS-driven interpolation of
+        // this same value, and mixing a native-driven animation with a JS-driven consumer silently
+        // freezes the node so the drag stops moving. Keep every use of translateY on the JS side.
+        if (g.dy > 120 || g.vy > 0.6) {
+          Animated.timing(translateY, {
+            toValue: screenHeight,
+            duration: 200,
+            useNativeDriver: false,
+          }).start(() => onCloseRef.current());
+        } else {
+          springBack();
+        }
+      },
+      // If the OS does take the touch away (e.g. an incoming call sheet), don't leave the sheet
+      // stranded half-dragged.
+      onPanResponderTerminate: springBack,
+    }),
+  ).current;
+
   useEffect(() => {
     if (!visible) return;
+    translateY.setValue(0);
     setFullName(person?.full_name ?? "");
     setPreferredName(person?.preferred_name ?? "");
     setRelationship(person?.relationship_label ?? "");
@@ -153,14 +206,19 @@ export default function PersonFormModal({ visible, olderAdultId, person, initial
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={styles.sheet}>
-          <View style={styles.handle} />
-          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Close" style={StyleSheet.absoluteFill} onPress={onClose} />
+        </Animated.View>
+        <Animated.View style={[styles.sheet, { transform: [{ translateY }] }]}>
+          {/* Drag handle + title form the grab zone; dragging it down dismisses the sheet. */}
+          <View style={styles.header} {...dragResponder.panHandlers}>
+            <View style={styles.handle} />
             <Text variant="title">{person ? "Edit person" : "Add a person"}</Text>
             <Text variant="body" tone="textSecondary">
               Tell Nikki who this is so they can help your loved one remember.
             </Text>
-
+          </View>
+          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             {previewUri ? <Image source={{ uri: previewUri }} style={styles.photoPreview} /> : null}
             <Pressable accessibilityRole="button" accessibilityLabel={previewUri ? "Change photo" : "Add a photo"} onPress={pickPhoto} style={({ pressed }) => [styles.photoBtn, pressed ? styles.pressed : null]}>
               <Icon name="camera" color="primary" size={theme.iconSize.lg} />
@@ -223,14 +281,15 @@ export default function PersonFormModal({ visible, olderAdultId, person, initial
               <Button label="Cancel" variant="secondary" onPress={onClose} />
             </Stack>
           </ScrollView>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: theme.colors.overlay, justifyContent: "flex-end" },
+  overlay: { flex: 1, justifyContent: "flex-end" },
+  backdrop: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.colors.overlay },
   sheet: {
     backgroundColor: theme.colors.background,
     borderTopLeftRadius: theme.radius.xl,
@@ -238,6 +297,8 @@ const styles = StyleSheet.create({
     maxHeight: "92%",
     paddingTop: theme.spacing.md,
   },
+  // The whole header is the drag grab zone — a generous target that never fights the ScrollView.
+  header: { paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.md, gap: theme.spacing.sm },
   handle: { alignSelf: "center", width: 44, height: 5, borderRadius: theme.radius.pill, backgroundColor: theme.colors.border, marginBottom: theme.spacing.sm },
   content: { padding: theme.spacing.lg, gap: theme.spacing.md, paddingBottom: theme.spacing.xxl },
   photoPreview: { width: 104, height: 104, borderRadius: theme.radius.pill, alignSelf: "center", backgroundColor: theme.colors.surfaceAlt },
