@@ -13,6 +13,7 @@ import { subscribeLive } from "../../src/features/sync/liveChannel";
 import { theme } from "../../src/theme";
 import { getWeatherAdvice, saveWeatherAdvice } from "../../src/services/weatherService";
 import { getOlderAdult } from "../../src/services/profileService";
+import { FEATURE_HELP_TAB } from "../../src/lib/constants";
 import type { OlderAdultProfile } from "../../src/types/database";
 
 export default function AdminSettings(): React.ReactElement {
@@ -74,11 +75,13 @@ export default function AdminSettings(): React.ReactElement {
           onAction={() => setEditingAdvice(true)}
         />
 
-        <InfoCard
-          icon="location"
-          title="Location sharing"
-          body="Location is shared with trusted family for safety, and only foreground location is used. Your loved one is always told their family can see it."
-        />
+        {FEATURE_HELP_TAB ? (
+          <InfoCard
+            icon="location"
+            title="Location sharing"
+            body="Location is shared with trusted family for safety, and only foreground location is used. Your loved one is always told their family can see it."
+          />
+        ) : null}
 
         <Card elevation="card">
           <Stack gap="md">

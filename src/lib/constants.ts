@@ -26,8 +26,11 @@ export const HAS_SUPABASE = SUPABASE_URL.length > 0 && SUPABASE_ANON_KEY.length 
 // module; there is no web or demo-mode voice).
 export const HAS_VOICE = HAS_SUPABASE && Platform.OS !== "web";
 
-// Willem is actively developing the user-mode Help tab; keep it out of the tab bar until it's
-// ready to ship. The route (app/user/help.tsx) stays in the codebase either way.
+// Willem is actively developing the user-mode Help tab and the admin-mode Safety/location
+// features; keep them out of the shipped build until they're ready. Gates: the user "Help" tab,
+// the admin "Safety" tab, and the location surfaces that only make sense alongside it (dashboard's
+// "Last known location" card, Settings' "Location sharing" info card). Routes/components stay in
+// the codebase either way — this only hides them from the UI.
 export const FEATURE_HELP_TAB = false;
 
 // Willem is actively developing the admin dashboard's "send a test push notification" tool;

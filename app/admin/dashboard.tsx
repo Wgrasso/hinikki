@@ -149,19 +149,21 @@ export default function AdminDashboard(): React.ReactElement {
               </Card>
             ) : null}
 
-            <Card elevation="card">
-              <Stack direction="row" gap="md" align="center">
-                <Icon name="location" color="primary" size={theme.iconSize.lg} />
-                <Stack flex gap="xs">
-                  <Text variant="overline" tone="textSecondary">
-                    LAST KNOWN LOCATION
-                  </Text>
-                  <Text variant="bodyStrong">
-                    {data.latest ? `Seen ${relativeTimeLabel(data.latest.created_at)}` : "Not shared yet"}
-                  </Text>
+            {FEATURE_HELP_TAB ? (
+              <Card elevation="card">
+                <Stack direction="row" gap="md" align="center">
+                  <Icon name="location" color="primary" size={theme.iconSize.lg} />
+                  <Stack flex gap="xs">
+                    <Text variant="overline" tone="textSecondary">
+                      LAST KNOWN LOCATION
+                    </Text>
+                    <Text variant="bodyStrong">
+                      {data.latest ? `Seen ${relativeTimeLabel(data.latest.created_at)}` : "Not shared yet"}
+                    </Text>
+                  </Stack>
                 </Stack>
-              </Stack>
-            </Card>
+              </Card>
+            ) : null}
 
             {/* Always mounted (it renders null when empty) so its failed-approval cards
                 survive reloads that empty the pending list. */}
