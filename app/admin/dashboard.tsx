@@ -167,7 +167,7 @@ export default function AdminDashboard(): React.ReactElement {
                 survive reloads that empty the pending list. */}
             <ProposalsSection olderAdultId={id} proposals={data.proposals} onChanged={reload} />
 
-            <SetupChecklist items={data.checklist} />
+            {data.checklist.some((item) => !item.done) ? <SetupChecklist items={data.checklist} /> : null}
 
             {data.recaps.length > 0 ? (
               <View>
