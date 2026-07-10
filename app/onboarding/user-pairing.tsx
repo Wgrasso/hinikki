@@ -173,7 +173,7 @@ export default function UserPairing(): React.ReactElement {
       {view === "enter" ? (
         <Stack gap="lg">
           <Field label="Code from family" value={entered} onChangeText={setEntered} placeholder="8-character code" autoCapitalize="none" error={error} />
-          <Button label="Continue" icon="check" loading={busy} onPress={loadRoster} />
+          <Button label="Continue" icon="check" loading={busy} onPress={() => { void loadRoster(); }} />
         </Stack>
       ) : null}
 
