@@ -30,7 +30,6 @@ so a warm session start makes no network calls). The names must match **exactly*
 | `recent_turns` | The last ~12 spoken turns, verbatim (short-term continuity) |
 | `pending_family_items` | Topics already proposed/declined — never re-ask or re-propose |
 | `weather_today` | Weather summary + clothing/safety + the family's custom weather note |
-| `medication_notes` | Family-authored medication reminders incl. rhythm (`recurrence_rule`) |
 | `emergency_contact_names` | Contact names only — phone numbers never leave the device |
 
 Renaming or adding a variable is a two-sided change: this prompt **and**
@@ -79,6 +78,12 @@ instructions for the agent to follow, not user-facing text.
    agent, disable it too so the persona doesn't promise help it can no longer deliver
    (see the "In distress" line in the Dutch guide section of the prompt, which still
    describes the old behavior and needs a product decision on replacement wording).
+8. Medication removed (2026-07-10): reminders no longer support a "medication" type
+   (admin-only, non-medical reminders now — watering plants, hydration, etc.), so the prompt
+   no longer references `{{medication_notes}}` or a medication-specific instruction. **The
+   live agent in the ElevenLabs dashboard still needs this same edit applied by hand** —
+   remove the old `MEDICATION NOTES written by their family:` line and the `PLANS &
+   MEDICATION` section's medication bullet so the dashboard prompt matches this file.
 
 Prompt size note: the current prompt measures ≈7k chars (≈1.75k tokens by chars÷4). If
 session start latency matters, the per-tool guidance in the YOUR TOOLS block can move into

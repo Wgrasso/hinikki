@@ -78,7 +78,7 @@ function resolveReminder(reminders: Reminder[], title: string):
   );
   if (loose.length === 1) return { kind: "one", reminder: loose[0] };
   if (loose.length > 1) {
-    // Distinct titles? Then it is genuinely ambiguous ("medication" → morning + evening).
+    // Distinct titles? Then it is genuinely ambiguous ("water the plants" → morning + evening).
     const titles = [...new Set(loose.map((r) => r.title))];
     if (titles.length > 1) return { kind: "many", titles };
     const now = Date.now();

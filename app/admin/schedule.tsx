@@ -111,7 +111,7 @@ export default function AdminSchedule(): React.ReactElement {
               keyExtractor={(r) => r.id}
               contentContainerStyle={styles.list}
               ItemSeparatorComponent={() => <View style={styles.sep} />}
-              ListEmptyComponent={<EmptyHint text="No reminders yet. Add medication, hydration or visit reminders." />}
+              ListEmptyComponent={<EmptyHint text="No reminders yet. Add routine, hydration or visit reminders." />}
               renderItem={({ item }) => {
                 const conf = item.requires_confirmation ? data.confirmations[item.id] : undefined;
                 return (

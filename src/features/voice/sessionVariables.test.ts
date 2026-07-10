@@ -1,7 +1,7 @@
 // Tests for the pure dynamic-variable formatters — the personalization payload the ElevenLabs
 // agent receives. These run without the voice SDK (pure functions over row types).
-import { formatFamily, formatMedicationNotes, formatSchedule, formatWeather } from "./sessionVariables";
-import type { CalendarEvent, FamilyPerson, Reminder } from "../../types/database";
+import { formatFamily, formatSchedule, formatWeather } from "./sessionVariables";
+import type { CalendarEvent, FamilyPerson } from "../../types/database";
 import type { WeatherSnapshot } from "../../types/domain";
 
 function event(overrides: Partial<CalendarEvent>): CalendarEvent {
@@ -53,23 +53,6 @@ function person(overrides: Partial<FamilyPerson>): FamilyPerson {
   };
 }
 
-function reminder(overrides: Partial<Reminder>): Reminder {
-  return {
-    id: "r1",
-    older_adult_id: "oa1",
-    title: "Blood pressure pill",
-    reminder_type: "medication",
-    recurrence_rule: null,
-    scheduled_at: null,
-    nikki_message: null,
-    instructions: null,
-    requires_confirmation: false,
-    priority_level: "normal",
-    active: true,
-    ...overrides,
-  };
-}
-
 describe("formatSchedule", () => {
   it("describes an empty day calmly", () => {
     expect(formatSchedule([])).toMatch(/calm, open day/);
@@ -116,23 +99,6 @@ describe("formatFamily", () => {
 
   it("handles an empty list", () => {
     expect(formatFamily([])).toMatch(/No family members/);
-  });
-});
-
-describe("formatMedicationNotes", () => {
-  it("only includes active medication reminders", () => {
-    const text = formatMedicationNotes([
-      reminder({ instructions: "One tablet with breakfast." }),
-      reminder({ id: "r2", title: "Water the plants", reminder_type: "task" }),
-      reminder({ id: "r3", title: "Old pill", active: false }),
-    ]);
-    expect(text).toContain("Blood pressure pill: One tablet with breakfast.");
-    expect(text).not.toContain("Water the plants");
-    expect(text).not.toContain("Old pill");
-  });
-
-  it("says so when there are none", () => {
-    expect(formatMedicationNotes([])).toMatch(/not added any medication notes/);
   });
 });
 

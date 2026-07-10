@@ -39,7 +39,8 @@
         }
       ],
       "@livekit/react-native-expo-plugin",
-      "expo-notifications"
+      "expo-notifications",
+      "@react-native-community/datetimepicker"
     ],
     "ios": {
       "supportsTablet": false,

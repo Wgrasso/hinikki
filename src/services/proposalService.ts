@@ -24,7 +24,7 @@ const PROPOSAL_COLUMNS =
   "id, older_adult_id, proposal_type, target_id, payload, source_quote, agent_note, status, decline_reason, review_note, reviewed_by_admin_id, reviewed_at, created_at";
 
 const QUEUE_KEY = "hinikki.proposal_queue";
-const REMINDER_TYPES = ["routine", "medication", "appointment", "hydration", "visit"];
+const REMINDER_TYPES = ["routine", "appointment", "hydration", "visit"];
 const LANGUAGES = ["en", "nl", "nl-informal"];
 
 // Client-generated ids (plan §4.2): the retry queue, the recap's ref_ids, and the server
