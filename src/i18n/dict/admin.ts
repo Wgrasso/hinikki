@@ -81,6 +81,8 @@ export const admin = {
     "adminSchedule.confirmed": "Confirmed {time}",
     "adminSchedule.pastCountOne": "{title}, {count} item",
     "adminSchedule.pastCountMany": "{title}, {count} items",
+    "adminSchedule.noEventsDay": "Nothing planned this day.",
+    "adminSchedule.noRemindersDay": "No reminders this day.",
 
     // Safety
     "adminSafety.title": "Safety",
@@ -103,6 +105,9 @@ export const admin = {
     "adminSafety.alertEmergency": "Emergency",
     "adminSafety.handled": "Marked as handled",
     "adminSafety.markHandled": "Mark as handled",
+    "adminSafety.setupTitle": "Finish safety setup",
+    "adminSafety.setupMissingPhone": "Add an emergency contact with a phone number, so Nikki can call someone.",
+    "adminSafety.setupMissingHome": "Add a home address in the About section, so Nikki can guide them home.",
     "adminSafety.editPlace": "Edit safe place",
     "adminSafety.addPlace": "Add a safe place",
     "adminSafety.editContact": "Edit emergency contact",
@@ -196,6 +201,8 @@ export const admin = {
     "adminSchedule.confirmed": "Bevestigd {time}",
     "adminSchedule.pastCountOne": "{title}, {count} item",
     "adminSchedule.pastCountMany": "{title}, {count} items",
+    "adminSchedule.noEventsDay": "Niets gepland op deze dag.",
+    "adminSchedule.noRemindersDay": "Geen herinneringen op deze dag.",
 
     // Safety
     "adminSafety.title": "Veiligheid",
@@ -218,6 +225,9 @@ export const admin = {
     "adminSafety.alertEmergency": "Noodgeval",
     "adminSafety.handled": "Als afgehandeld gemarkeerd",
     "adminSafety.markHandled": "Markeren als afgehandeld",
+    "adminSafety.setupTitle": "Veiligheid instellen afronden",
+    "adminSafety.setupMissingPhone": "Voeg een noodcontact met telefoonnummer toe, zodat Nikki iemand kan bellen.",
+    "adminSafety.setupMissingHome": "Voeg een thuisadres toe bij Over, zodat Nikki de weg naar huis kan wijzen.",
     "adminSafety.editPlace": "Vertrouwde plek bewerken",
     "adminSafety.addPlace": "Vertrouwde plek toevoegen",
     "adminSafety.editContact": "Noodcontact bewerken",

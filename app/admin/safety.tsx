@@ -17,7 +17,7 @@ import { createEmergencyContact, listEmergencyContacts, listEmergencyEvents, res
 import { getOlderAdult } from "../../src/services/profileService";
 import { openMapLocation } from "../../src/utils/openMaps";
 import { useT } from "../../src/i18n";
-import type { EmergencyContact, EmergencyEvent, LocationUpdate, SafeLocation } from "../../src/types/database";
+import type { EmergencyContact, EmergencyEvent, LocationUpdate, OlderAdultProfile, SafeLocation } from "../../src/types/database";
 
 type TFn = (key: string, params?: Record<string, string | number>) => string;
 
@@ -26,6 +26,7 @@ type SafetyData = {
   safe: SafeLocation[];
   contacts: EmergencyContact[];
   events: EmergencyEvent[];
+  adult: OlderAdultProfile | null;
 };
 
 export default function AdminSafety(): React.ReactElement {
@@ -39,13 +40,14 @@ export default function AdminSafety(): React.ReactElement {
   const [resolvingId, setResolvingId] = useState<string | null>(null);
 
   const { state, reload } = useAsync<SafetyData>(async () => {
-    const [latest, safe, contacts, events] = await Promise.all([
+    const [latest, safe, contacts, events, adult] = await Promise.all([
       getLatestLocation(id),
       listSafeLocations(id),
       listEmergencyContacts(id),
       listEmergencyEvents(id),
+      getOlderAdult(id),
     ]);
-    return { latest, safe, contacts, events };
+    return { latest, safe, contacts, events, adult };
   }, [id]);
 
   // Refetch on focus and on live changes; stale-while-refresh keeps it flicker-free.
@@ -78,6 +80,8 @@ export default function AdminSafety(): React.ReactElement {
       <StateView state={state} onRetry={reload} loadingLabel={t("adminSafety.loading")}>
         {(data) => (
           <Stack gap="lg">
+            <SetupBanner data={data} t={t} />
+
             <Card elevation="card">
               <Stack direction="row" gap="md" align="center">
                 <Icon name="location" color="primary" size={theme.iconSize.lg} />
@@ -258,6 +262,34 @@ export function useSafetySetupComplete(olderAdultId: string | null): boolean {
     };
   }, [olderAdultId]);
   return complete;
+}
+
+// The banner that explains the "!" on the tab: it lists exactly what's missing (someone to
+// call, a home to head for) so the caregiver knows what to fix. Renders nothing once both are set.
+function SetupBanner({ data, t }: { data: SafetyData; t: TFn }): React.ReactElement | null {
+  const hasContactWithPhone = data.contacts.some((c) => (c.phone ?? "").trim().length > 0);
+  const hasHome = (data.adult?.home_address ?? "").trim().length > 0;
+  if (hasContactWithPhone && hasHome) return null;
+
+  const missing: string[] = [];
+  if (!hasContactWithPhone) missing.push(t("adminSafety.setupMissingPhone"));
+  if (!hasHome) missing.push(t("adminSafety.setupMissingHome"));
+
+  return (
+    <Card elevation="card" style={{ borderLeftWidth: 4, borderLeftColor: theme.colors.accent }}>
+      <Stack direction="row" gap="md" align="center">
+        <Icon name="warning" color="accent" size={theme.iconSize.md} />
+        <Stack flex gap="xs">
+          <Text variant="bodyStrong">{t("adminSafety.setupTitle")}</Text>
+          {missing.map((line) => (
+            <Text key={line} variant="body" tone="textSecondary">
+              • {line}
+            </Text>
+          ))}
+        </Stack>
+      </Stack>
+    </Card>
+  );
 }
 
 function alertTitle(type: string, t: TFn): string {

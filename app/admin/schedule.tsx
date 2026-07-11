@@ -1,13 +1,14 @@
 // app/admin/schedule.tsx — calendar events and reminders, stacked as two sections of one screen.
 import React, { useCallback, useEffect, useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { useAppState } from "../../src/auth/appState";
-import { AppBar, Card, Icon, Screen, Stack, Text } from "../../src/primitives";
+import { AppBar, Card, Screen, Stack, Text } from "../../src/primitives";
 import ListRow from "../../src/components/shared/ListRow";
 import StateView from "../../src/components/shared/StateView";
 import ScheduleFormModal from "../../src/components/admin/ScheduleFormModal";
 import SectionHeader from "../../src/components/admin/SectionHeader";
+import DateNavigator from "../../src/components/admin/DateNavigator";
 import { useAsync } from "../../src/utils/useAsync";
 import { subscribeLive } from "../../src/features/sync/liveChannel";
 import { theme } from "../../src/theme";
@@ -25,32 +26,10 @@ type ScheduleData = {
   confirmations: Record<string, LatestConfirmation>;
 };
 
-const PAST_WINDOW_DAYS = 30;
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-function startOfDay(d: Date): number {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-}
-
-// Buckets items into "current" (today or later, plus anything undated) and "past" (before
-// today, within the review window) so a caregiver can still check recent history without the
-// list growing forever — anything older than the window is dropped, not archived.
-function splitByRecency<T>(items: T[], dateOf: (item: T) => string | null, now: Date): { current: T[]; past: T[] } {
-  const todayStart = startOfDay(now);
-  const cutoff = todayStart - PAST_WINDOW_DAYS * DAY_MS;
-  const current: T[] = [];
-  const past: T[] = [];
-  for (const item of items) {
-    const iso = dateOf(item);
-    if (!iso) {
-      current.push(item);
-      continue;
-    }
-    const t = new Date(iso).getTime();
-    if (t >= todayStart) current.push(item);
-    else if (t >= cutoff) past.push(item);
-  }
-  return { current, past: past.reverse() }; // most-recently-past first
+// True when an ISO timestamp falls on the same calendar day as `day` (local time).
+function sameLocalDay(iso: string, day: Date): boolean {
+  const d = new Date(iso);
+  return d.getFullYear() === day.getFullYear() && d.getMonth() === day.getMonth() && d.getDate() === day.getDate();
 }
 
 // "Confirmed 5:32 pm by voice" — the quiet line under reminders the elder has confirmed.
@@ -61,37 +40,6 @@ function confirmationLine(conf: LatestConfirmation, t: TFn): string {
   return t("adminSchedule.confirmed", { time });
 }
 
-// A collapsed-by-default "Past …" drawer nested under a section, so recent history is one
-// tap away without cluttering the default view.
-function PastSection({ title, count, children }: { title: string; count: number; children: React.ReactNode }): React.ReactElement | null {
-  const { t } = useT();
-  const [open, setOpen] = useState(false);
-  if (count === 0) return null;
-  return (
-    <View style={styles.past}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ expanded: open }}
-        accessibilityLabel={count === 1 ? t("adminSchedule.pastCountOne", { title, count }) : t("adminSchedule.pastCountMany", { title, count })}
-        onPress={() => setOpen((o) => !o)}
-        style={({ pressed }) => [styles.pastHeader, pressed ? styles.pressed : null]}
-      >
-        <Text variant="bodyStrong" tone="textSecondary">
-          {title} ({count})
-        </Text>
-        <View style={open ? styles.chevronOpen : undefined}>
-          <Icon name="chevron" color="textTertiary" size={theme.iconSize.sm} />
-        </View>
-      </Pressable>
-      {open ? (
-        <Stack gap="sm" style={styles.pastBody}>
-          {children}
-        </Stack>
-      ) : null}
-    </View>
-  );
-}
-
 export default function AdminSchedule(): React.ReactElement {
   const { t } = useT();
   const { olderAdultId } = useAppState();
@@ -99,6 +47,7 @@ export default function AdminSchedule(): React.ReactElement {
   const [addingKind, setAddingKind] = useState<"event" | "reminder" | null>(null);
   const [editEvent, setEditEvent] = useState<CalendarEvent | null>(null);
   const [editReminder, setEditReminder] = useState<Reminder | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
 
   const { state, reload } = useAsync<ScheduleData>(async () => {
     const [events, reminders, confirmations] = await Promise.all([
@@ -133,28 +82,29 @@ export default function AdminSchedule(): React.ReactElement {
     <Screen scroll>
       <StateView state={state} onRetry={reload} loadingLabel={t("adminSchedule.loading")}>
         {(data) => {
-          const now = new Date();
-          const { current: upcomingEvents, past: pastEvents } = splitByRecency(data.events, (e) => e.start_at, now);
-          // Recurring and "Anytime" reminders apply every day, so only one-off (no
-          // recurrence_rule) reminders ever move into the past drawer.
-          const oneOffReminders = data.reminders.filter((r) => !r.recurrence_rule && r.scheduled_at);
-          const standingReminders = data.reminders.filter((r) => r.recurrence_rule || !r.scheduled_at);
-          const { current: currentOneOff, past: pastReminders } = splitByRecency(oneOffReminders, (r) => r.scheduled_at, now);
-          const currentReminders = [...standingReminders, ...currentOneOff].sort((a, b) =>
-            (a.scheduled_at ?? "").localeCompare(b.scheduled_at ?? ""),
-          );
+          // Only what's planned for the CHOSEN day. Events match the day; reminders that
+          // recur or are "Anytime" apply every day, so they show whichever day you're on;
+          // one-off reminders only show on their day.
+          const dayEvents = data.events
+            .filter((e) => e.start_at && sameLocalDay(e.start_at, selectedDate))
+            .sort((a, b) => a.start_at.localeCompare(b.start_at));
+          const dayReminders = data.reminders
+            .filter((r) => r.recurrence_rule || !r.scheduled_at || sameLocalDay(r.scheduled_at, selectedDate))
+            .sort((a, b) => (a.scheduled_at ?? "").localeCompare(b.scheduled_at ?? ""));
 
           return (
             <Stack gap="lg">
               <AppBar title={t("adminSchedule.title")} subtitle={t("adminSchedule.subtitle")} onRefresh={reload} />
 
+              <DateNavigator date={selectedDate} onChange={setSelectedDate} />
+
               <View>
                 <SectionHeader title={t("adminSchedule.events")} actionLabel={t("adminSchedule.addEvent")} onAction={() => setAddingKind("event")} />
-                {upcomingEvents.length === 0 ? (
-                  <EmptyHint text={t("adminSchedule.noEvents")} />
+                {dayEvents.length === 0 ? (
+                  <EmptyHint text={t("adminSchedule.noEventsDay")} />
                 ) : (
                   <Stack gap="sm">
-                    {upcomingEvents.map((item) => (
+                    {dayEvents.map((item) => (
                       <ListRow
                         key={item.id}
                         title={item.user_friendly_summary ?? item.title}
@@ -165,35 +115,19 @@ export default function AdminSchedule(): React.ReactElement {
                     ))}
                   </Stack>
                 )}
-                <PastSection title={t("adminSchedule.pastEvents")} count={pastEvents.length}>
-                  {pastEvents.map((item) => (
-                    <ListRow
-                      key={item.id}
-                      title={item.user_friendly_summary ?? item.title}
-                      subtitle={formatTime(item.start_at)}
-                      onPress={() => setEditEvent(item)}
-                      accessibilityLabel={t("admin.editName", { name: item.title })}
-                    />
-                  ))}
-                </PastSection>
               </View>
 
               <View>
                 <SectionHeader title={t("admin.reminders")} actionLabel={t("adminSchedule.addReminder")} onAction={() => setAddingKind("reminder")} />
-                {currentReminders.length === 0 ? (
-                  <EmptyHint text={t("adminSchedule.noReminders")} />
+                {dayReminders.length === 0 ? (
+                  <EmptyHint text={t("adminSchedule.noRemindersDay")} />
                 ) : (
                   <Stack gap="sm">
-                    {currentReminders.map((item) => (
+                    {dayReminders.map((item) => (
                       <ReminderRow key={item.id} item={item} confirmations={data.confirmations} onPress={() => setEditReminder(item)} />
                     ))}
                   </Stack>
                 )}
-                <PastSection title={t("adminSchedule.pastReminders")} count={pastReminders.length}>
-                  {pastReminders.map((item) => (
-                    <ReminderRow key={item.id} item={item} confirmations={data.confirmations} onPress={() => setEditReminder(item)} />
-                  ))}
-                </PastSection>
               </View>
             </Stack>
           );
@@ -253,14 +187,4 @@ function EmptyHint({ text }: { text: string }): React.ReactElement {
 
 const styles = StyleSheet.create({
   confirmed: { marginTop: theme.spacing.xs, marginLeft: theme.spacing.lg },
-  past: { marginTop: theme.spacing.sm },
-  pastHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: theme.spacing.sm,
-  },
-  pastBody: { marginTop: theme.spacing.xs },
-  pressed: { opacity: 0.6 },
-  chevronOpen: { transform: [{ rotate: "90deg" }] },
 });
