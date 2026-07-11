@@ -10,11 +10,13 @@ import { useAsync } from "../../src/utils/useAsync";
 import { subscribeLive } from "../../src/features/sync/liveChannel";
 import { theme } from "../../src/theme";
 import { getPhotoUrl, listPeople } from "../../src/services/peopleService";
+import { useT } from "../../src/i18n";
 import type { FamilyPerson } from "../../src/types/database";
 
 type PeopleData = { people: FamilyPerson[]; photos: Record<string, string | null> };
 
 export default function PeopleScreen(): React.ReactElement {
+  const { t } = useT();
   const { olderAdultId } = useAppState();
   const id = olderAdultId ?? "";
   const router = useRouter();
@@ -41,22 +43,25 @@ export default function PeopleScreen(): React.ReactElement {
 
   function askNikki(person: FamilyPerson): void {
     setSelected(null);
-    router.push({ pathname: "/user/nikki", params: { ask: `Who is ${person.preferred_name ?? person.full_name}?` } });
+    router.push({
+      pathname: "/user/nikki",
+      params: { ask: t("people.whoIs", { name: person.preferred_name ?? person.full_name }) },
+    });
   }
 
   return (
     <Screen padded={false}>
       <View style={styles.bar}>
-        <AppBar title="My people" onRefresh={reload} />
+        <AppBar title={t("people.title")} onRefresh={reload} />
       </View>
       <StateView
         state={state}
         onRetry={reload}
-        loadingLabel="Finding your family…"
+        loadingLabel={t("people.loading")}
         isEmpty={(d) => d.people.length === 0}
         emptyIcon="people"
-        emptyTitle="No family added yet"
-        emptySubtitle="Your family can add familiar faces here, and then I can tell you all about them."
+        emptyTitle={t("people.emptyTitle")}
+        emptySubtitle={t("people.emptySubtitle")}
       >
         {(data) => (
           <FlatList
@@ -96,9 +101,13 @@ export default function PeopleScreen(): React.ReactElement {
                 <Stack gap="xs" align="center">
                   <Text variant="title">{selected.preferred_name ?? selected.full_name}</Text>
                   <Text variant="body" tone="textSecondary" center>
-                    {selected.relationship_label ? `Your ${selected.relationship_label.toLowerCase()}` : ""}
+                    {selected.relationship_label
+                      ? t("people.yourRelationship", { relationship: selected.relationship_label.toLowerCase() })
+                      : ""}
                     {selected.relationship_label && selected.location_description ? " · " : ""}
-                    {selected.location_description ? `lives ${selected.location_description}` : ""}
+                    {selected.location_description
+                      ? t("people.lives", { location: selected.location_description })
+                      : ""}
                   </Text>
                 </Stack>
                 {selected.visit_frequency ? (
@@ -106,10 +115,10 @@ export default function PeopleScreen(): React.ReactElement {
                     {selected.visit_frequency}.
                   </Text>
                 ) : null}
-                <Button label={`Ask Nikki about ${selected.preferred_name ?? selected.full_name}`} icon="chat" onPress={() => askNikki(selected)} />
-                <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={() => setSelected(null)} hitSlop={10}>
+                <Button label={t("people.askNikkiAbout", { name: selected.preferred_name ?? selected.full_name })} icon="chat" onPress={() => askNikki(selected)} />
+                <Pressable accessibilityRole="button" accessibilityLabel={t("people.close")} onPress={() => setSelected(null)} hitSlop={10}>
                   <Text variant="bodyStrong" tone="textSecondary">
-                    Close
+                    {t("people.close")}
                   </Text>
                 </Pressable>
               </Stack>

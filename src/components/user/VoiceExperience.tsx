@@ -3,6 +3,7 @@
 // VoiceExperience.native.tsx there and this file on web, keeping the SDK out of web bundles.
 import React from "react";
 import NikkiCard from "./NikkiCard";
+import { useT } from "../../i18n";
 
 export type VoiceExperienceProps = {
   olderAdultId: string;
@@ -11,7 +12,6 @@ export type VoiceExperienceProps = {
 };
 
 export default function VoiceExperience(_props: VoiceExperienceProps): React.ReactElement {
-  return (
-    <NikkiCard message="Talking with Nikki works in the HiNikki phone app. On this screen you can still see your day and your people." />
-  );
+  const { t } = useT();
+  return <NikkiCard message={t("voice.webOnly")} />;
 }

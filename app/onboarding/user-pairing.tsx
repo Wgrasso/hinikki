@@ -9,6 +9,7 @@ import { useAppState } from "../../src/auth/appState";
 import { AppBar, Button, Card, Field, Icon, Screen, Stack, Text } from "../../src/primitives";
 import { theme } from "../../src/theme";
 import { getGroupRoster, claimOlderAdult, RosterEntry } from "../../src/services/groupService";
+import { useT } from "../../src/i18n";
 
 type View = "enter" | "pick";
 
@@ -16,6 +17,7 @@ export default function UserPairing(): React.ReactElement {
   const router = useRouter();
   const { code: codeParam } = useLocalSearchParams<{ code?: string }>();
   const { completeSetupWithGroup } = useAppState();
+  const { t } = useT();
   const [view, setView] = useState<View>("enter");
   const [busy, setBusy] = useState(false);
   const [entered, setEntered] = useState("");
@@ -54,7 +56,7 @@ export default function UserPairing(): React.ReactElement {
     if (!r.ok) {
       setError(
         r.message.includes("already set up as a different person")
-          ? "This phone is already connected as someone else. Ask your family for help, or start fresh from the app settings."
+          ? t("onboarding.pairing.alreadyOther")
           : r.message,
       );
       return;
@@ -69,18 +71,18 @@ export default function UserPairing(): React.ReactElement {
   function confirmClaim(entry: RosterEntry): void {
     if (!entry.hasOwner) { void claimEntry(entry); return; }
     Alert.alert(
-      `Use Nikki as ${entry.displayName} on this phone?`,
-      "This name is set up on another device. Moving it here will disconnect that other device.",
+      t("onboarding.pairing.moveTitle", { name: entry.displayName }),
+      t("onboarding.pairing.moveBody"),
       [
-        { text: "Cancel", style: "cancel" },
-        { text: "Move to this phone", onPress: () => { void claimEntry(entry); } },
+        { text: t("common.cancel"), style: "cancel" },
+        { text: t("onboarding.pairing.moveConfirm"), onPress: () => { void claimEntry(entry); } },
       ],
     );
   }
 
   return (
     <Screen scroll>
-      <AppBar title="Connect with your family" onBack={() => (view === "enter" ? router.back() : setView("enter"))} />
+      <AppBar title={t("onboarding.pairing.title")} onBack={() => (view === "enter" ? router.back() : setView("enter"))} />
 
       {view === "enter" ? (
         <Stack gap="lg">
@@ -88,19 +90,19 @@ export default function UserPairing(): React.ReactElement {
             <Stack direction="row" gap="lg" align="center">
               <Icon name="people" color="primary" size={theme.iconSize.lg} />
               <Stack flex gap="xs">
-                <Text variant="heading">Enter the code your family gave you</Text>
-                <Text variant="body" tone="textSecondary">Your family already set things up for you.</Text>
+                <Text variant="heading">{t("onboarding.pairing.introTitle")}</Text>
+                <Text variant="body" tone="textSecondary">{t("onboarding.pairing.introBody")}</Text>
               </Stack>
             </Stack>
           </Card>
-          <Field label="Code from family" value={entered} onChangeText={setEntered} placeholder="8-character code" autoCapitalize="none" error={error} />
-          <Button label="Continue" icon="check" loading={busy} onPress={() => { void loadRoster(); }} />
+          <Field label={t("onboarding.pairing.codeLabel")} value={entered} onChangeText={setEntered} placeholder={t("onboarding.pairing.codePlaceholder")} autoCapitalize="none" error={error} />
+          <Button label={t("onboarding.pairing.continue")} icon="check" loading={busy} onPress={() => { void loadRoster(); }} />
         </Stack>
       ) : null}
 
       {view === "pick" ? (
         <Stack gap="lg">
-          <Text variant="body" tone="textSecondary">Tap your name to connect.</Text>
+          <Text variant="body" tone="textSecondary">{t("onboarding.pairing.pickName")}</Text>
           {roster.map((entry) => (
             <Card
               key={entry.id}
@@ -112,7 +114,7 @@ export default function UserPairing(): React.ReactElement {
                 <Stack flex gap="xs">
                   <Text variant="heading">{entry.displayName}</Text>
                   {entry.hasOwner ? (
-                    <Text variant="body" tone="textSecondary">On another device — tap to move it to this phone</Text>
+                    <Text variant="body" tone="textSecondary">{t("onboarding.pairing.onAnotherDevice")}</Text>
                   ) : null}
                 </Stack>
                 <Icon name="chevron" color="primary" size={theme.iconSize.md} />

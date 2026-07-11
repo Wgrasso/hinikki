@@ -12,7 +12,8 @@ import StateView from "../../src/components/shared/StateView";
 import { useAsync } from "../../src/utils/useAsync";
 import { subscribeLive } from "../../src/features/sync/liveChannel";
 import { theme } from "../../src/theme";
-import { greeting, formatTime } from "../../src/utils/format";
+import { greetingKey, formatTime } from "../../src/utils/format";
+import { useT } from "../../src/i18n";
 import { getNextEvent } from "../../src/services/calendarService";
 import { getWeather } from "../../src/services/weatherService";
 import { getOlderAdult } from "../../src/services/profileService";
@@ -26,6 +27,7 @@ type NikkiData = {
 };
 
 export default function NikkiScreen(): React.ReactElement {
+  const { t } = useT();
   const { olderAdultId } = useAppState();
   const id = olderAdultId ?? "";
   const params = useLocalSearchParams<{ ask?: string }>();
@@ -53,7 +55,7 @@ export default function NikkiScreen(): React.ReactElement {
   // captions auto-scrolling in the middle, the talk button pinned at the bottom.
   return (
     <Screen>
-      <StateView state={state} onRetry={reload} loadingLabel="Waking Nikki up…">
+      <StateView state={state} onRetry={reload} loadingLabel={t("nikki.wakingUp")}>
         {(data) => {
           const name = data.adult?.preferred_name ?? null;
           return (
@@ -79,10 +81,17 @@ function NikkiHeader({
   nextEvent: CalendarEvent | null;
   weather: Weather | null;
 }): React.ReactElement {
-  const intro = name ? `${greeting()}, ${name}.` : `${greeting()}.`;
+  const { t } = useT();
+  const greetingText = t(greetingKey());
+  const intro = name
+    ? t("nikki.intro.named", { greeting: greetingText, name })
+    : t("nikki.intro.plain", { greeting: greetingText });
   const eventLine = nextEvent
-    ? `Today at ${formatTime(nextEvent.start_at)}: ${nextEvent.user_friendly_summary ?? nextEvent.title}.`
-    : "You have a calm, open day today.";
+    ? t("nikki.eventAt", {
+        time: formatTime(nextEvent.start_at),
+        summary: nextEvent.user_friendly_summary ?? nextEvent.title,
+      })
+    : t("nikki.calmDay");
 
   return (
     <Stack gap="lg" style={styles.header}>

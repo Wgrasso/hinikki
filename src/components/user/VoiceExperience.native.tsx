@@ -8,6 +8,7 @@ import { ConversationProvider } from "@elevenlabs/react-native";
 import { theme } from "../../theme";
 import { Button, Stack, Text } from "../../primitives";
 import { HAS_VOICE } from "../../lib/constants";
+import { useT } from "../../i18n";
 import { useNikkiSession } from "../../features/voice/useNikkiSession";
 import VoiceOrb from "./VoiceOrb";
 import VoiceCaptions from "./VoiceCaptions";
@@ -23,10 +24,9 @@ export type VoiceExperienceProps = {
 };
 
 export default function VoiceExperience(props: VoiceExperienceProps): React.ReactElement {
+  const { t } = useT();
   if (!HAS_VOICE) {
-    return (
-      <NikkiCard message="Nikki's voice is not set up on this app yet. Your family can finish the setup, and then you can simply talk to me." />
-    );
+    return <NikkiCard message={t("voice.notSetUp")} />;
   }
   return (
     <ConversationProvider>
@@ -36,6 +36,7 @@ export default function VoiceExperience(props: VoiceExperienceProps): React.Reac
 }
 
 function VoiceSession({ olderAdultId, preferredName, initialAsk }: VoiceExperienceProps): React.ReactElement {
+  const { t } = useT();
   const session = useNikkiSession(olderAdultId, preferredName);
   const autoStartedRef = useRef(false);
 
@@ -71,14 +72,14 @@ function VoiceSession({ olderAdultId, preferredName, initialAsk }: VoiceExperien
       >
         {session.phase === "idle" ? (
           <NikkiCard
-            message={`I am Nikki, and I am here for you${preferredName ? `, ${preferredName}` : ""}. Tap the big button and just talk to me — about your day, your family, or the weather.`}
+            message={preferredName ? t("voice.idleNamed", { name: preferredName }) : t("voice.idlePlain")}
           />
         ) : null}
         {session.phase === "ended" ? (
           session.recap ? (
             <RecapCard summary={session.recap.summary} changes={session.recap.changes} />
           ) : (
-            <NikkiCard message="It was lovely talking with you. Tap the button whenever you would like to talk again." />
+            <NikkiCard message={t("voice.ended")} />
           )
         ) : null}
         {session.phase === "error" && session.errorMessage ? <NikkiCard message={session.errorMessage} /> : null}
@@ -91,16 +92,16 @@ function VoiceSession({ olderAdultId, preferredName, initialAsk }: VoiceExperien
           <Stack gap="lg" style={styles.liveArea}>
             <VoiceOrb
               state={session.isSpeaking ? "speaking" : "listening"}
-              label={session.isSpeaking ? "Nikki is speaking…" : "Nikki is listening — just talk"}
+              label={session.isSpeaking ? t("voice.speaking") : t("voice.listening")}
               onPress={() => undefined}
               disabled
             />
-            <Button label="Goodbye Nikki" variant="secondary" onPress={session.end} />
+            <Button label={t("voice.goodbye")} variant="secondary" onPress={session.end} />
           </Stack>
         ) : (
           <VoiceOrb
             state={busy ? "busy" : "idle"}
-            label={busy ? "Waking Nikki up…" : "Talk to Nikki"}
+            label={busy ? t("nikki.wakingUp") : t("voice.talk")}
             onPress={() => void session.begin()}
             disabled={busy}
           />

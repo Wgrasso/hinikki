@@ -18,6 +18,15 @@ export function greeting(now: Date = new Date()): string {
   return "Good evening";
 }
 
+// The i18n key for the time-of-day greeting; callers localize with t(greetingKey()).
+// Keys live in the shared common dict (greeting.morning/afternoon/evening).
+export function greetingKey(now: Date = new Date()): string {
+  const h = now.getHours();
+  if (h < 12) return "greeting.morning";
+  if (h < 18) return "greeting.afternoon";
+  return "greeting.evening";
+}
+
 export function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "?";

@@ -5,22 +5,24 @@ import React from "react";
 import { StyleSheet, View } from "react-native";
 import { theme } from "../../theme";
 import { Icon, Stack, Text } from "../../primitives";
+import { useT } from "../../i18n";
 import type { RecapChange } from "../../types/database";
 
-const KIND_LINES: Record<RecapChange["kind"], (label: string) => string> = {
-  proposed: (label) => `I made a note for your family: ${label}`,
-  confirmed: (label) => `You took care of: ${label}`,
-  called: (label) => `We ${label}`,
-  help: () => `I let your family know you wanted a hand`,
+const KIND_KEYS: Record<RecapChange["kind"], string> = {
+  proposed: "recap.proposed",
+  confirmed: "recap.confirmed",
+  called: "recap.called",
+  help: "recap.help",
 };
 
 export default function RecapCard({ summary, changes }: { summary: string; changes: RecapChange[] }): React.ReactElement {
+  const { t } = useT();
   return (
     <View style={styles.card}>
       <Stack gap="sm">
         <View style={styles.headerRow}>
           <Icon name="heart" color="primary" />
-          <Text variant="bodyStrong">Our chat today</Text>
+          <Text variant="bodyStrong">{t("recap.title")}</Text>
         </View>
         <Text variant="body" tone="textSecondary">
           {summary}
@@ -29,7 +31,7 @@ export default function RecapCard({ summary, changes }: { summary: string; chang
           <View key={`${c.kind}-${i}`} style={styles.changeRow}>
             <Icon name="check" color="success" size={theme.iconSize.sm} />
             <Text variant="body" tone="textSecondary" style={styles.changeText}>
-              {KIND_LINES[c.kind]?.(c.label) ?? c.label}
+              {KIND_KEYS[c.kind] ? t(KIND_KEYS[c.kind], { label: c.label }) : c.label}
             </Text>
           </View>
         ))}

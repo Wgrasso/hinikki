@@ -8,9 +8,11 @@ import { StyleSheet, View } from "react-native";
 import { theme } from "../../theme";
 import { Reveal, Text } from "../../primitives";
 import Avatar from "../shared/Avatar";
+import { useT } from "../../i18n";
 import type { NikkiCaption } from "../../features/voice/useNikkiSession";
 
 export default function VoiceCaptions({ captions }: { captions: NikkiCaption[] }): React.ReactElement | null {
+  const { t } = useT();
   if (captions.length === 0) return null;
   return (
     <View style={styles.wrap}>
@@ -22,10 +24,10 @@ export default function VoiceCaptions({ captions }: { captions: NikkiCaption[] }
               <View style={[styles.bubble, isUser ? styles.userBubble : styles.nikkiBubble]}>
                 {caption.photoUri ? (
                   // A face joins the words when someone is named, to help place them.
-                  <Avatar name="someone in your family" photoUri={caption.photoUri} size={44} />
+                  <Avatar name={t("caption.avatarLabel")} photoUri={caption.photoUri} size={44} />
                 ) : null}
                 <Text variant="overline" tone={isUser ? "onPrimary" : "textTertiary"}>
-                  {isUser ? "YOU" : "NIKKI"}
+                  {isUser ? t("caption.you") : t("caption.nikki")}
                 </Text>
                 <Text variant="body" tone={isUser ? "onPrimary" : "textPrimary"}>
                   {caption.text}

@@ -52,6 +52,7 @@ export const STORE_KEYS = {
   demoState: "hinikki.demo_state",
   weatherGeo: "hinikki.weather_geo",
   weatherSnapshot: "hinikki.weather_snapshot",
+  adminLanguage: "hinikki.admin_language",
 } as const;
 
 // Pairing code presentation: 6 digits shown as "### ###".

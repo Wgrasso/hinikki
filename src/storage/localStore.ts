@@ -84,3 +84,13 @@ export async function clearSession(): Promise<void> {
     // ignore
   }
 }
+
+// The admin's chosen APP language (UI text only; the older adult's app + agent language
+// come from their profile, not this). Default English.
+export async function getAdminLanguage(): Promise<"en" | "nl"> {
+  return (await readString(STORE_KEYS.adminLanguage)) === "nl" ? "nl" : "en";
+}
+
+export async function setAdminLanguage(lang: "en" | "nl"): Promise<void> {
+  await writeString(STORE_KEYS.adminLanguage, lang);
+}

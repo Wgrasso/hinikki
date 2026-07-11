@@ -13,8 +13,10 @@ import DevModeSwitch from "../../src/components/shared/DevModeSwitch";
 import { Icon } from "../../src/primitives";
 import { theme } from "../../src/theme";
 import { FEATURE_HELP_TAB } from "../../src/lib/constants";
+import { useT } from "../../src/i18n";
 
 export default function UserLayout(): React.ReactElement {
+  const { t } = useT();
   const { olderAdultId } = useAppState();
 
   useEffect(() => {
@@ -59,17 +61,17 @@ export default function UserLayout(): React.ReactElement {
     >
       <Tabs.Screen
         name="nikki"
-        options={{ title: "Nikki", tabBarIcon: ({ focused }) => <Icon name="chat" color={focused ? "primary" : "textTertiary"} /> }}
+        options={{ title: t("tab.nikki"), tabBarIcon: ({ focused }) => <Icon name="chat" color={focused ? "primary" : "textTertiary"} /> }}
       />
       <Tabs.Screen
         name="people"
-        options={{ title: "People", tabBarIcon: ({ focused }) => <Icon name="people" color={focused ? "primary" : "textTertiary"} /> }}
+        options={{ title: t("tab.people"), tabBarIcon: ({ focused }) => <Icon name="people" color={focused ? "primary" : "textTertiary"} /> }}
       />
       <Tabs.Screen
         name="help"
         options={{
           href: FEATURE_HELP_TAB ? undefined : null,
-          title: "Help",
+          title: t("tab.help"),
           tabBarIcon: ({ focused }) => <Icon name="help" color={focused ? "primary" : "textTertiary"} />,
         }}
       />

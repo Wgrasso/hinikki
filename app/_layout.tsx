@@ -9,6 +9,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { useFonts, Fraunces_600SemiBold } from "@expo-google-fonts/fraunces";
 import { Inter_400Regular, Inter_600SemiBold } from "@expo-google-fonts/inter";
 import { AppStateProvider } from "../src/auth/appState";
+import { LanguageProvider } from "../src/i18n";
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -25,8 +26,10 @@ export default function RootLayout(): React.ReactElement | null {
     <SafeAreaProvider>
       <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
         <AppStateProvider>
-          <StatusBar style="dark" />
-          <Stack screenOptions={{ headerShown: false, animation: "fade" }} />
+          <LanguageProvider>
+            <StatusBar style="dark" />
+            <Stack screenOptions={{ headerShown: false, animation: "fade" }} />
+          </LanguageProvider>
         </AppStateProvider>
       </View>
     </SafeAreaProvider>

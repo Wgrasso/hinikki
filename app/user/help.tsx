@@ -13,6 +13,7 @@ import { createEmergencyEvent, listEmergencyContacts } from "../../src/services/
 import { getOlderAdult } from "../../src/services/profileService";
 import { captureAndStoreLocation } from "../../src/features/safety/locationCapture";
 import { openMapDirections } from "../../src/utils/openMaps";
+import { useT } from "../../src/i18n";
 import type { EmergencyContact } from "../../src/types/database";
 
 // The Help screen leans on two things: who to call (emergency contacts) and where home is
@@ -20,6 +21,7 @@ import type { EmergencyContact } from "../../src/types/database";
 type HelpData = { contacts: EmergencyContact[]; homeAddress: string | null };
 
 export default function HelpScreen(): React.ReactElement {
+  const { t } = useT();
   const { olderAdultId } = useAppState();
   const id = olderAdultId ?? "";
   const [note, setNote] = useState<string | null>(null);
@@ -47,26 +49,26 @@ export default function HelpScreen(): React.ReactElement {
       void captureAndStoreLocation(id, true);
     }
     if (!contact?.phone) {
-      setNote("There is no family phone number saved yet. Your family can add one for you.");
+      setNote(t("help.noPhoneSaved"));
       return;
     }
-    setNote(`Calling ${contact.name}…`);
+    setNote(t("help.calling", { name: contact.name }));
     Linking.openURL(`tel:${contact.phone.replace(/\s/g, "")}`).catch(() =>
-      setNote("I could not start the call. Please try again."),
+      setNote(t("help.callFailed")),
     );
   }
 
   // Open the phone's own maps app with turn-by-turn directions to the saved home address.
   async function goHome(homeAddress: string): Promise<void> {
-    setNote("Opening the map to guide you home…");
+    setNote(t("help.openingMap"));
     const ok = await openMapDirections(homeAddress);
-    if (!ok) setNote("I could not open the map. Please try again.");
+    if (!ok) setNote(t("help.mapFailed"));
   }
 
   return (
     <Screen scroll>
-      <AppBar title="Help" subtitle="Tap any button. I am here to help." onRefresh={reload} />
-      <StateView state={state} onRetry={reload} loadingLabel="Getting help ready…">
+      <AppBar title={t("tab.help")} subtitle={t("help.subtitle")} onRefresh={reload} />
+      <StateView state={state} onRetry={reload} loadingLabel={t("help.loading")}>
         {({ contacts, homeAddress }) => {
           const hasPhone = contacts.some((c) => c.phone);
           const hasHome = Boolean(homeAddress && homeAddress.trim().length > 0);
@@ -74,22 +76,22 @@ export default function HelpScreen(): React.ReactElement {
             <Stack gap="md">
               <BigHelpButton
                 icon="location"
-                label="I am lost"
-                description={hasHome ? "I will show you the way home." : "Your family needs to add your home address first."}
+                label={t("help.lost.label")}
+                description={hasHome ? t("help.lost.desc") : t("help.lost.noHome")}
                 disabled={!hasHome}
                 onPress={() => goHome(homeAddress as string)}
               />
               <BigHelpButton
                 icon="phone"
-                label="Call family"
-                description="Phone someone who can help."
+                label={t("help.call.label")}
+                description={t("help.call.desc")}
                 disabled={!hasPhone}
                 onPress={() => callFirst(contacts, false)}
               />
               <BigHelpButton
                 icon="warning"
-                label="Emergency"
-                description="Call family right away and share where you are."
+                label={t("help.emergency.label")}
+                description={t("help.emergency.desc")}
                 tone="danger"
                 disabled={!hasPhone}
                 onPress={() => callFirst(contacts, true)}
@@ -97,7 +99,7 @@ export default function HelpScreen(): React.ReactElement {
               {!hasPhone ? (
                 <View style={styles.note}>
                   <Text variant="body" tone="textSecondary" center>
-                    Your family needs to add a phone number first.
+                    {t("help.noPhone")}
                   </Text>
                 </View>
               ) : null}
