@@ -27,10 +27,9 @@ export async function registerAndSaveToken(): Promise<void> {
     );
 }
 
-// Fan one proposal notification out to every active admin device. Fire-and-forget:
-// failures ride the in-app badge instead (plan §4.5). Returns true if anything was sent,
-// so the caller can maintain its one-push-per-conversation cap.
-export async function notifyAdminsOfProposal(): Promise<boolean> {
+// Send a push to every active admin device (RLS returns own + active-admin tokens; we drop
+// our own). Fire-and-forget; failures fall back to the in-app surfaces.
+async function sendToAdmins(title: string, body: string): Promise<boolean> {
   if (!supabase) return false;
   try {
     const ownProfile = await myProfileId();
@@ -40,11 +39,34 @@ export async function notifyAdminsOfProposal(): Promise<boolean> {
       .filter((t) => t.profile_id !== ownProfile)
       .map((t) => t.expo_push_token as string);
     if (tokens.length === 0) return false;
-    await Promise.all(tokens.map((t) => sendPush(t, PUSH_TITLE, PROPOSAL_BODY).catch(() => undefined)));
+    await Promise.all(tokens.map((t) => sendPush(t, title, body).catch(() => undefined)));
     return true;
   } catch {
     return false;
   }
+}
+
+// A proposal landed — quiet, no elder name or content on the lock screen (plan §4.5).
+export async function notifyAdminsOfProposal(): Promise<boolean> {
+  return sendToAdmins(PUSH_TITLE, PROPOSAL_BODY);
+}
+
+// An EMERGENCY was triggered — urgency beats lock-screen privacy here: the family must know
+// it's their person and act. Includes the name when we can resolve it.
+export async function notifyAdminsOfEmergency(olderAdultId: string): Promise<boolean> {
+  if (!supabase) return false;
+  let name = "your family member";
+  try {
+    const { data } = await supabase
+      .from("older_adult_profiles")
+      .select("preferred_name, display_name")
+      .eq("id", olderAdultId)
+      .maybeSingle();
+    name = (data?.preferred_name as string) ?? (data?.display_name as string) ?? name;
+  } catch {
+    // fall back to the generic name
+  }
+  return sendToAdmins("🚨 HiNikki — help needed", `${name} needs help right now. Open HiNikki.`);
 }
 
 async function myProfileId(): Promise<string | null> {

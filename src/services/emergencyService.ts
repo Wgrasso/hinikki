@@ -1,4 +1,5 @@
 // src/services/emergencyService.ts — emergency contacts + the lost/distress event log.
+import { notifyAdminsOfEmergency } from "./pushService";
 import { supabase } from "../lib/supabase";
 import { getDemoState, mutateDemo, newId } from "../data/demoDb";
 import type { EmergencyContact, EmergencyEvent } from "../types/database";
@@ -87,6 +88,9 @@ export async function createEmergencyEvent(
     .select("id, older_adult_id, event_type, user_message, detected_urgency, status, notified_admins, created_at")
     .single();
   if (error) throw new Error(error.message);
+  // Push the family right away — an emergency must reach them even with the app closed,
+  // unlike the in-app-only alert banner. Fire-and-forget so it never blocks the call flow.
+  void notifyAdminsOfEmergency(olderAdultId).catch(() => undefined);
   return data as EmergencyEvent;
 }
 

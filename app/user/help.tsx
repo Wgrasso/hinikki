@@ -67,12 +67,6 @@ export default function HelpScreen(): React.ReactElement {
               onPress={() => callFirst(contacts, false)}
             />
             <BigHelpButton
-              icon="help"
-              label="I need help"
-              description="Tell Nikki what is wrong."
-              onPress={() => router.push({ pathname: "/user/nikki", params: { ask: "I need help" } })}
-            />
-            <BigHelpButton
               icon="warning"
               label="Emergency"
               description="Call family right away and share where you are."
