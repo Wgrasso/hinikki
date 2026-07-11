@@ -49,16 +49,20 @@ export default function NikkiScreen(): React.ReactElement {
     return subscribeLive(id, () => reload());
   }, [id, reload]);
 
+  // No page scroll here on purpose: the voice screen is a fixed column — header on top,
+  // captions auto-scrolling in the middle, the talk button pinned at the bottom.
   return (
-    <Screen scroll>
+    <Screen>
       <StateView state={state} onRetry={reload} loadingLabel="Waking Nikki up…">
         {(data) => {
           const name = data.adult?.preferred_name ?? null;
           return (
-            <Stack gap="lg">
+            <View style={styles.column}>
               <NikkiHeader name={name} nextEvent={data.nextEvent} weather={data.weather} />
-              <VoiceExperience olderAdultId={id} preferredName={name} initialAsk={initialAsk} />
-            </Stack>
+              <View style={styles.voice}>
+                <VoiceExperience olderAdultId={id} preferredName={name} initialAsk={initialAsk} />
+              </View>
+            </View>
           );
         }}
       </StateView>
@@ -104,6 +108,8 @@ function NikkiHeader({
 }
 
 const styles = StyleSheet.create({
+  column: { flex: 1 },
+  voice: { flex: 1, marginTop: theme.spacing.lg },
   header: { paddingTop: theme.spacing.md },
   pill: {
     flexDirection: "row",

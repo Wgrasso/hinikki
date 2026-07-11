@@ -3,7 +3,7 @@
 // purpose — leaving the Nikki tab says goodbye (predictable for the user, and live agent minutes
 // are billed). Metro picks VoiceExperience.tsx on web, so the SDK import below never reaches web.
 import React, { useEffect, useRef } from "react";
-import { StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { ConversationProvider } from "@elevenlabs/react-native";
 import { theme } from "../../theme";
 import { Button, Stack, Text } from "../../primitives";
@@ -54,23 +54,37 @@ function VoiceSession({ olderAdultId, preferredName, initialAsk }: VoiceExperien
   const live = session.phase === "live";
   const busy = session.phase === "preparing" || session.phase === "connecting";
 
-  return (
-    <Stack gap="xl" style={styles.wrap}>
-      {session.phase === "idle" ? (
-        <NikkiCard
-          message={`I am Nikki, and I am here for you${preferredName ? `, ${preferredName}` : ""}. Tap the big button and just talk to me — about your day, your family, or the weather.`}
-        />
-      ) : null}
-      {session.phase === "ended" ? (
-        session.recap ? (
-          <RecapCard summary={session.recap.summary} changes={session.recap.changes} />
-        ) : (
-          <NikkiCard message="It was lovely talking with you. Tap the button whenever you would like to talk again." />
-        )
-      ) : null}
-      {session.phase === "error" && session.errorMessage ? <NikkiCard message={session.errorMessage} /> : null}
+  // Auto-scroll the transcript so the newest line is always visible and older lines rise
+  // out of the top — the orb below stays pinned and never drifts off-screen.
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollToEnd = (): void => scrollRef.current?.scrollToEnd({ animated: true });
 
-      <VoiceCaptions captions={session.captions} />
+  return (
+    <View style={styles.column}>
+      <ScrollView
+        ref={scrollRef}
+        style={styles.transcript}
+        contentContainerStyle={styles.transcriptContent}
+        showsVerticalScrollIndicator={false}
+        onContentSizeChange={scrollToEnd}
+        keyboardShouldPersistTaps="handled"
+      >
+        {session.phase === "idle" ? (
+          <NikkiCard
+            message={`I am Nikki, and I am here for you${preferredName ? `, ${preferredName}` : ""}. Tap the big button and just talk to me — about your day, your family, or the weather.`}
+          />
+        ) : null}
+        {session.phase === "ended" ? (
+          session.recap ? (
+            <RecapCard summary={session.recap.summary} changes={session.recap.changes} />
+          ) : (
+            <NikkiCard message="It was lovely talking with you. Tap the button whenever you would like to talk again." />
+          )
+        ) : null}
+        {session.phase === "error" && session.errorMessage ? <NikkiCard message={session.errorMessage} /> : null}
+
+        <VoiceCaptions captions={session.captions} />
+      </ScrollView>
 
       <View style={styles.orbArea}>
         {live ? (
@@ -92,12 +106,14 @@ function VoiceSession({ olderAdultId, preferredName, initialAsk }: VoiceExperien
           />
         )}
       </View>
-    </Stack>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { paddingTop: theme.spacing.lg },
-  orbArea: { alignItems: "center", paddingVertical: theme.spacing.xl },
+  column: { flex: 1 },
+  transcript: { flex: 1 },
+  transcriptContent: { gap: theme.spacing.md, paddingTop: theme.spacing.sm, paddingBottom: theme.spacing.lg },
+  orbArea: { alignItems: "center", paddingTop: theme.spacing.lg, paddingBottom: theme.spacing.md },
   liveArea: { alignItems: "center", alignSelf: "stretch" },
 });
