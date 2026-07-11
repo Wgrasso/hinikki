@@ -170,7 +170,7 @@ export default function AdminDashboard(): React.ReactElement {
                       {t("adminDash.lastLocation")}
                     </Text>
                     <Text variant="bodyStrong">
-                      {data.latest ? t("admin.seen", { time: relativeTimeLabel(data.latest.created_at) }) : t("admin.notShared")}
+                      {data.latest ? t("admin.seen", { time: relativeTimeLabel(data.latest.created_at, undefined, t) }) : t("admin.notShared")}
                     </Text>
                   </Stack>
                 </Stack>
@@ -191,7 +191,7 @@ export default function AdminDashboard(): React.ReactElement {
                     <Card key={recap.id} bordered elevation="none">
                       <Stack gap="sm">
                         <Text variant="caption" tone="textTertiary">
-                          {relativeTimeLabel(recap.created_at)}
+                          {relativeTimeLabel(recap.created_at, undefined, t)}
                         </Text>
                         <Text variant="body">{recapSummary(recap) ?? t("adminDash.conversationFallback")}</Text>
                         {recapChanges(recap).length > 0 ? (

@@ -187,9 +187,11 @@ export default function ProposalsSection({ proposals, onChanged }: Props): React
             <Stack gap="md">
               <Stack direction="row" gap="sm" align="center">
                 <Icon name="warning" color="danger" size={theme.iconSize.sm} />
-                <Text variant="caption" tone="danger">
-                  {t("review.failedTitle")}
-                </Text>
+                <Stack flex>
+                  <Text variant="caption" tone="danger">
+                    {t("review.failedTitle")}
+                  </Text>
+                </Stack>
               </Stack>
               <Text variant="bodyStrong">{proposalSummary(proposal, t)}</Text>
               {proposal.proposal_type === "new_person" ? (
@@ -216,9 +218,11 @@ export default function ProposalsSection({ proposals, onChanged }: Props): React
             <Stack gap="md">
               <Stack direction="row" gap="sm" align="center">
                 <Icon name="sparkle" color="accent" size={theme.iconSize.sm} />
-                <Text variant="caption" tone="textSecondary">
-                  {t("review.heardCaption")}
-                </Text>
+                <Stack flex>
+                  <Text variant="caption" tone="textSecondary">
+                    {t("review.heardCaption")}
+                  </Text>
+                </Stack>
               </Stack>
               {proposal.source_quote ? (
                 <Text variant="caption" tone="textSecondary" style={styles.quote}>

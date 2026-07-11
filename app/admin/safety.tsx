@@ -85,7 +85,7 @@ export default function AdminSafety(): React.ReactElement {
                   <Text variant="overline" tone="textSecondary">
                     {t("adminSafety.currentLocation")}
                   </Text>
-                  <Text variant="bodyStrong">{data.latest ? t("admin.seen", { time: relativeTimeLabel(data.latest.created_at) }) : t("admin.notShared")}</Text>
+                  <Text variant="bodyStrong">{data.latest ? t("admin.seen", { time: relativeTimeLabel(data.latest.created_at, undefined, t) }) : t("admin.notShared")}</Text>
                   {data.latest ? (
                     <Pressable
                       onPress={() => void openMapLocation(data.latest!.latitude, data.latest!.longitude, t("adminSafety.lastKnownLocation"))}
@@ -151,7 +151,7 @@ export default function AdminSafety(): React.ReactElement {
                           <Stack flex gap="xs">
                             <Text variant="bodyStrong">{alertTitle(e.event_type, t)}</Text>
                             <Text variant="caption" tone="textSecondary">
-                              {e.detected_urgency} · {relativeTimeLabel(e.created_at)}
+                              {e.detected_urgency} · {relativeTimeLabel(e.created_at, undefined, t)}
                             </Text>
                           </Stack>
                         </Stack>
