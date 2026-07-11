@@ -2,7 +2,7 @@
 // ConversationProvider + the session hook + orb/captions. The session is scoped to this screen on
 // purpose — leaving the Nikki tab says goodbye (predictable for the user, and live agent minutes
 // are billed). Metro picks VoiceExperience.tsx on web, so the SDK import below never reaches web.
-import React, { useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { ConversationProvider } from "@elevenlabs/react-native";
 import { theme } from "../../theme";
@@ -25,27 +25,55 @@ export type VoiceExperienceProps = {
 
 export default function VoiceExperience(props: VoiceExperienceProps): React.ReactElement {
   const { t } = useT();
+  // Each conversation runs inside a FRESH ConversationProvider. The SDK starts/stops the native
+  // AudioSession per session, and reusing one provider across goodbye→restart leaves the mic
+  // capture stale — the second conversation would connect but hear nothing. Remounting on a new
+  // generation guarantees a clean room + audio session every time. begin()'s async preamble
+  // (mic check, token, variables) runs well after the old provider's teardown, so there's no
+  // start/stop race on the audio session.
+  const [generation, setGeneration] = useState(0);
+  const startFresh = useCallback(() => setGeneration((g) => g + 1), []);
+
   if (!HAS_VOICE) {
     return <NikkiCard message={t("voice.notSetUp")} />;
   }
   return (
-    <ConversationProvider>
-      <VoiceSession {...props} />
+    <ConversationProvider key={generation}>
+      <VoiceSession {...props} generation={generation} onRequestRestart={startFresh} />
     </ConversationProvider>
   );
 }
 
-function VoiceSession({ olderAdultId, preferredName, initialAsk }: VoiceExperienceProps): React.ReactElement {
+function VoiceSession({
+  olderAdultId,
+  preferredName,
+  initialAsk,
+  generation,
+  onRequestRestart,
+}: VoiceExperienceProps & { generation: number; onRequestRestart: () => void }): React.ReactElement {
   const { t } = useT();
   const session = useNikkiSession(olderAdultId, preferredName);
   const autoStartedRef = useRef(false);
 
+  // Auto-begin on mount when this is a restart (a fresh generation), or on first entry when a
+  // phrase was handed in (Help's "I am lost" / People's "Who is Emma?"). Runs once per mount.
   useEffect(() => {
-    if (initialAsk && !autoStartedRef.current && session.phase === "idle") {
+    if (autoStartedRef.current || session.phase !== "idle") return;
+    if (generation > 0) {
+      autoStartedRef.current = true;
+      void session.begin();
+    } else if (initialAsk) {
       autoStartedRef.current = true;
       void session.begin(initialAsk);
     }
-  }, [initialAsk, session]);
+  }, [generation, initialAsk, session]);
+
+  // "Talk" starts the first conversation of this mount; once one has ended, tapping asks the
+  // host for a brand-new provider (which auto-begins) rather than restarting the stale one.
+  const onTalk = useCallback((): void => {
+    if (session.phase === "ended" || session.phase === "error") onRequestRestart();
+    else void session.begin();
+  }, [session, onRequestRestart]);
 
   // End the session when the user leaves the screen — never leave a live call behind.
   const endRef = useRef(session.end);
@@ -102,7 +130,7 @@ function VoiceSession({ olderAdultId, preferredName, initialAsk }: VoiceExperien
           <VoiceOrb
             state={busy ? "busy" : "idle"}
             label={busy ? t("nikki.wakingUp") : t("voice.talk")}
-            onPress={() => void session.begin()}
+            onPress={onTalk}
             disabled={busy}
           />
         )}

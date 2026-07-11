@@ -27,6 +27,17 @@ export function greetingKey(now: Date = new Date()): string {
   return "greeting.evening";
 }
 
+// The voice model sometimes emits bracketed delivery cues — "[gentle]", "[warm]", "[pause]" —
+// that are meant for the speech engine, not to be read. Strip them (and tidy the leftover
+// spacing) before a line is shown to the elder or stored for continuity.
+export function stripStageDirections(text: string): string {
+  return text
+    .replace(/\[[^\]\n]*\]/g, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\s+([,.!?])/g, "$1")
+    .trim();
+}
+
 export function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "?";

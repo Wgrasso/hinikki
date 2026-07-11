@@ -5,8 +5,9 @@
 // The brain rides this seam (plan §2.6): the five client tools execute on-device, every
 // spoken turn is persisted for continuity, and the end-of-conversation recap surfaces here
 // for the closing card.
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useConversation } from "@elevenlabs/react-native";
+import { stripStageDirections } from "../../utils/format";
 import { getConversationToken } from "../../services/voiceSessionService";
 import { recordTurn } from "../../services/conversationService";
 import { flushProposalQueue } from "../../services/proposalService";
@@ -32,6 +33,10 @@ export type NikkiSession = {
   end: () => void;
 };
 
+// End the call after this long with no word from the elder, so a forgotten session doesn't
+// stay live (and billing) forever.
+const IDLE_TIMEOUT_MS = 2 * 60 * 1000;
+
 export function useNikkiSession(olderAdultId: string, preferredName: string | null): NikkiSession {
   const [phase, setPhase] = useState<NikkiSessionPhase>("idle");
   const [captions, setCaptions] = useState<NikkiCaption[]>([]);
@@ -41,6 +46,20 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
   const openingRef = useRef<string | null>(null);
   // Name→face lookup for the transcript, loaded once per session (best-effort).
   const photosRef = useRef<PersonPhoto[]>([]);
+
+  // Inactivity watchdog: armed on connect, reset on every USER turn, cleared on end.
+  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const endRef = useRef<() => void>(() => undefined);
+  const clearIdle = useCallback((): void => {
+    if (idleTimer.current) {
+      clearTimeout(idleTimer.current);
+      idleTimer.current = null;
+    }
+  }, []);
+  const armIdle = useCallback((): void => {
+    clearIdle();
+    idleTimer.current = setTimeout(() => endRef.current(), IDLE_TIMEOUT_MS);
+  }, [clearIdle]);
 
   // The five tools, bound to this older adult; onRecap feeds the closing card.
   // Per-CONVERSATION state (recap chips, push budget) lives inside and is reset in begin().
@@ -52,6 +71,7 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
   const conversation = useConversation({
     onConnect: () => {
       setPhase("live");
+      armIdle(); // start the quiet-timer as soon as we're live
       // A Help-screen "I am lost" / People "Who is Emma?" entry speaks for the user right away.
       if (openingRef.current) {
         conversation.sendUserMessage(openingRef.current);
@@ -59,6 +79,7 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
       }
     },
     onDisconnect: (details) => {
+      clearIdle();
       setPhase((current) => {
         if (details.reason === "error") {
           setErrorMessage("The connection was lost.");
@@ -82,17 +103,22 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
     },
     onMessage: ({ message, role }) => {
       const who: "user" | "nikki" = role === "agent" ? "nikki" : "user";
+      // The elder just spoke — reset the quiet-timer so an active chat is never cut off.
+      if (who === "user") armIdle();
+      // Drop the speech engine's bracketed cues ("[gentle]") before showing or storing.
+      const text = stripStageDirections(message);
+      if (!text) return; // nothing but a stage direction — no caption, no stored turn
       // Both sides persist for continuity ([RECENT] next session); a failed write never
       // interrupts the conversation.
-      void recordTurn(olderAdultId, who, message).catch(() => undefined);
+      void recordTurn(olderAdultId, who, text).catch(() => undefined);
       // Caption BOTH sides so the person sees their own words and Nikki's reply. Keep the
       // last few turns for a readable rolling transcript.
       captionSeq.current += 1;
       const id = captionSeq.current;
       // Every person named in the line (by either side) who has a photo on file gets their
       // face + name shown beside the words, so the elder can place them clearly.
-      const named = matchPersonPhotos(message, photosRef.current);
-      setCaptions((prev) => [...prev.slice(-5), { id, role: who, text: message, people: named.length ? named : undefined }]);
+      const named = matchPersonPhotos(text, photosRef.current);
+      setCaptions((prev) => [...prev.slice(-5), { id, role: who, text, people: named.length ? named : undefined }]);
     },
   });
 
@@ -101,6 +127,7 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
       setErrorMessage(null);
       setCaptions([]);
       setRecap(null);
+      clearIdle(); // no stale watchdog from a previous attempt
       photosRef.current = []; // fresh face lookup for THIS conversation
       toolSet.reset(); // fresh recap chips + push budget for THIS conversation
       setPhase("preparing");
@@ -146,12 +173,18 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
         setPhase("error");
       }
     },
-    [conversation, olderAdultId, preferredName, toolSet],
+    [conversation, olderAdultId, preferredName, toolSet, clearIdle],
   );
 
   const end = useCallback((): void => {
+    clearIdle();
     conversation.endSession();
-  }, [conversation]);
+  }, [conversation, clearIdle]);
+
+  // Keep the idle watchdog's "hang up" pointed at the latest end(), and stop the timer if the
+  // screen unmounts mid-call.
+  endRef.current = end;
+  useEffect(() => clearIdle, [clearIdle]);
 
   return {
     phase,

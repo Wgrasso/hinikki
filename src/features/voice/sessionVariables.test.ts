@@ -1,6 +1,6 @@
 // Tests for the pure dynamic-variable formatters — the personalization payload the ElevenLabs
 // agent receives. These run without the voice SDK (pure functions over row types).
-import { formatFamily, formatSchedule, formatWeather } from "./sessionVariables";
+import { formatFamily, formatSchedule, formatTimeGreeting, formatWeather } from "./sessionVariables";
 import type { CalendarEvent, FamilyPerson } from "../../types/database";
 import type { WeatherSnapshot } from "../../types/domain";
 
@@ -129,5 +129,21 @@ describe("formatWeather", () => {
     const text = formatWeather({ ...weather, highC: null, lowC: null, rainProbability: 0.05 });
     expect(text).not.toContain("ranges from");
     expect(text).not.toContain("chance of rain");
+  });
+});
+
+describe("formatTimeGreeting", () => {
+  it("varies with the hour, in English", () => {
+    expect(formatTimeGreeting("en", new Date(2026, 0, 1, 8, 0))).toBe("Good morning");
+    expect(formatTimeGreeting("en", new Date(2026, 0, 1, 14, 0))).toBe("Good afternoon");
+    expect(formatTimeGreeting("en", new Date(2026, 0, 1, 20, 0))).toBe("Good evening");
+  });
+  it("varies with the hour, in Dutch (both registers)", () => {
+    expect(formatTimeGreeting("nl", new Date(2026, 0, 1, 8, 0))).toBe("Goedemorgen");
+    expect(formatTimeGreeting("nl-informal", new Date(2026, 0, 1, 14, 0))).toBe("Goedemiddag");
+    expect(formatTimeGreeting("nl", new Date(2026, 0, 1, 20, 0))).toBe("Goedenavond");
+  });
+  it("defaults to English for an unknown language", () => {
+    expect(formatTimeGreeting(null, new Date(2026, 0, 1, 8, 0))).toBe("Good morning");
   });
 });

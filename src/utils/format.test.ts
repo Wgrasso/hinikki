@@ -1,4 +1,4 @@
-import { formatTime, greeting, initials, relativeTimeLabel } from "./format";
+import { formatTime, greeting, initials, relativeTimeLabel, stripStageDirections } from "./format";
 
 describe("formatTime", () => {
   it("formats on-the-hour and minutes with am/pm", () => {
@@ -33,5 +33,17 @@ describe("relativeTimeLabel", () => {
   it("describes recent times in plain words", () => {
     expect(relativeTimeLabel(new Date(2026, 0, 1, 11, 55, 0).toISOString(), now)).toBe("5 minutes ago");
     expect(relativeTimeLabel(null, now)).toBe("not yet shared");
+  });
+});
+
+describe("stripStageDirections", () => {
+  it("removes bracketed delivery cues and tidies spacing", () => {
+    expect(stripStageDirections("I'm here with you. [gentle] Take your time")).toBe("I'm here with you. Take your time");
+    expect(stripStageDirections("[warm]Good morning")).toBe("Good morning");
+    expect(stripStageDirections("Rest now [pause] , dear")).toBe("Rest now, dear");
+  });
+  it("leaves ordinary text untouched and empties a cue-only line", () => {
+    expect(stripStageDirections("Shall we call Anna?")).toBe("Shall we call Anna?");
+    expect(stripStageDirections("[gentle]")).toBe("");
   });
 });

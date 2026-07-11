@@ -162,6 +162,17 @@ export function formatHomeHint(homeAddress: string | null): string {
   return `in ${parts[parts.length - 1]}`;
 }
 
+// A time-of-day greeting in the elder's language, so Nikki opens with "Good afternoon" /
+// "Goedenavond" as appropriate instead of always "Good morning". Use it in the agent's
+// first-message preset as {{time_greeting}}.
+export function formatTimeGreeting(primaryLanguage: string | null | undefined, now: Date = new Date()): string {
+  const isDutch = primaryLanguage === "nl" || primaryLanguage === "nl-informal";
+  const h = now.getHours();
+  if (h < 12) return isDutch ? "Goedemorgen" : "Good morning";
+  if (h < 18) return isDutch ? "Goedemiddag" : "Good afternoon";
+  return isDutch ? "Goedenavond" : "Good evening";
+}
+
 export function languageSettings(primaryLanguage: string | null | undefined): {
   language_name: string;
   register: string;
@@ -210,6 +221,7 @@ export async function buildSessionVariables(
     // FR-2: preferred_name, else the display_name the family gave at household setup,
     // else the caller's value — "friend" only when nobody ever named them anywhere.
     preferred_name: profile?.preferred_name ?? profile?.display_name ?? preferredName ?? "friend",
+    time_greeting: formatTimeGreeting(profile?.primary_language),
     today_date: formatTodayDate(),
     local_time: formatTime(new Date().toISOString()),
     language_name,
