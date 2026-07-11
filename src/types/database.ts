@@ -152,6 +152,7 @@ export type ProposalType =
   | "reminder"
   | "profile_update"
   | "safe_location"
+  | "support_note"
   | "session_recap";
 export type ProposalStatus = "pending" | "approved" | "declined" | "applied" | "failed" | "fyi";
 export type DeclineReason = "already_known" | "not_true" | "family_prefers_not";

@@ -85,9 +85,39 @@ export async function saveSessionNote(olderAdultId: string, note: string): Promi
   if (error) throw new Error(error.message);
 }
 
+// Retention policy: raw verbatim voice turns are privacy-sensitive and would otherwise
+// accumulate forever. Delete this older adult's 'voice_turn' rows past the cutoff. Session
+// notes are durable continuity memory and are NEVER pruned. Date.now()/new Date() for the
+// cutoff is fine here (app runtime, unlike workflow scripts that must use a fixed clock).
+export async function pruneOldTurns(olderAdultId: string, olderThanDays = 30): Promise<void> {
+  const cutoff = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000).toISOString();
+  if (!supabase) {
+    // Demo: drop voice_turn entries older than the cutoff; best-effort.
+    try {
+      const key = DEMO_KEY_PREFIX + olderAdultId;
+      const rows = await demoRead(olderAdultId);
+      const kept = rows.filter((r) => !(r.intent === TURN_INTENT && r.created_at < cutoff));
+      if (kept.length !== rows.length) await AsyncStorage.setItem(key, JSON.stringify(kept));
+    } catch {
+      // best-effort; a failed prune is harmless
+    }
+    return;
+  }
+  const { error } = await supabase
+    .from("chat_interactions")
+    .delete()
+    .eq("older_adult_id", olderAdultId)
+    .eq("intent", TURN_INTENT)
+    .lt("created_at", cutoff);
+  if (error) throw new Error(error.message);
+}
+
 // Newest verbatim turns, oldest-first for rendering into context. NULL-safe intent
 // filter: `.neq` alone would also hide NULL-intent rows (three-valued logic).
 export async function listRecentTurns(olderAdultId: string, limit = 12): Promise<ConversationTurn[]> {
+  // Opportunistic self-cleanup: this runs at session start, so prune stale voice turns
+  // here without awaiting — the retention delete must never slow the context read.
+  pruneOldTurns(olderAdultId).catch(() => undefined);
   if (!supabase) {
     const rows = await demoRead(olderAdultId);
     return rows

@@ -20,6 +20,7 @@ import type {
   FamilyPerson,
   FamilyRelationship,
   PersonMemory,
+  Reminder,
 } from "../../types/database";
 import type { WeatherSnapshot } from "../../types/domain";
 
@@ -104,12 +105,32 @@ export function formatMemories(memories: PersonMemory[]): string {
     .join("\n");
 }
 
+// Learned observations about how best to help this elder (support notes, plan support_note).
+export function formatSupportGuidance(notes: string[]): string {
+  if (notes.length === 0) return "You are still getting to know them — be attentive and gentle.";
+  return notes.map((n) => `- ${n}`).join("\n");
+}
+
 export function formatNeverRaise(names: string[]): string {
   if (names.length === 0) return "None.";
   return `${names.join(", ")} — never bring these people up yourself; if they come up, listen warmly, ask nothing, store nothing.`;
 }
 
 // Continuity: Nikki's own private notes from recent conversations (plan FR-9).
+// Family-authored medication reminders, so Nikki can mention them at the right moment and
+// never gives medical advice beyond the family's exact wording.
+export function formatMedicationNotes(reminders: Reminder[]): string {
+  const meds = reminders.filter((r) => r.active && r.reminder_type === "medication");
+  if (meds.length === 0) return "The family has not added any medication notes.";
+  return meds
+    .map((r) => {
+      const detail = r.instructions ?? r.nikki_message;
+      const rhythm = r.recurrence_rule ? ` (${r.recurrence_rule})` : "";
+      return `- ${r.title}${r.scheduled_at ? ` at ${formatTime(r.scheduled_at)}` : ""}${rhythm}${detail ? `: ${detail}` : ""}`;
+    })
+    .join("\n");
+}
+
 export function formatRecent(notes: string[]): string {
   if (notes.length === 0) return "This is one of your first conversations together.";
   return notes.map((n, i) => `- ${i === 0 ? "Last time" : "Before that"}: ${n}`).join("\n");
@@ -215,10 +236,12 @@ export async function buildSessionVariables(
     family_connections: formatConnections(people, relationships),
     memories_summary: formatMemories(selectMemories(tiers?.memories ?? [], tiers?.todayEvents ?? [], people)),
     never_raise: formatNeverRaise(neverRaiseNames(people)),
+    support_guidance: formatSupportGuidance(tiers?.supportNotes ?? []),
     recent_summary: formatRecent(tiers?.sessionNotes ?? []),
     recent_turns: formatRecentTurns(tiers?.recentTurns ?? []),
     pending_family_items: formatPendingItems(tiers?.digestTopics ?? []),
     weather_today: weatherText,
+    medication_notes: formatMedicationNotes(tiers?.reminders ?? []),
     // Names only — enough for "I can let Anna know", no phone numbers off-device.
     emergency_contact_names: (tiers?.emergencyContactNames ?? []).join(", ") || "their family",
   };

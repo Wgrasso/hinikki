@@ -73,7 +73,8 @@ function naturalKey(
     case "event":
     case "reminder":
     case "fact":
-      return low(payload.title) ?? low(payload.content);
+    case "support_note":
+      return low(payload.content) ?? low(payload.title);
     case "safe_location":
       return low(payload.name);
     default:
@@ -213,6 +214,8 @@ export async function listDigestTopics(olderAdultId: string): Promise<string[]> 
           return "a detail about them";
         case "safe_location":
           return "a familiar place";
+        case "support_note":
+          return "a note on how to help them";
         default:
           return null;
       }
@@ -256,6 +259,7 @@ const APPLIABLE: Record<Exclude<ProposalType, "session_recap">, true> = {
   reminder: true,
   profile_update: true,
   safe_location: true,
+  support_note: true,
 };
 
 function str(v: unknown): string | null {
@@ -442,6 +446,22 @@ export async function approveAndApply(
         const name = str(payload.name);
         if (!name) throw new Error("a name is required");
         await createSafeLocation(oa, { name, address: str(payload.address) });
+        break;
+      }
+      case "support_note": {
+        // A learned observation about HOW to help this person (how much to explain,
+        // what reassures them, who to reintroduce). Lands in ai_memory_items so it can
+        // be read back into {{support_guidance}} next session.
+        if (!supabase) throw new Error("not available in demo mode");
+        const content = str(payload.content) ?? str(payload.title);
+        if (!content) throw new Error("nothing to save");
+        const { error } = await supabase.from("ai_memory_items").insert({
+          older_adult_id: oa,
+          memory_type: "support_note",
+          title: str(payload.title) ?? "How to help",
+          content,
+        });
+        if (error) throw new Error(error.message);
         break;
       }
     }

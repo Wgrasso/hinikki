@@ -31,7 +31,7 @@ export const HAS_VOICE = HAS_SUPABASE && Platform.OS !== "web";
 // the admin "Safety" tab, and the location surfaces that only make sense alongside it (dashboard's
 // "Last known location" card, Settings' "Location sharing" info card). Routes/components stay in
 // the codebase either way — this only hides them from the UI.
-export const FEATURE_HELP_TAB = false;
+export const FEATURE_HELP_TAB = true;
 
 // Willem is actively developing the admin dashboard's "send a test push notification" tool;
 // keep it out of the first beta build until it's ready to ship. This does not affect the

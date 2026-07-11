@@ -4,6 +4,7 @@ import React from "react";
 import { Tabs } from "expo-router";
 import { useAppState } from "../../src/auth/appState";
 import { usePendingProposalCount } from "../../src/components/admin/ProposalsSection";
+import { useSafetySetupComplete } from "./safety";
 import DevModeSwitch from "../../src/components/shared/DevModeSwitch";
 import { Icon } from "../../src/primitives";
 import { theme } from "../../src/theme";
@@ -12,6 +13,8 @@ import { FEATURE_HELP_TAB } from "../../src/lib/constants";
 export default function AdminLayout(): React.ReactElement {
   const { olderAdultId } = useAppState();
   const pendingCount = usePendingProposalCount(olderAdultId);
+  // Nudge the family to finish safety setup (someone to call + a home address) with a "!" badge.
+  const safetySetupComplete = useSafetySetupComplete(olderAdultId);
   return (
     <>
     <Tabs
@@ -51,6 +54,13 @@ export default function AdminLayout(): React.ReactElement {
           href: FEATURE_HELP_TAB ? undefined : null,
           title: "Safety",
           tabBarIcon: ({ focused }) => <Icon name="shield" color={focused ? "primary" : "textTertiary"} />,
+          tabBarBadge: olderAdultId && !safetySetupComplete ? "!" : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: theme.colors.accent,
+            color: theme.colors.onPrimary,
+            fontFamily: theme.text.caption.fontFamily,
+            fontSize: 12,
+          },
         }}
       />
       <Tabs.Screen name="settings" options={{ title: "Settings", tabBarIcon: ({ focused }) => <Icon name="settings" color={focused ? "primary" : "textTertiary"} /> }} />

@@ -10,10 +10,11 @@ type BigHelpButtonProps = {
   label: string;
   description: string;
   tone?: "primary" | "danger";
+  disabled?: boolean;
   onPress: () => void;
 };
 
-export default function BigHelpButton({ icon, label, description, tone = "primary", onPress }: BigHelpButtonProps): React.ReactElement {
+export default function BigHelpButton({ icon, label, description, tone = "primary", disabled = false, onPress }: BigHelpButtonProps): React.ReactElement {
   const isDanger = tone === "danger";
   const bg = isDanger ? theme.colors.danger : theme.colors.surface;
   const labelTone = isDanger ? "onPrimary" : "textPrimary";
@@ -23,8 +24,16 @@ export default function BigHelpButton({ icon, label, description, tone = "primar
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      onPress={onPress}
-      style={({ pressed }) => [styles.row, { backgroundColor: bg }, theme.shadows.card, pressed ? styles.pressed : null]}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={disabled ? undefined : onPress}
+      style={({ pressed }) => [
+        styles.row,
+        { backgroundColor: bg },
+        theme.shadows.card,
+        pressed ? styles.pressed : null,
+        disabled ? styles.disabled : null,
+      ]}
     >
       <View style={[styles.iconWrap, { backgroundColor: iconBg }]}>
         <Icon name={icon} color={isDanger ? "danger" : "primary"} size={theme.iconSize.lg} />
@@ -59,4 +68,5 @@ const styles = StyleSheet.create({
   },
   text: { flex: 1, gap: theme.spacing.xs },
   pressed: { opacity: 0.9 },
+  disabled: { opacity: 0.4 },
 });

@@ -10,7 +10,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { listTodayEvents, listUpcomingEvents } from "../../services/calendarService";
 import { listRecentTurns, listSessionNotes, type ConversationTurn } from "../../services/conversationService";
 import { listEmergencyContacts } from "../../services/emergencyService";
-import { listMemories } from "../../services/memoryService";
+import { listMemories, listSupportNotes } from "../../services/memoryService";
 import { listPeople, listRelationships } from "../../services/peopleService";
 import { getOlderAdult } from "../../services/profileService";
 import { listDigestTopics } from "../../services/proposalService";
@@ -34,6 +34,7 @@ export type SnapshotTiers = {
   people: FamilyPerson[];
   relationships: FamilyRelationship[];
   memories: PersonMemory[];
+  supportNotes: string[];
   emergencyContactNames: string[];
   weatherAdvice: string | null;
   sessionNotes: string[];
@@ -59,6 +60,8 @@ const TABLE_TO_TIER: Partial<Record<Exclude<LiveTable, "*">, TierName>> = {
   family_people: "world",
   family_relationships: "world",
   person_memories: "world",
+  // ai_memory_items (support_note) also lives in the world tier, but has no realtime wiring —
+  // the 60-min world TTL rebuilds it, which is fine for these slow-changing observations.
   nikki_proposals: "continuity",
 };
 
@@ -80,6 +83,7 @@ function emptyTiers(): SnapshotTiers {
     people: [],
     relationships: [],
     memories: [],
+    supportNotes: [],
     emergencyContactNames: [],
     weatherAdvice: null,
     sessionNotes: [],
@@ -149,11 +153,13 @@ export async function getSnapshotTiers(olderAdultId: string): Promise<SnapshotTi
         listRelationships(olderAdultId).catch(() => entry!.tiers.relationships),
         listMemories(olderAdultId).catch(() => entry!.tiers.memories),
         listEmergencyContacts(olderAdultId).catch(() => [] as { name: string }[]),
-      ]).then(([people, relationships, memories, contacts]) => {
+        listSupportNotes(olderAdultId).catch(() => entry!.tiers.supportNotes.map((content) => ({ id: "", content }))),
+      ]).then(([people, relationships, memories, contacts, supportNotes]) => {
         entry!.tiers.people = people;
         entry!.tiers.relationships = relationships;
         entry!.tiers.memories = memories;
         entry!.tiers.emergencyContactNames = contacts.map((c) => c.name);
+        entry!.tiers.supportNotes = supportNotes.map((n) => n.content);
         entry!.builtAt.world = now;
         entry!.dirty.delete("world");
       }),

@@ -7,6 +7,7 @@ import { useAppState } from "../../src/auth/appState";
 import { AppBar, Button, Card, Icon, Screen, Stack, Text } from "../../src/primitives";
 import PairingCode from "../../src/components/shared/PairingCode";
 import AboutFormModal from "../../src/components/admin/AboutFormModal";
+import SupportNotesSection from "../../src/components/admin/SupportNotesSection";
 import { useAsync } from "../../src/utils/useAsync";
 import { subscribeLive } from "../../src/features/sync/liveChannel";
 import { theme } from "../../src/theme";
@@ -51,6 +52,8 @@ export default function AdminSettings(): React.ReactElement {
           actionLabel="Edit details"
           onAction={() => setEditingAbout(true)}
         />
+
+        {id ? <SupportNotesSection olderAdultId={id} elderName={elderName} /> : null}
 
         {FEATURE_HELP_TAB ? (
           <InfoCard

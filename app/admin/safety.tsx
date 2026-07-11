@@ -1,6 +1,6 @@
 // app/admin/safety.tsx — location, safe places, emergency contacts, and the alert log in one place.
 import React, { useCallback, useEffect, useState } from "react";
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { useAppState } from "../../src/auth/appState";
 import { AppBar, Button, Card, Icon, Screen, Stack, Text } from "../../src/primitives";
@@ -14,6 +14,8 @@ import { theme } from "../../src/theme";
 import { relativeTimeLabel } from "../../src/utils/format";
 import { createSafeLocation, getLatestLocation, listSafeLocations, updateSafeLocation } from "../../src/services/locationService";
 import { createEmergencyContact, listEmergencyContacts, listEmergencyEvents, resolveEmergencyEvent, updateEmergencyContact } from "../../src/services/emergencyService";
+import { getOlderAdult } from "../../src/services/profileService";
+import { openMapLocation } from "../../src/utils/openMaps";
 import type { EmergencyContact, EmergencyEvent, LocationUpdate, SafeLocation } from "../../src/types/database";
 
 type SafetyData = {
@@ -81,9 +83,21 @@ export default function AdminSafety(): React.ReactElement {
                   </Text>
                   <Text variant="bodyStrong">{data.latest ? `Seen ${relativeTimeLabel(data.latest.created_at)}` : "Not shared yet"}</Text>
                   {data.latest ? (
-                    <Text variant="caption" tone="textSecondary">
-                      {data.latest.latitude.toFixed(4)}, {data.latest.longitude.toFixed(4)}
-                    </Text>
+                    <Pressable
+                      onPress={() => void openMapLocation(data.latest!.latitude, data.latest!.longitude, "Last known location")}
+                      accessibilityRole="button"
+                      accessibilityLabel="Open last known location in Maps"
+                    >
+                      <Text variant="caption" tone="textSecondary">
+                        {data.latest.latitude.toFixed(4)}, {data.latest.longitude.toFixed(4)}
+                      </Text>
+                      <Stack direction="row" gap="xs" align="center">
+                        <Icon name="location" color="primary" size={theme.iconSize.sm} />
+                        <Text variant="caption" tone="primary">
+                          Open in Maps
+                        </Text>
+                      </Stack>
+                    </Pressable>
                   ) : null}
                 </Stack>
               </Stack>
@@ -208,6 +222,38 @@ export default function AdminSafety(): React.ReactElement {
       />
     </Screen>
   );
+}
+
+// Setup is "complete" once the family has given us someone to call and a home to head for:
+// at least one emergency contact with a phone, and a home address on the profile. Used to nudge
+// with a "!" badge on the Safety tab. Assumes complete until we know otherwise, so a slow or
+// failed read never shows a false nudge; a null id or any error simply leaves the badge off.
+export function useSafetySetupComplete(olderAdultId: string | null): boolean {
+  const [complete, setComplete] = useState(true);
+  useEffect(() => {
+    if (!olderAdultId) {
+      setComplete(true);
+      return;
+    }
+    let active = true;
+    const load = (): void => {
+      Promise.all([listEmergencyContacts(olderAdultId), getOlderAdult(olderAdultId)])
+        .then(([contacts, adult]) => {
+          if (!active) return;
+          const hasContactWithPhone = contacts.some((c) => (c.phone ?? "").trim().length > 0);
+          const hasHome = (adult?.home_address ?? "").trim().length > 0;
+          setComplete(hasContactWithPhone && hasHome);
+        })
+        .catch(() => undefined); // a missing badge must never crash the tab bar
+    };
+    load();
+    const unsubscribe = subscribeLive(olderAdultId, () => load());
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [olderAdultId]);
+  return complete;
 }
 
 function alertTitle(type: string): string {

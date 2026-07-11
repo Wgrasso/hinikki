@@ -70,3 +70,36 @@ export async function deleteMemory(id: string): Promise<void> {
   const { error } = await supabase.from("person_memories").delete().eq("id", id);
   if (error) throw new Error(error.message);
 }
+
+// Support notes: learned observations about how to help this elder, stored in ai_memory_items
+// (memory_type 'support_note'). Read here for the {{support_guidance}} session variable; also
+// managed from an admin screen. Demo mode has no store, so these degrade to empty / no-ops.
+export async function listSupportNotes(olderAdultId: string): Promise<{ id: string; content: string }[]> {
+  if (!supabase) {
+    return [];
+  }
+  const { data, error } = await supabase
+    .from("ai_memory_items")
+    .select("id, content")
+    .eq("older_adult_id", olderAdultId)
+    .eq("memory_type", "support_note")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as { id: string; content: string }[];
+}
+
+export async function updateSupportNote(id: string, content: string): Promise<void> {
+  if (!supabase) {
+    return;
+  }
+  const { error } = await supabase.from("ai_memory_items").update({ content }).eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteSupportNote(id: string): Promise<void> {
+  if (!supabase) {
+    return;
+  }
+  const { error } = await supabase.from("ai_memory_items").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
