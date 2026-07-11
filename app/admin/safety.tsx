@@ -1,6 +1,6 @@
 // app/admin/safety.tsx — location, safe places, emergency contacts, and the alert log in one place.
 import React, { useCallback, useEffect, useState } from "react";
-import { Pressable, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { useAppState } from "../../src/auth/appState";
 import { AppBar, Button, Card, Icon, Screen, Stack, Text } from "../../src/primitives";
@@ -14,10 +14,9 @@ import { theme } from "../../src/theme";
 import { relativeTimeLabel } from "../../src/utils/format";
 import { createSafeLocation, getLatestLocation, listSafeLocations, updateSafeLocation } from "../../src/services/locationService";
 import { createEmergencyContact, listEmergencyContacts, listEmergencyEvents, resolveEmergencyEvent, updateEmergencyContact } from "../../src/services/emergencyService";
-import { getOlderAdult } from "../../src/services/profileService";
 import { openMapLocation } from "../../src/utils/openMaps";
 import { useT } from "../../src/i18n";
-import type { EmergencyContact, EmergencyEvent, LocationUpdate, OlderAdultProfile, SafeLocation } from "../../src/types/database";
+import type { EmergencyContact, EmergencyEvent, LocationUpdate, SafeLocation } from "../../src/types/database";
 
 type TFn = (key: string, params?: Record<string, string | number>) => string;
 
@@ -26,7 +25,6 @@ type SafetyData = {
   safe: SafeLocation[];
   contacts: EmergencyContact[];
   events: EmergencyEvent[];
-  adult: OlderAdultProfile | null;
 };
 
 export default function AdminSafety(): React.ReactElement {
@@ -40,14 +38,13 @@ export default function AdminSafety(): React.ReactElement {
   const [resolvingId, setResolvingId] = useState<string | null>(null);
 
   const { state, reload } = useAsync<SafetyData>(async () => {
-    const [latest, safe, contacts, events, adult] = await Promise.all([
+    const [latest, safe, contacts, events] = await Promise.all([
       getLatestLocation(id),
       listSafeLocations(id),
       listEmergencyContacts(id),
       listEmergencyEvents(id),
-      getOlderAdult(id),
     ]);
-    return { latest, safe, contacts, events, adult };
+    return { latest, safe, contacts, events };
   }, [id]);
 
   // Refetch on focus and on live changes; stale-while-refresh keeps it flicker-free.
@@ -78,10 +75,11 @@ export default function AdminSafety(): React.ReactElement {
     <Screen scroll>
       <AppBar title={t("adminSafety.title")} subtitle={t("adminSafety.subtitle")} onRefresh={reload} />
       <StateView state={state} onRetry={reload} loadingLabel={t("adminSafety.loading")}>
-        {(data) => (
+        {(data) => {
+          const needsSafePlace = data.safe.length === 0;
+          const needsContact = !data.contacts.some((c) => (c.phone ?? "").trim().length > 0);
+          return (
           <Stack gap="lg">
-            <SetupBanner data={data} t={t} />
-
             <Card elevation="card">
               <Stack direction="row" gap="md" align="center">
                 <Icon name="location" color="primary" size={theme.iconSize.lg} />
@@ -112,29 +110,37 @@ export default function AdminSafety(): React.ReactElement {
             </Card>
 
             <View>
-              <SectionHeader title={t("adminSafety.safePlaces")} actionLabel={t("common.add")} onAction={() => setAddingPlace(true)} />
-              <Stack gap="sm">
-                {data.safe.length === 0 ? (
-                  <EmptyHint text={t("adminSafety.safePlacesEmpty")} />
-                ) : (
-                  data.safe.map((s) => (
-                    <ListRow key={s.id} title={s.name} subtitle={s.address ?? s.location_type ?? t("adminSafety.safePlaceFallback")} onPress={() => setEditPlace(s)} accessibilityLabel={t("admin.editName", { name: s.name })} />
-                  ))
-                )}
-              </Stack>
+              <SectionHeader title={t("adminSafety.safePlaces")} actionLabel={t("common.add")} onAction={() => setAddingPlace(true)} needsSetup={needsSafePlace} needsSetupLabel={t("adminSafety.needsSetup")} />
+              <View style={needsSafePlace ? styles.missingBox : undefined}>
+                <Stack gap="sm">
+                  {data.safe.length === 0 ? (
+                    <Text variant="body" tone="textSecondary">
+                      {t("adminSafety.safePlacesEmpty")}
+                    </Text>
+                  ) : (
+                    data.safe.map((s) => (
+                      <ListRow key={s.id} title={s.name} subtitle={s.address ?? s.location_type ?? t("adminSafety.safePlaceFallback")} onPress={() => setEditPlace(s)} accessibilityLabel={t("admin.editName", { name: s.name })} />
+                    ))
+                  )}
+                </Stack>
+              </View>
             </View>
 
             <View>
-              <SectionHeader title={t("adminSafety.emergencyContacts")} actionLabel={t("common.add")} onAction={() => setAddingContact(true)} />
-              <Stack gap="sm">
-                {data.contacts.length === 0 ? (
-                  <EmptyHint text={t("adminSafety.contactsEmpty")} />
-                ) : (
-                  data.contacts.map((c) => (
-                    <ListRow key={c.id} title={c.name} subtitle={`${c.relationship ?? t("adminSafety.contactFallback")}${c.phone ? ` · ${c.phone}` : ""}`} onPress={() => setEditContact(c)} accessibilityLabel={t("admin.editName", { name: c.name })} />
-                  ))
-                )}
-              </Stack>
+              <SectionHeader title={t("adminSafety.emergencyContacts")} actionLabel={t("common.add")} onAction={() => setAddingContact(true)} needsSetup={needsContact} needsSetupLabel={t("adminSafety.needsSetup")} />
+              <View style={needsContact ? styles.missingBox : undefined}>
+                <Stack gap="sm">
+                  {data.contacts.length === 0 ? (
+                    <Text variant="body" tone="textSecondary">
+                      {t("adminSafety.contactsEmpty")}
+                    </Text>
+                  ) : (
+                    data.contacts.map((c) => (
+                      <ListRow key={c.id} title={c.name} subtitle={`${c.relationship ?? t("adminSafety.contactFallback")}${c.phone ? ` · ${c.phone}` : ""}`} onPress={() => setEditContact(c)} accessibilityLabel={t("admin.editName", { name: c.name })} />
+                    ))
+                  )}
+                </Stack>
+              </View>
             </View>
 
             <View>
@@ -179,7 +185,8 @@ export default function AdminSafety(): React.ReactElement {
               </Stack>
             </View>
           </Stack>
-        )}
+          );
+        }}
       </StateView>
 
       <QuickAddModal
@@ -232,10 +239,11 @@ export default function AdminSafety(): React.ReactElement {
   );
 }
 
-// Setup is "complete" once the family has given us someone to call and a home to head for:
-// at least one emergency contact with a phone, and a home address on the profile. Used to nudge
-// with a "!" badge on the Safety tab. Assumes complete until we know otherwise, so a slow or
-// failed read never shows a false nudge; a null id or any error simply leaves the badge off.
+// Setup is "complete" once the family has given us somewhere safe and someone to call: at least
+// one safe place and at least one emergency contact with a phone. Both are shown, and marked with
+// a "!", on the Safety screen — so the tab badge points at exactly what carries a "!" inside.
+// Assumes complete until we know otherwise, so a slow or failed read never shows a false nudge;
+// a null id or any error simply leaves the badge off.
 export function useSafetySetupComplete(olderAdultId: string | null): boolean {
   const [complete, setComplete] = useState(true);
   useEffect(() => {
@@ -245,12 +253,12 @@ export function useSafetySetupComplete(olderAdultId: string | null): boolean {
     }
     let active = true;
     const load = (): void => {
-      Promise.all([listEmergencyContacts(olderAdultId), getOlderAdult(olderAdultId)])
-        .then(([contacts, adult]) => {
+      Promise.all([listEmergencyContacts(olderAdultId), listSafeLocations(olderAdultId)])
+        .then(([contacts, safe]) => {
           if (!active) return;
           const hasContactWithPhone = contacts.some((c) => (c.phone ?? "").trim().length > 0);
-          const hasHome = (adult?.home_address ?? "").trim().length > 0;
-          setComplete(hasContactWithPhone && hasHome);
+          const hasSafePlace = safe.length > 0;
+          setComplete(hasContactWithPhone && hasSafePlace);
         })
         .catch(() => undefined); // a missing badge must never crash the tab bar
     };
@@ -262,34 +270,6 @@ export function useSafetySetupComplete(olderAdultId: string | null): boolean {
     };
   }, [olderAdultId]);
   return complete;
-}
-
-// The banner that explains the "!" on the tab: it lists exactly what's missing (someone to
-// call, a home to head for) so the caregiver knows what to fix. Renders nothing once both are set.
-function SetupBanner({ data, t }: { data: SafetyData; t: TFn }): React.ReactElement | null {
-  const hasContactWithPhone = data.contacts.some((c) => (c.phone ?? "").trim().length > 0);
-  const hasHome = (data.adult?.home_address ?? "").trim().length > 0;
-  if (hasContactWithPhone && hasHome) return null;
-
-  const missing: string[] = [];
-  if (!hasContactWithPhone) missing.push(t("adminSafety.setupMissingPhone"));
-  if (!hasHome) missing.push(t("adminSafety.setupMissingHome"));
-
-  return (
-    <Card elevation="card" style={{ borderLeftWidth: 4, borderLeftColor: theme.colors.accent }}>
-      <Stack direction="row" gap="md" align="center">
-        <Icon name="warning" color="accent" size={theme.iconSize.md} />
-        <Stack flex gap="xs">
-          <Text variant="bodyStrong">{t("adminSafety.setupTitle")}</Text>
-          {missing.map((line) => (
-            <Text key={line} variant="body" tone="textSecondary">
-              • {line}
-            </Text>
-          ))}
-        </Stack>
-      </Stack>
-    </Card>
-  );
 }
 
 function alertTitle(type: string, t: TFn): string {
@@ -307,3 +287,13 @@ function EmptyHint({ text }: { text: string }): React.ReactElement {
     </Card>
   );
 }
+
+const styles = StyleSheet.create({
+  // The amber outline that marks a required-but-missing section, matching the header "!" and tab badge.
+  missingBox: {
+    borderWidth: 2,
+    borderColor: theme.colors.accent,
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.md,
+  },
+});

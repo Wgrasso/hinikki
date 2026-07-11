@@ -5,6 +5,7 @@ import { Tabs } from "expo-router";
 import { useAppState } from "../../src/auth/appState";
 import { usePendingProposalCount } from "../../src/components/admin/ProposalsSection";
 import { useSafetySetupComplete } from "./safety";
+import { useAboutSetupComplete } from "./settings";
 import DevModeSwitch from "../../src/components/shared/DevModeSwitch";
 import { Icon } from "../../src/primitives";
 import { theme } from "../../src/theme";
@@ -15,8 +16,10 @@ export default function AdminLayout(): React.ReactElement {
   const { t } = useT();
   const { olderAdultId } = useAppState();
   const pendingCount = usePendingProposalCount(olderAdultId);
-  // Nudge the family to finish safety setup (someone to call + a home address) with a "!" badge.
+  // Nudge the family to finish setup with a "!" badge: Safety (a safe place + someone to call) and
+  // Settings (a home address). Each badge points at the tab where the missing item carries a "!".
   const safetySetupComplete = useSafetySetupComplete(olderAdultId);
+  const aboutSetupComplete = useAboutSetupComplete(olderAdultId);
   return (
     <>
     <Tabs
@@ -65,7 +68,20 @@ export default function AdminLayout(): React.ReactElement {
           },
         }}
       />
-      <Tabs.Screen name="settings" options={{ title: t("adminTab.settings"), tabBarIcon: ({ focused }) => <Icon name="settings" color={focused ? "primary" : "textTertiary"} /> }} />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: t("adminTab.settings"),
+          tabBarIcon: ({ focused }) => <Icon name="settings" color={focused ? "primary" : "textTertiary"} />,
+          tabBarBadge: olderAdultId && !aboutSetupComplete ? "!" : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: theme.colors.accent,
+            color: theme.colors.onPrimary,
+            fontFamily: theme.text.caption.fontFamily,
+            fontSize: 12,
+          },
+        }}
+      />
     </Tabs>
     <DevModeSwitch />
     </>

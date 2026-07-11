@@ -1,4 +1,7 @@
 // src/components/admin/SectionHeader.tsx — a small titled section header with an optional action.
+// When `needsSetup` is set it shows a "!" marker beside the title, so a required-but-missing
+// section is called out inline (paired with an accent border on the section body) instead of a
+// separate banner.
 import React from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { theme } from "../../theme";
@@ -8,12 +11,17 @@ type SectionHeaderProps = {
   title: string;
   actionLabel?: string;
   onAction?: () => void;
+  needsSetup?: boolean;
+  needsSetupLabel?: string;
 };
 
-export default function SectionHeader({ title, actionLabel, onAction }: SectionHeaderProps): React.ReactElement {
+export default function SectionHeader({ title, actionLabel, onAction, needsSetup, needsSetupLabel }: SectionHeaderProps): React.ReactElement {
   return (
     <View style={styles.row}>
-      <Text variant="heading">{title}</Text>
+      <View style={styles.titleGroup}>
+        <Text variant="heading">{title}</Text>
+        {needsSetup ? <SetupMark label={needsSetupLabel} /> : null}
+      </View>
       {actionLabel && onAction ? (
         <Pressable
           accessibilityRole="button"
@@ -32,8 +40,29 @@ export default function SectionHeader({ title, actionLabel, onAction }: SectionH
   );
 }
 
+// The small amber "!" chip. Same accent used by the tab badge, so on-screen and tab-bar cues match.
+export function SetupMark({ label }: { label?: string }): React.ReactElement {
+  return (
+    <View style={styles.mark} accessibilityLabel={label} accessibilityRole={label ? "image" : undefined}>
+      <Text variant="caption" tone="onPrimary" style={styles.markText}>
+        !
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: theme.spacing.sm },
+  titleGroup: { flexDirection: "row", alignItems: "center", gap: theme.spacing.sm, flexShrink: 1 },
   action: { flexDirection: "row", alignItems: "center", gap: theme.spacing.xs },
   pressed: { opacity: 0.6 },
+  mark: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: theme.colors.accent,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  markText: { color: theme.colors.onPrimary, fontWeight: "700", lineHeight: 18 },
 });
