@@ -20,7 +20,6 @@ import type {
   FamilyPerson,
   FamilyRelationship,
   PersonMemory,
-  Reminder,
 } from "../../types/database";
 import type { WeatherSnapshot } from "../../types/domain";
 
@@ -117,20 +116,6 @@ export function formatNeverRaise(names: string[]): string {
 }
 
 // Continuity: Nikki's own private notes from recent conversations (plan FR-9).
-// Family-authored medication reminders, so Nikki can mention them at the right moment and
-// never gives medical advice beyond the family's exact wording.
-export function formatMedicationNotes(reminders: Reminder[]): string {
-  const meds = reminders.filter((r) => r.active && r.reminder_type === "medication");
-  if (meds.length === 0) return "The family has not added any medication notes.";
-  return meds
-    .map((r) => {
-      const detail = r.instructions ?? r.nikki_message;
-      const rhythm = r.recurrence_rule ? ` (${r.recurrence_rule})` : "";
-      return `- ${r.title}${r.scheduled_at ? ` at ${formatTime(r.scheduled_at)}` : ""}${rhythm}${detail ? `: ${detail}` : ""}`;
-    })
-    .join("\n");
-}
-
 export function formatRecent(notes: string[]): string {
   if (notes.length === 0) return "This is one of your first conversations together.";
   return notes.map((n, i) => `- ${i === 0 ? "Last time" : "Before that"}: ${n}`).join("\n");
@@ -241,7 +226,6 @@ export async function buildSessionVariables(
     recent_turns: formatRecentTurns(tiers?.recentTurns ?? []),
     pending_family_items: formatPendingItems(tiers?.digestTopics ?? []),
     weather_today: weatherText,
-    medication_notes: formatMedicationNotes(tiers?.reminders ?? []),
     // Names only — enough for "I can let Anna know", no phone numbers off-device.
     emergency_contact_names: (tiers?.emergencyContactNames ?? []).join(", ") || "their family",
   };
