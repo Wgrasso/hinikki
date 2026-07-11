@@ -18,6 +18,11 @@ describe("greeting", () => {
     expect(greeting(new Date(2026, 0, 1, 14, 0))).toBe("Good afternoon");
     expect(greeting(new Date(2026, 0, 1, 20, 0))).toBe("Good evening");
   });
+  it("treats the small hours as evening, not morning", () => {
+    expect(greeting(new Date(2026, 0, 1, 1, 40))).toBe("Good evening");
+    expect(greeting(new Date(2026, 0, 1, 4, 59))).toBe("Good evening");
+    expect(greeting(new Date(2026, 0, 1, 5, 0))).toBe("Good morning");
+  });
 });
 
 describe("initials", () => {

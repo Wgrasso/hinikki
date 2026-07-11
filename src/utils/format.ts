@@ -11,20 +11,28 @@ export function formatTime(iso: string | null): string {
   return m === 0 ? `${hh} ${period}` : `${hh}:${m.toString().padStart(2, "0")} ${period}`;
 }
 
-export function greeting(now: Date = new Date()): string {
+// Time-of-day buckets. The small hours read as "evening", not "morning": at 1:40 am
+// "Good morning" is disorienting — especially for someone with dementia — so morning only
+// begins at 5 am. Evening therefore covers 6 pm through 4:59 am.
+export type TimeOfDay = "morning" | "afternoon" | "evening";
+export function timeOfDay(now: Date = new Date()): TimeOfDay {
   const h = now.getHours();
-  if (h < 12) return "Good morning";
-  if (h < 18) return "Good afternoon";
+  if (h >= 5 && h < 12) return "morning";
+  if (h >= 12 && h < 18) return "afternoon";
+  return "evening";
+}
+
+export function greeting(now: Date = new Date()): string {
+  const tod = timeOfDay(now);
+  if (tod === "morning") return "Good morning";
+  if (tod === "afternoon") return "Good afternoon";
   return "Good evening";
 }
 
 // The i18n key for the time-of-day greeting; callers localize with t(greetingKey()).
 // Keys live in the shared common dict (greeting.morning/afternoon/evening).
 export function greetingKey(now: Date = new Date()): string {
-  const h = now.getHours();
-  if (h < 12) return "greeting.morning";
-  if (h < 18) return "greeting.afternoon";
-  return "greeting.evening";
+  return `greeting.${timeOfDay(now)}`;
 }
 
 // The voice model sometimes emits bracketed delivery cues — "[gentle]", "[warm]", "[pause]" —

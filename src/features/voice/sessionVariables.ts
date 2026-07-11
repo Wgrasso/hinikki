@@ -6,7 +6,7 @@
 // pure and unit-tested; the builder reads the tiered snapshot cache (src/features/voice/snapshot.ts)
 // so a session start never fans out to the network when the cache is warm (plan §2.2, NFR-1).
 // Changing a variable name is a TWO-SIDED change: elevenlabs/agent.json + this file + tests.
-import { formatTime } from "../../utils/format";
+import { formatTime, timeOfDay } from "../../utils/format";
 import {
   disambiguationSuffixes,
   getSnapshotTiers,
@@ -167,9 +167,9 @@ export function formatHomeHint(homeAddress: string | null): string {
 // first-message preset as {{time_greeting}}.
 export function formatTimeGreeting(primaryLanguage: string | null | undefined, now: Date = new Date()): string {
   const isDutch = primaryLanguage === "nl" || primaryLanguage === "nl-informal";
-  const h = now.getHours();
-  if (h < 12) return isDutch ? "Goedemorgen" : "Good morning";
-  if (h < 18) return isDutch ? "Goedemiddag" : "Good afternoon";
+  const tod = timeOfDay(now); // morning only from 5 am; the small hours read as evening
+  if (tod === "morning") return isDutch ? "Goedemorgen" : "Good morning";
+  if (tod === "afternoon") return isDutch ? "Goedemiddag" : "Good afternoon";
   return isDutch ? "Goedenavond" : "Good evening";
 }
 

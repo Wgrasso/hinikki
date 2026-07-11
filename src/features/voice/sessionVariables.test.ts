@@ -146,4 +146,8 @@ describe("formatTimeGreeting", () => {
   it("defaults to English for an unknown language", () => {
     expect(formatTimeGreeting(null, new Date(2026, 0, 1, 8, 0))).toBe("Good morning");
   });
+  it("greets the small hours as evening, not morning", () => {
+    expect(formatTimeGreeting("en", new Date(2026, 0, 1, 1, 40))).toBe("Good evening");
+    expect(formatTimeGreeting("nl", new Date(2026, 0, 1, 1, 40))).toBe("Goedenavond");
+  });
 });
