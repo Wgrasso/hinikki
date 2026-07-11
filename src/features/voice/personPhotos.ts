@@ -26,15 +26,30 @@ function escapeRegExp(value: string): string {
 }
 
 // Case-insensitive whole-word match of any person's name (or its first word — "Emma"
-// still lights up "Emma van Dijk") in the text. Returns the first match's photo, or null.
-export function matchPersonPhoto(text: string, people: PersonPhoto[]): string | null {
+// still lights up "Emma van Dijk") in the text. Returns EVERY person named in the line,
+// ordered by where their name first appears, so a turn like "I saw Els and Tom" shows both
+// faces in the order they were spoken. Each person appears at most once.
+export function matchPersonPhotos(text: string, people: PersonPhoto[]): PersonPhoto[] {
+  const hits: { person: PersonPhoto; at: number }[] = [];
   for (const person of people) {
     const firstWord = person.name.trim().split(/\s+/)[0];
+    let earliest = -1;
     for (const term of [person.name, firstWord]) {
       if (!term) continue;
-      const pattern = new RegExp(`\\b${escapeRegExp(term)}\\b`, "i");
-      if (pattern.test(text)) return person.photoUri;
+      const match = new RegExp(`\\b${escapeRegExp(term)}\\b`, "i").exec(text);
+      if (match && (earliest === -1 || match.index < earliest)) earliest = match.index;
     }
+    if (earliest >= 0) hits.push({ person, at: earliest });
   }
-  return null;
+  hits.sort((a, b) => a.at - b.at);
+
+  const seen = new Set<string>();
+  const ordered: PersonPhoto[] = [];
+  for (const { person } of hits) {
+    const key = `${person.name}|${person.photoUri}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    ordered.push(person);
+  }
+  return ordered;
 }

@@ -15,9 +15,9 @@ import { buildSessionVariables } from "./sessionVariables";
 import { ensureMicPermission } from "./micPermission";
 import { makeAgentTools, type AgentToolSet, type SessionRecap } from "./agentTools";
 import { getSnapshotTiers } from "./snapshot";
-import { loadPersonPhotos, matchPersonPhoto, type PersonPhoto } from "./personPhotos";
+import { loadPersonPhotos, matchPersonPhotos, type PersonPhoto } from "./personPhotos";
 
-export type NikkiCaption = { id: number; role: "user" | "nikki"; text: string; photoUri?: string };
+export type NikkiCaption = { id: number; role: "user" | "nikki"; text: string; people?: PersonPhoto[] };
 
 // idle → preparing (token/vars/permission) → connecting → live → ended | error
 export type NikkiSessionPhase = "idle" | "preparing" | "connecting" | "live" | "ended" | "error";
@@ -89,10 +89,10 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
       // last few turns for a readable rolling transcript.
       captionSeq.current += 1;
       const id = captionSeq.current;
-      // If the line names someone with a photo on file, show their face beside the words
-      // so the elder can place them (works for names said by either side).
-      const photoUri = matchPersonPhoto(message, photosRef.current) ?? undefined;
-      setCaptions((prev) => [...prev.slice(-5), { id, role: who, text: message, photoUri }]);
+      // Every person named in the line (by either side) who has a photo on file gets their
+      // face + name shown beside the words, so the elder can place them clearly.
+      const named = matchPersonPhotos(message, photosRef.current);
+      setCaptions((prev) => [...prev.slice(-5), { id, role: who, text: message, people: named.length ? named : undefined }]);
     },
   });
 

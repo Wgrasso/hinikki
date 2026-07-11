@@ -22,9 +22,19 @@ export default function VoiceCaptions({ captions }: { captions: NikkiCaption[] }
           <Reveal key={caption.id}>
             <View style={[styles.row, isUser ? styles.rowUser : styles.rowNikki]}>
               <View style={[styles.bubble, isUser ? styles.userBubble : styles.nikkiBubble]}>
-                {caption.photoUri ? (
-                  // A face joins the words when someone is named, to help place them.
-                  <Avatar name={t("caption.avatarLabel")} photoUri={caption.photoUri} size={44} />
+                {caption.people?.length ? (
+                  // Big face + name for everyone named in this turn, so the elder can clearly
+                  // see who's being talked about — one card per person, wrapping if several.
+                  <View style={styles.faces}>
+                    {caption.people.map((person) => (
+                      <View key={`${person.name}|${person.photoUri}`} style={styles.face}>
+                        <Avatar name={person.name} photoUri={person.photoUri} size={FACE_SIZE} />
+                        <Text variant="bodyStrong" tone={isUser ? "onPrimary" : "textPrimary"} style={styles.faceName}>
+                          {person.name}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
                 ) : null}
                 <Text variant="overline" tone={isUser ? "onPrimary" : "textTertiary"}>
                   {isUser ? t("caption.you") : t("caption.nikki")}
@@ -41,6 +51,9 @@ export default function VoiceCaptions({ captions }: { captions: NikkiCaption[] }
   );
 }
 
+// Big enough for older eyes to read a face; several still fit across a bubble by wrapping.
+const FACE_SIZE = 96;
+
 const styles = StyleSheet.create({
   wrap: { gap: theme.spacing.sm },
   row: { flexDirection: "row" },
@@ -48,11 +61,19 @@ const styles = StyleSheet.create({
   rowNikki: { justifyContent: "flex-start" },
   bubble: {
     maxWidth: "88%",
-    gap: theme.spacing.xs,
+    gap: theme.spacing.sm,
     borderRadius: theme.radius.lg,
     padding: theme.spacing.lg,
     ...theme.shadows.sm,
   },
+  faces: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: theme.spacing.md,
+    marginBottom: theme.spacing.xs,
+  },
+  face: { alignItems: "center", gap: theme.spacing.xs, width: FACE_SIZE + theme.spacing.md },
+  faceName: { textAlign: "center" },
   nikkiBubble: {
     backgroundColor: theme.colors.surface,
     borderBottomLeftRadius: theme.radius.sm,
