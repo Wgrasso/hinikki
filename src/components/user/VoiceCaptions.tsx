@@ -7,6 +7,7 @@ import React from "react";
 import { StyleSheet, View } from "react-native";
 import { theme } from "../../theme";
 import { Reveal, Text } from "../../primitives";
+import Avatar from "../shared/Avatar";
 import type { NikkiCaption } from "../../features/voice/useNikkiSession";
 
 export default function VoiceCaptions({ captions }: { captions: NikkiCaption[] }): React.ReactElement | null {
@@ -19,6 +20,10 @@ export default function VoiceCaptions({ captions }: { captions: NikkiCaption[] }
           <Reveal key={caption.id}>
             <View style={[styles.row, isUser ? styles.rowUser : styles.rowNikki]}>
               <View style={[styles.bubble, isUser ? styles.userBubble : styles.nikkiBubble]}>
+                {caption.photoUri ? (
+                  // A face joins the words when someone is named, to help place them.
+                  <Avatar name="someone in your family" photoUri={caption.photoUri} size={44} />
+                ) : null}
                 <Text variant="overline" tone={isUser ? "onPrimary" : "textTertiary"}>
                   {isUser ? "YOU" : "NIKKI"}
                 </Text>

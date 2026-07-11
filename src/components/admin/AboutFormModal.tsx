@@ -28,10 +28,12 @@ export default function AboutFormModal({ visible, profile, onClose, onSaved }: P
   const [preferredName, setPreferredName] = useState("");
   const [birthday, setBirthday] = useState("");
   const [homeAddress, setHomeAddress] = useState("");
-  const [language, setLanguage] = useState<string>("en");
+  // Null until an explicit choice is made — the admin must pick the language Nikki speaks.
+  const [language, setLanguage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [birthdayError, setBirthdayError] = useState<string | null>(null);
+  const [languageError, setLanguageError] = useState<string | null>(null);
 
   // Prefill from the profile each time the sheet opens, so edits always start from what is saved.
   useEffect(() => {
@@ -39,9 +41,10 @@ export default function AboutFormModal({ visible, profile, onClose, onSaved }: P
     setPreferredName(profile?.preferred_name ?? "");
     setBirthday(profile?.date_of_birth ?? "");
     setHomeAddress(profile?.home_address ?? "");
-    setLanguage(profile?.primary_language ?? "en");
+    setLanguage(profile?.primary_language ?? null);
     setError(null);
     setBirthdayError(null);
+    setLanguageError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
@@ -51,6 +54,11 @@ export default function AboutFormModal({ visible, profile, onClose, onSaved }: P
     const dateOfBirth = parseBirthday(birthday);
     if (birthday.trim().length > 0 && dateOfBirth === null) {
       setBirthdayError("We could not read this date. Try e.g. 3 May 1942 or 1942-05-03.");
+      return;
+    }
+    // Language drives both her app and Nikki's spoken language — it must be chosen.
+    if (language === null) {
+      setLanguageError("Please choose the language Nikki will speak.");
       return;
     }
     setSaving(true);
@@ -109,7 +117,10 @@ export default function AboutFormModal({ visible, profile, onClose, onSaved }: P
                 accessibilityRole="button"
                 accessibilityState={{ selected }}
                 accessibilityLabel={option.label}
-                onPress={() => setLanguage(option.code)}
+                onPress={() => {
+                  setLanguage(option.code);
+                  setLanguageError(null);
+                }}
                 style={({ pressed }) => [styles.chip, selected ? styles.chipSelected : null, pressed ? styles.pressed : null]}
               >
                 <Text variant="bodyStrong" tone={selected ? "onPrimary" : "textSecondary"}>
@@ -119,6 +130,11 @@ export default function AboutFormModal({ visible, profile, onClose, onSaved }: P
             );
           })}
         </View>
+        {languageError ? (
+          <Text variant="caption" tone="danger" style={styles.helper}>
+            {languageError}
+          </Text>
+        ) : null}
         <Text variant="caption" tone="textSecondary" style={styles.helper}>
           In Dutch, “u” is the gentle, formal way to say “you”; “je” is the familiar one. Pick whichever feels natural to them.
         </Text>

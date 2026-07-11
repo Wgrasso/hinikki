@@ -1,5 +1,5 @@
-// app/onboarding/user-pairing.tsx — older adult: start on their own (show one code to share),
-// or join their family by code and tap their name. Tapping a name that is already set up on
+// app/onboarding/user-pairing.tsx — older adult: join the family your admin already set up.
+// Enter the code they gave you, then tap your name. Tapping a name that is already set up on
 // another device MOVES it here after a confirmation (the join code is the trust boundary —
 // this is the login-free device recovery the claim RPC was built for).
 import React, { useEffect, useRef, useState } from "react";
@@ -7,56 +7,21 @@ import { Alert } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAppState } from "../../src/auth/appState";
 import { AppBar, Button, Card, Field, Icon, Screen, Stack, Text } from "../../src/primitives";
-import PairingCode from "../../src/components/shared/PairingCode";
 import { theme } from "../../src/theme";
-import { startSoloOlderAdult, getGroupRoster, claimOlderAdult, joinAsNewOlderAdult, RosterEntry } from "../../src/services/groupService";
+import { getGroupRoster, claimOlderAdult, RosterEntry } from "../../src/services/groupService";
 
-type View = "choose" | "show" | "enter" | "pick";
+type View = "enter" | "pick";
 
 export default function UserPairing(): React.ReactElement {
   const router = useRouter();
   const { code: codeParam } = useLocalSearchParams<{ code?: string }>();
   const { completeSetupWithGroup } = useAppState();
-  const [view, setView] = useState<View>("choose");
+  const [view, setView] = useState<View>("enter");
   const [busy, setBusy] = useState(false);
-  const [code, setCode] = useState("");
   const [entered, setEntered] = useState("");
   const [roster, setRoster] = useState<RosterEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [showJoinNew, setShowJoinNew] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [soloName, setSoloName] = useState("");
   const handle = useRef<{ groupId: string; joinCode: string } | null>(null);
-  const soloOlderAdultId = useRef<string | null>(null);
-
-  async function createMyCode(): Promise<void> {
-    const name = soloName.trim();
-    if (name.length === 0) { setError("Please enter your name first."); return; }
-    setBusy(true); setError(null);
-    try {
-      const h = await startSoloOlderAdult(name);
-      soloOlderAdultId.current = h.olderAdultId;
-      handle.current = { groupId: h.groupId, joinCode: h.joinCode };
-      setCode(h.joinCode);
-    } catch {
-      setError("We could not create your code just now. Please try again.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function openSolo(): void {
-    setError(null);
-    setView("show");
-  }
-
-  async function finishSolo(): Promise<void> {
-    const id = soloOlderAdultId.current;
-    const h = handle.current;
-    if (!id || !h) return;
-    await completeSetupWithGroup("user", id, h.groupId, h.joinCode);
-    router.replace("/user/nikki");
-  }
 
   async function loadRoster(codeOverride?: string): Promise<void> {
     const joinCode = (codeOverride ?? entered).trim().toUpperCase();
@@ -113,65 +78,21 @@ export default function UserPairing(): React.ReactElement {
     );
   }
 
-  async function joinNew(): Promise<void> {
-    const name = newName.trim();
-    if (name.length === 0) { setError("Please enter their name first."); return; }
-    setBusy(true); setError(null);
-    const r = await joinAsNewOlderAdult(entered.trim().toUpperCase(), name);
-    setBusy(false);
-    if (!r.ok) { setError(r.message); return; }
-    const h = handle.current;
-    await completeSetupWithGroup("user", r.value.olderAdultId, h?.groupId ?? "", h?.joinCode ?? entered.trim().toUpperCase());
-    router.replace("/user/nikki");
-  }
-
   return (
     <Screen scroll>
-      <AppBar title="Connect with family" onBack={() => (view === "choose" ? router.back() : setView("choose"))} />
+      <AppBar title="Connect with your family" onBack={() => (view === "enter" ? router.back() : setView("enter"))} />
 
-      {view === "choose" ? (
+      {view === "enter" ? (
         <Stack gap="lg">
-          <Card elevation="card" onPress={openSolo} accessibilityLabel="Start on my own">
-            <Stack direction="row" gap="lg" align="center">
-              <Icon name="sparkle" color="primary" size={theme.iconSize.lg} />
-              <Stack flex gap="xs">
-                <Text variant="heading">Start on my own</Text>
-                <Text variant="body" tone="textSecondary">Get one code to give your family so they can help.</Text>
-              </Stack>
-            </Stack>
-          </Card>
-          <Card elevation="card" onPress={() => setView("enter")} accessibilityLabel="Enter a code from family">
+          <Card elevation="card">
             <Stack direction="row" gap="lg" align="center">
               <Icon name="people" color="primary" size={theme.iconSize.lg} />
               <Stack flex gap="xs">
-                <Text variant="heading">Enter a code from family</Text>
+                <Text variant="heading">Enter the code your family gave you</Text>
                 <Text variant="body" tone="textSecondary">Your family already set things up for you.</Text>
               </Stack>
             </Stack>
           </Card>
-        </Stack>
-      ) : null}
-
-      {view === "show" ? (
-        <Stack gap="lg">
-          {code ? (
-            <>
-              <PairingCode code={code} />
-              <Text variant="body" tone="textSecondary">Give this one code to your family. Then tap below to start.</Text>
-              <Button label="I'm ready to start" icon="check" onPress={finishSolo} />
-            </>
-          ) : (
-            <>
-              <Text variant="body" tone="textSecondary">First, what is your name? Your family will see it when they join you.</Text>
-              <Field label="Your name" value={soloName} onChangeText={setSoloName} placeholder="e.g. Anna" autoCapitalize="words" error={error} />
-              <Button label="Create my code" icon="check" loading={busy} onPress={createMyCode} />
-            </>
-          )}
-        </Stack>
-      ) : null}
-
-      {view === "enter" ? (
-        <Stack gap="lg">
           <Field label="Code from family" value={entered} onChangeText={setEntered} placeholder="8-character code" autoCapitalize="none" error={error} />
           <Button label="Continue" icon="check" loading={busy} onPress={() => { void loadRoster(); }} />
         </Stack>
@@ -179,7 +100,7 @@ export default function UserPairing(): React.ReactElement {
 
       {view === "pick" ? (
         <Stack gap="lg">
-          <Text variant="body" tone="textSecondary">Who are you? Tap your name to connect.</Text>
+          <Text variant="body" tone="textSecondary">Tap your name to connect.</Text>
           {roster.map((entry) => (
             <Card
               key={entry.id}
@@ -199,14 +120,6 @@ export default function UserPairing(): React.ReactElement {
             </Card>
           ))}
           {error ? <Text variant="body" tone="danger">{error}</Text> : null}
-          {showJoinNew ? (
-            <Stack gap="md">
-              <Field label="Their name" value={newName} onChangeText={setNewName} placeholder="e.g. Anna" autoCapitalize="words" />
-              <Button label="Create this new person" icon="check" loading={busy} onPress={joinNew} />
-            </Stack>
-          ) : (
-            <Button label="Someone new? Add them instead" variant="secondary" onPress={() => { setError(null); setShowJoinNew(true); }} />
-          )}
         </Stack>
       ) : null}
     </Screen>

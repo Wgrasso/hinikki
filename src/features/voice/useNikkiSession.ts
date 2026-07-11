@@ -14,8 +14,10 @@ import { notifyAdminsOfProposal } from "../../services/pushService";
 import { buildSessionVariables } from "./sessionVariables";
 import { ensureMicPermission } from "./micPermission";
 import { makeAgentTools, type AgentToolSet, type SessionRecap } from "./agentTools";
+import { getSnapshotTiers } from "./snapshot";
+import { loadPersonPhotos, matchPersonPhoto, type PersonPhoto } from "./personPhotos";
 
-export type NikkiCaption = { id: number; role: "user" | "nikki"; text: string };
+export type NikkiCaption = { id: number; role: "user" | "nikki"; text: string; photoUri?: string };
 
 // idle → preparing (token/vars/permission) → connecting → live → ended | error
 export type NikkiSessionPhase = "idle" | "preparing" | "connecting" | "live" | "ended" | "error";
@@ -37,6 +39,8 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
   const [recap, setRecap] = useState<SessionRecap | null>(null);
   const captionSeq = useRef(0);
   const openingRef = useRef<string | null>(null);
+  // Name→face lookup for the transcript, loaded once per session (best-effort).
+  const photosRef = useRef<PersonPhoto[]>([]);
 
   // The five tools, bound to this older adult; onRecap feeds the closing card.
   // Per-CONVERSATION state (recap chips, push budget) lives inside and is reset in begin().
@@ -85,7 +89,10 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
       // last few turns for a readable rolling transcript.
       captionSeq.current += 1;
       const id = captionSeq.current;
-      setCaptions((prev) => [...prev.slice(-5), { id, role: who, text: message }]);
+      // If the line names someone with a photo on file, show their face beside the words
+      // so the elder can place them (works for names said by either side).
+      const photoUri = matchPersonPhoto(message, photosRef.current) ?? undefined;
+      setCaptions((prev) => [...prev.slice(-5), { id, role: who, text: message, photoUri }]);
     },
   });
 
@@ -94,6 +101,7 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
       setErrorMessage(null);
       setCaptions([]);
       setRecap(null);
+      photosRef.current = []; // fresh face lookup for THIS conversation
       toolSet.reset(); // fresh recap chips + push budget for THIS conversation
       setPhase("preparing");
       // Facts queued while offline get their catch-up now — at most one push for the
@@ -108,10 +116,20 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
           setPhase("error");
           return;
         }
-        const [conversationToken, dynamicVariables] = await Promise.all([
+        // Face lookup for the transcript: best-effort, never blocks the connection.
+        void loadPersonPhotos(olderAdultId)
+          .then((photos) => {
+            photosRef.current = photos;
+          })
+          .catch(() => undefined);
+        const [conversationToken, dynamicVariables, tiers] = await Promise.all([
           getConversationToken(olderAdultId),
           buildSessionVariables(olderAdultId, preferredName),
+          getSnapshotTiers(olderAdultId).catch(() => null),
         ]);
+        // Pin the agent's language to this elder's so the voice never drifts to English
+        // for a Dutch speaker (or vice versa). Dutch variants → "nl", everything else → "en".
+        const language: "nl" | "en" = tiers?.profile?.primary_language?.startsWith("nl") ? "nl" : "en";
         openingRef.current = openingMessage ?? null;
         setPhase("connecting");
         conversation.startSession({
@@ -120,6 +138,7 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
           userId: olderAdultId,
           dynamicVariables,
           clientTools: toolSet.tools,
+          overrides: { agent: { language } },
         });
       } catch (e) {
         console.warn("nikki voice session failed to start:", e);

@@ -97,6 +97,15 @@ export default function AdminPairing(): React.ReactElement {
           <Text variant="body" tone="textSecondary">
             Share this one code with {name || "your family"} and with the person using Nikki. Everyone enters the same code to connect — it never expires.
           </Text>
+          <Card elevation="card">
+            <Stack gap="xs">
+              <Text variant="bodyStrong">Before you share this code, please set up:</Text>
+              <Text variant="body" tone="textSecondary">• Your loved one's language</Text>
+              <Text variant="body" tone="textSecondary">• Their home address</Text>
+              <Text variant="body" tone="textSecondary">• At least one family phone number to call</Text>
+              <Text variant="caption" tone="textSecondary">You can do all of this from the app.</Text>
+            </Stack>
+          </Card>
           <Button label="Go to dashboard" icon="check" onPress={finish} />
         </Stack>
       ) : null}
