@@ -3,15 +3,17 @@ import React from "react";
 import { StyleSheet, View } from "react-native";
 import { theme } from "../../theme";
 import { Card, Icon, Stack, Text } from "../../primitives";
+import { useT } from "../../i18n";
 import type { SetupChecklistItem } from "../../types/domain";
 
 export default function SetupChecklist({ items }: { items: SetupChecklistItem[] }): React.ReactElement {
+  const { t } = useT();
   const done = items.filter((i) => i.done).length;
   return (
     <Card elevation="card">
       <Stack gap="md">
         <View style={styles.header}>
-          <Text variant="heading">Setting up Nikki</Text>
+          <Text variant="heading">{t("checklist.title")}</Text>
           <Text variant="bodyStrong" tone="primary">
             {done}/{items.length}
           </Text>

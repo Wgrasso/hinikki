@@ -1,10 +1,12 @@
 // app/admin/settings.tsx — about the elder, dignified location sharing, family invites, and
 // sign out.
 import React, { useCallback, useEffect, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useAppState } from "../../src/auth/appState";
 import { AppBar, Button, Card, Icon, Screen, Stack, Text } from "../../src/primitives";
+import { useT } from "../../src/i18n";
+import type { Lang } from "../../src/i18n";
 import PairingCode from "../../src/components/shared/PairingCode";
 import AboutFormModal from "../../src/components/admin/AboutFormModal";
 import SupportNotesSection from "../../src/components/admin/SupportNotesSection";
@@ -15,15 +17,18 @@ import { getOlderAdult } from "../../src/services/profileService";
 import { FEATURE_HELP_TAB } from "../../src/lib/constants";
 import type { OlderAdultProfile } from "../../src/types/database";
 
+const LANGUAGE_OPTIONS: Lang[] = ["en", "nl"];
+
 export default function AdminSettings(): React.ReactElement {
   const { olderAdultId, joinCode, signOut } = useAppState();
+  const { t, lang, setAppLanguage } = useT();
   const id = olderAdultId ?? "";
   const router = useRouter();
   const [editingAbout, setEditingAbout] = useState(false);
 
   const { state: profileState, reload: reloadProfile } = useAsync<OlderAdultProfile | null>(() => getOlderAdult(id), [id]);
   const profile = profileState.status === "loaded" ? profileState.data : null;
-  const elderName = profile?.preferred_name ?? profile?.display_name ?? "your loved one";
+  const elderName = profile?.preferred_name ?? profile?.display_name ?? t("settings.elderFallback");
 
   // Refetch on focus and on live changes; stale-while-refresh keeps it flicker-free.
   useFocusEffect(
@@ -43,13 +48,13 @@ export default function AdminSettings(): React.ReactElement {
 
   return (
     <Screen scroll>
-      <AppBar title="Settings" subtitle="Fine-tune how Nikki helps." onRefresh={reloadProfile} />
+      <AppBar title={t("settings.title")} subtitle={t("settings.subtitle")} onRefresh={reloadProfile} />
       <Stack gap="lg">
         <InfoCard
           icon="heart"
-          title={`About ${elderName}`}
-          body="Their name, birthday, home address, and language — the little details that help Nikki greet them warmly."
-          actionLabel="Edit details"
+          title={t("settings.about.title", { name: elderName })}
+          body={t("settings.about.body")}
+          actionLabel={t("settings.about.action")}
           onAction={() => setEditingAbout(true)}
         />
 
@@ -58,8 +63,8 @@ export default function AdminSettings(): React.ReactElement {
         {FEATURE_HELP_TAB ? (
           <InfoCard
             icon="location"
-            title="Location sharing"
-            body="Location is shared with trusted family for safety, and only foreground location is used. Your loved one is always told their family can see it."
+            title={t("settings.location.title")}
+            body={t("settings.location.body")}
           />
         ) : null}
 
@@ -68,16 +73,41 @@ export default function AdminSettings(): React.ReactElement {
             <Stack direction="row" gap="md" align="center">
               <Icon name="people" color="primary" size={theme.iconSize.lg} />
               <Stack flex gap="xs">
-                <Text variant="heading">Your family code</Text>
-                <Text variant="body" tone="textSecondary">Share this one code with anyone who should help. It never expires.</Text>
+                <Text variant="heading">{t("settings.familyCode.title")}</Text>
+                <Text variant="body" tone="textSecondary">{t("settings.familyCode.body")}</Text>
               </Stack>
             </Stack>
             {joinCode ? <PairingCode code={joinCode} /> : null}
           </Stack>
         </Card>
 
+        <Card elevation="card">
+          <Stack gap="md">
+            <Text variant="heading">{t("settings.language.title")}</Text>
+            <View style={styles.langRow}>
+              {LANGUAGE_OPTIONS.map((option) => {
+                const selected = lang === option;
+                return (
+                  <Pressable
+                    key={option}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
+                    accessibilityLabel={t(`settings.language.${option}`)}
+                    onPress={() => void setAppLanguage(option)}
+                    style={({ pressed }) => [styles.langChip, selected ? styles.langChipSelected : null, pressed ? styles.pressed : null]}
+                  >
+                    <Text variant="bodyStrong" tone={selected ? "onPrimary" : "textSecondary"}>
+                      {t(`settings.language.${option}`)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </Stack>
+        </Card>
+
         <View style={styles.signOut}>
-          <Button label="Sign out" variant="secondary" onPress={doSignOut} />
+          <Button label={t("settings.signOut")} variant="secondary" onPress={doSignOut} />
         </View>
       </Stack>
 
@@ -124,4 +154,15 @@ function InfoCard({
 
 const styles = StyleSheet.create({
   signOut: { marginTop: theme.spacing.md },
+  langRow: { flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.sm },
+  langChip: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radius.pill,
+    backgroundColor: theme.colors.surfaceAlt,
+    minHeight: 44,
+    justifyContent: "center",
+  },
+  langChipSelected: { backgroundColor: theme.colors.primary },
+  pressed: { opacity: 0.9 },
 });

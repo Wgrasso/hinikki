@@ -6,6 +6,7 @@ import React, { useState } from "react";
 import { Alert, Pressable, StyleSheet, View } from "react-native";
 import { theme } from "../../theme";
 import { Button, Card, Field, Icon, Stack, Text } from "../../primitives";
+import { useT } from "../../i18n";
 import SectionHeader from "./SectionHeader";
 import BottomSheetModal from "../shared/BottomSheetModal";
 import { useAsync } from "../../utils/useAsync";
@@ -19,6 +20,7 @@ type Props = {
 type SupportNote = { id: string; content: string };
 
 export default function SupportNotesSection({ olderAdultId, elderName }: Props): React.ReactElement {
+  const { t } = useT();
   const { state, reload } = useAsync<SupportNote[]>(() => listSupportNotes(olderAdultId), [olderAdultId]);
   const notes = state.status === "loaded" ? state.data : [];
 
@@ -38,7 +40,7 @@ export default function SupportNotesSection({ olderAdultId, elderName }: Props):
     if (!editing) return;
     const text = draft.trim();
     if (text.length === 0) {
-      setError("Please add a few words, or remove the note instead.");
+      setError(t("support.errEmpty"));
       return;
     }
     setSaving(true);
@@ -48,7 +50,7 @@ export default function SupportNotesSection({ olderAdultId, elderName }: Props):
       setEditing(null);
       reload();
     } catch {
-      setError("We could not save just now. Please try again.");
+      setError(t("support.errSave"));
     } finally {
       setSaving(false);
     }
@@ -60,25 +62,25 @@ export default function SupportNotesSection({ olderAdultId, elderName }: Props):
       await deleteSupportNote(note.id);
       reload();
     } catch {
-      Alert.alert("We could not remove that", "Please try again in a moment.");
+      Alert.alert(t("support.removeFailTitle"), t("common.tryAgainMoment"));
     } finally {
       setRemovingId(null);
     }
   }
 
   function confirmRemove(note: SupportNote): void {
-    Alert.alert("Remove this note?", "Nikki will no longer use it to help.", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Remove", style: "destructive", onPress: () => void remove(note) },
+    Alert.alert(t("support.confirmTitle"), t("support.confirmBody"), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("common.remove"), style: "destructive", onPress: () => void remove(note) },
     ]);
   }
 
   return (
     <View>
-      <SectionHeader title={`How Nikki supports ${elderName}`} />
+      <SectionHeader title={t("support.title", { name: elderName })} />
       {notes.length === 0 ? (
         <Text variant="body" tone="textSecondary">
-          {`Nikki will learn how best to help ${elderName} as you talk, and you can adjust it here.`}
+          {t("support.empty", { name: elderName })}
         </Text>
       ) : (
         <Stack gap="sm">
@@ -87,7 +89,7 @@ export default function SupportNotesSection({ olderAdultId, elderName }: Props):
               <Stack direction="row" gap="sm" align="center">
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Edit this note"
+                  accessibilityLabel={t("support.editA11y")}
                   onPress={() => openEdit(note)}
                   style={({ pressed }) => [styles.editRow, pressed ? styles.pressed : null]}
                 >
@@ -98,7 +100,7 @@ export default function SupportNotesSection({ olderAdultId, elderName }: Props):
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Remove this note"
+                  accessibilityLabel={t("support.removeA11y")}
                   onPress={() => confirmRemove(note)}
                   disabled={removingId === note.id}
                   hitSlop={10}
@@ -115,21 +117,21 @@ export default function SupportNotesSection({ olderAdultId, elderName }: Props):
       <BottomSheetModal
         visible={editing !== null}
         onClose={() => setEditing(null)}
-        title="Edit note"
-        subtitle={`How Nikki can best support ${elderName}.`}
+        title={t("support.editTitle")}
+        subtitle={t("support.editSubtitle", { name: elderName })}
       >
         <Field
-          label="Note"
+          label={t("support.noteLabel")}
           value={draft}
           onChangeText={setDraft}
-          placeholder="e.g. She feels calmer when you mention her garden"
+          placeholder={t("support.placeholder")}
           autoCapitalize="sentences"
           multiline
           error={error}
         />
         <Stack gap="sm" style={styles.actions}>
-          <Button label="Save changes" icon="check" loading={saving} onPress={() => void save()} />
-          <Button label="Cancel" variant="secondary" disabled={saving} onPress={() => setEditing(null)} />
+          <Button label={t("common.saveChanges")} icon="check" loading={saving} onPress={() => void save()} />
+          <Button label={t("common.cancel")} variant="secondary" disabled={saving} onPress={() => setEditing(null)} />
         </Stack>
       </BottomSheetModal>
     </View>

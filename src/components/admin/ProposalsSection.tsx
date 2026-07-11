@@ -7,6 +7,7 @@ import React, { useEffect, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { theme } from "../../theme";
 import { Button, Card, Icon, Stack, Text } from "../../primitives";
+import { useT } from "../../i18n";
 import SectionHeader from "./SectionHeader";
 import ProposalEditModal from "./ProposalEditModal";
 import BottomSheetModal from "../shared/BottomSheetModal";
@@ -20,13 +21,12 @@ type Props = {
   onChanged: () => void;
 };
 
-// FR-5: people Nikki only heard about must never look verified.
-const UNVERIFIED_CAPTION = "Not yet confirmed — Nikki only heard them mentioned";
+type TFn = (key: string, params?: Record<string, string | number>) => string;
 
-const DECLINE_REASONS: { reason: DeclineReason; label: string }[] = [
-  { reason: "already_known", label: "They already know this" },
-  { reason: "not_true", label: "That's not right" },
-  { reason: "family_prefers_not", label: "Rather not save this" },
+const DECLINE_REASONS: { reason: DeclineReason; labelKey: string }[] = [
+  { reason: "already_known", labelKey: "review.decline.alreadyKnown" },
+  { reason: "not_true", labelKey: "review.decline.notTrue" },
+  { reason: "family_prefers_not", labelKey: "review.decline.preferNot" },
 ];
 
 function payloadStr(payload: Record<string, unknown>, key: string): string | null {
@@ -35,38 +35,47 @@ function payloadStr(payload: Record<string, unknown>, key: string): string | nul
 }
 
 // A friendly one-line summary from type + payload only — never from LLM free text.
-export function proposalSummary(proposal: NikkiProposal): string {
+export function proposalSummary(proposal: NikkiProposal, t: TFn): string {
   const p = proposal.payload ?? {};
   const name = payloadStr(p, "full_name") ?? payloadStr(p, "preferred_name");
   const title = payloadStr(p, "title");
   switch (proposal.proposal_type) {
-    case "new_person":
-      return name
-        ? `Add person: ${name}${payloadStr(p, "relationship_label") ? ` — ${payloadStr(p, "relationship_label")}` : ""}`
-        : "Add a new person";
-    case "person_update":
-      return name ? `Update ${name}` : "Update someone's details";
-    case "relationship":
-      return "Connect two people";
-    case "memory":
-      return title ? `Memory: "${title}"` : "A memory";
-    case "fact":
-      return title ?? payloadStr(p, "content")?.slice(0, 60) ?? "A small note";
-    case "event":
-      return title ? `Plan: "${title}"` : "A plan";
-    case "reminder":
-      return title ? `Reminder: "${title}"` : "A reminder";
-    case "profile_update": {
-      if (payloadStr(p, "date_of_birth")) return `Their birthday: ${payloadStr(p, "date_of_birth")}`;
-      if (payloadStr(p, "preferred_name")) return `They go by: ${payloadStr(p, "preferred_name")}`;
-      if (payloadStr(p, "home_address")) return `Home address: ${payloadStr(p, "home_address")}`;
-      if (payloadStr(p, "primary_language")) return `Their language: ${payloadStr(p, "primary_language")}`;
-      return "A detail about them";
+    case "new_person": {
+      if (!name) return t("review.summary.newPersonEmpty");
+      const rel = payloadStr(p, "relationship_label");
+      return rel
+        ? t("review.summary.newPersonWithRel", { name, relationship: rel })
+        : t("review.summary.newPerson", { name });
     }
-    case "safe_location":
-      return payloadStr(p, "name") ? `Familiar place: ${payloadStr(p, "name")}` : "A familiar place";
+    case "person_update":
+      return name ? t("review.summary.personUpdate", { name }) : t("review.summary.personUpdateEmpty");
+    case "relationship":
+      return t("review.summary.relationship");
+    case "memory":
+      return title ? t("review.summary.memory", { title }) : t("review.summary.memoryEmpty");
+    case "fact":
+      return title ?? payloadStr(p, "content")?.slice(0, 60) ?? t("review.summary.factEmpty");
+    case "event":
+      return title ? t("review.summary.event", { title }) : t("review.summary.eventEmpty");
+    case "reminder":
+      return title ? t("review.summary.reminder", { title }) : t("review.summary.reminderEmpty");
+    case "profile_update": {
+      const dob = payloadStr(p, "date_of_birth");
+      if (dob) return t("review.summary.birthday", { date: dob });
+      const goesBy = payloadStr(p, "preferred_name");
+      if (goesBy) return t("review.summary.goesBy", { name: goesBy });
+      const addr = payloadStr(p, "home_address");
+      if (addr) return t("review.summary.homeAddress", { address: addr });
+      const language = payloadStr(p, "primary_language");
+      if (language) return t("review.summary.language", { language });
+      return t("review.summary.profileEmpty");
+    }
+    case "safe_location": {
+      const place = payloadStr(p, "name");
+      return place ? t("review.summary.safeLocation", { name: place }) : t("review.summary.safeLocationEmpty");
+    }
     default:
-      return "Something Nikki heard";
+      return t("review.summary.default");
   }
 }
 
@@ -100,6 +109,7 @@ export function usePendingProposalCount(olderAdultId: string | null): number {
 type FailedApproval = { proposal: NikkiProposal; error: string };
 
 export default function ProposalsSection({ proposals, onChanged }: Props): React.ReactElement | null {
+  const { t } = useT();
   const [busyId, setBusyId] = useState<string | null>(null);
   // Approvals that failed server-side: the row becomes status='failed' and drops out of the
   // pending refetch, so we keep a local copy until the admin retries or dismisses it.
@@ -115,7 +125,7 @@ export default function ProposalsSection({ proposals, onChanged }: Props): React
     const result = await approveAndApply(proposal);
     setBusyId(null);
     if (!result.ok) {
-      const error = `We could not add this — ${result.error ?? "please try again"}.`;
+      const error = t("review.error.couldNotAdd", { error: result.error ?? t("review.error.pleaseTryAgain") });
       setFailed((prev) => [...prev.filter((f) => f.proposal.id !== proposal.id), { proposal, error }]);
       return;
     }
@@ -142,7 +152,7 @@ export default function ProposalsSection({ proposals, onChanged }: Props): React
       setDeclining(null);
       onChanged();
     } catch {
-      setDeclineError("We could not save that just now. Please try again.");
+      setDeclineError(t("review.error.couldNotSave"));
     } finally {
       setDeclineBusy(false);
     }
@@ -157,7 +167,7 @@ export default function ProposalsSection({ proposals, onChanged }: Props): React
       setDeclining(null);
       onChanged();
     } catch {
-      setDeclineError("We could not remove that just now. Please try again.");
+      setDeclineError(t("review.error.couldNotRemove"));
     } finally {
       setDeclineBusy(false);
     }
@@ -170,7 +180,7 @@ export default function ProposalsSection({ proposals, onChanged }: Props): React
 
   return (
     <View>
-      <SectionHeader title="Nikki asks" />
+      <SectionHeader title={t("review.title")} />
       <Stack gap="sm">
         {failed.map(({ proposal, error }) => (
           <Card key={proposal.id} elevation="card" style={styles.failedCard}>
@@ -178,13 +188,13 @@ export default function ProposalsSection({ proposals, onChanged }: Props): React
               <Stack direction="row" gap="sm" align="center">
                 <Icon name="warning" color="danger" size={theme.iconSize.sm} />
                 <Text variant="caption" tone="danger">
-                  This one did not go through
+                  {t("review.failedTitle")}
                 </Text>
               </Stack>
-              <Text variant="bodyStrong">{proposalSummary(proposal)}</Text>
+              <Text variant="bodyStrong">{proposalSummary(proposal, t)}</Text>
               {proposal.proposal_type === "new_person" ? (
                 <Text variant="caption" tone="textSecondary">
-                  {UNVERIFIED_CAPTION}
+                  {t("review.unverifiedCaption")}
                 </Text>
               ) : null}
               <Text variant="caption" tone="danger">
@@ -192,10 +202,10 @@ export default function ProposalsSection({ proposals, onChanged }: Props): React
               </Text>
               <Stack direction="row" gap="sm">
                 <Stack flex>
-                  <Button label="Try again" icon="refresh" loading={busyId === proposal.id} onPress={() => void approve(proposal)} />
+                  <Button label={t("common.tryAgain")} icon="refresh" loading={busyId === proposal.id} onPress={() => void approve(proposal)} />
                 </Stack>
                 <Stack flex>
-                  <Button label="Dismiss" icon="close" variant="secondary" onPress={() => dismissFailed(proposal.id)} />
+                  <Button label={t("review.dismiss")} icon="close" variant="secondary" onPress={() => dismissFailed(proposal.id)} />
                 </Stack>
               </Stack>
             </Stack>
@@ -207,7 +217,7 @@ export default function ProposalsSection({ proposals, onChanged }: Props): React
               <Stack direction="row" gap="sm" align="center">
                 <Icon name="sparkle" color="accent" size={theme.iconSize.sm} />
                 <Text variant="caption" tone="textSecondary">
-                  Nikki heard this and wants to check with you
+                  {t("review.heardCaption")}
                 </Text>
               </Stack>
               {proposal.source_quote ? (
@@ -215,20 +225,20 @@ export default function ProposalsSection({ proposals, onChanged }: Props): React
                   {`“${proposal.source_quote}”`}
                 </Text>
               ) : null}
-              <Text variant="bodyStrong">{proposalSummary(proposal)}</Text>
+              <Text variant="bodyStrong">{proposalSummary(proposal, t)}</Text>
               {proposal.proposal_type === "new_person" ? (
                 <Text variant="caption" tone="textSecondary">
-                  {UNVERIFIED_CAPTION}
+                  {t("review.unverifiedCaption")}
                 </Text>
               ) : null}
               <Stack gap="sm">
-                <Button label="Add this" icon="check" loading={busyId === proposal.id} onPress={() => void approve(proposal)} />
+                <Button label={t("review.addThis")} icon="check" loading={busyId === proposal.id} onPress={() => void approve(proposal)} />
                 <Stack direction="row" gap="sm">
                   <Stack flex>
-                    <Button label="Check & edit" icon="edit" variant="secondary" onPress={() => setEditing(proposal)} />
+                    <Button label={t("review.checkEdit")} icon="edit" variant="secondary" onPress={() => setEditing(proposal)} />
                   </Stack>
                   <Stack flex>
-                    <Button label="Not right" icon="close" variant="secondary" onPress={() => openDecline(proposal)} />
+                    <Button label={t("review.notRight")} icon="close" variant="secondary" onPress={() => openDecline(proposal)} />
                   </Stack>
                 </Stack>
               </Stack>
@@ -247,14 +257,15 @@ export default function ProposalsSection({ proposals, onChanged }: Props): React
       <BottomSheetModal
         visible={declining !== null}
         onClose={() => setDeclining(null)}
-        title="Not right?"
-        subtitle="Tell Nikki why, so she knows not to bring it up again."
+        title={t("review.declineTitle")}
+        subtitle={t("review.declineSubtitle")}
       >
-        {declining ? <Text variant="caption" tone="textSecondary">{proposalSummary(declining)}</Text> : null}
+        {declining ? <Text variant="caption" tone="textSecondary">{proposalSummary(declining, t)}</Text> : null}
 
         <View style={styles.chipRow}>
-          {DECLINE_REASONS.map(({ reason, label }) => {
+          {DECLINE_REASONS.map(({ reason, labelKey }) => {
             const selected = declineReason === reason;
+            const label = t(labelKey);
             return (
               <Pressable
                 key={reason}
@@ -279,19 +290,19 @@ export default function ProposalsSection({ proposals, onChanged }: Props): React
         ) : null}
 
         <Stack gap="sm" style={styles.actions}>
-          <Button label="Decline" icon="close" loading={declineBusy} disabled={!declineReason} onPress={() => void confirmDecline()} />
-          <Button label="Cancel" variant="secondary" onPress={() => setDeclining(null)} />
+          <Button label={t("review.declineAction")} icon="close" loading={declineBusy} disabled={!declineReason} onPress={() => void confirmDecline()} />
+          <Button label={t("common.cancel")} variant="secondary" onPress={() => setDeclining(null)} />
         </Stack>
 
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Remove completely"
+          accessibilityLabel={t("review.removeCompletelyA11y")}
           onPress={() => void erase()}
           disabled={declineBusy}
           style={({ pressed }) => [styles.eraseLink, pressed ? styles.pressed : null]}
         >
           <Text variant="caption" tone="danger" center>
-            Remove completely — this should never have been kept
+            {t("review.removeCompletely")}
           </Text>
         </Pressable>
       </BottomSheetModal>

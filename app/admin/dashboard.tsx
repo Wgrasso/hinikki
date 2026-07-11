@@ -26,6 +26,7 @@ import { listPendingProposals, listRecaps } from "../../src/services/proposalSer
 import { registerAndSaveToken } from "../../src/services/pushService";
 import { registerForPush, sendPush } from "../../src/features/notifications/push";
 import { FEATURE_HELP_TAB, FEATURE_TEST_PUSH_NOTIFICATION } from "../../src/lib/constants";
+import { useT } from "../../src/i18n";
 import type { CalendarEvent, EmergencyEvent, FamilyPerson, LocationUpdate, NikkiProposal, OlderAdultProfile, RecapChange, Reminder } from "../../src/types/database";
 import type { SetupChecklistItem } from "../../src/types/domain";
 
@@ -53,6 +54,7 @@ function recapChanges(recap: NikkiProposal): RecapChange[] {
 }
 
 export default function AdminDashboard(): React.ReactElement {
+  const { t } = useT();
   const { olderAdultId } = useAppState();
   const id = olderAdultId ?? "";
   const [pushToken, setPushToken] = useState<string | null>(null);
@@ -78,12 +80,12 @@ export default function AdminDashboard(): React.ReactElement {
       listRecaps(id, 5),
     ]);
     const checklist: SetupChecklistItem[] = [
-      { key: "people", label: "Add family & friends", done: people.length > 0 },
-      { key: "schedule", label: "Add a calendar event", done: events.length > 0 },
+      { key: "people", label: t("admin.checklist.people"), done: people.length > 0 },
+      { key: "schedule", label: t("admin.checklist.schedule"), done: events.length > 0 },
       ...(FEATURE_HELP_TAB
         ? [
-            { key: "safe", label: "Add a safe place", done: safe.length > 0 },
-            { key: "contacts", label: "Add an emergency contact", done: contacts.length > 0 },
+            { key: "safe", label: t("admin.checklist.safe"), done: safe.length > 0 },
+            { key: "contacts", label: t("admin.checklist.contacts"), done: contacts.length > 0 },
           ]
         : []),
     ];
@@ -112,26 +114,34 @@ export default function AdminDashboard(): React.ReactElement {
     setPickerOpen(false);
     if (!pushToken) {
       Alert.alert(
-        "Push notifications",
-        Platform.OS === "web"
-          ? "Push notifications only work in the installed app (TestFlight) on a real device, not in the web preview."
-          : "Please allow notifications for HiNikki in your device settings, then try again.",
+        t("adminDash.pushTitle"),
+        Platform.OS === "web" ? t("adminDash.pushWebOnly") : t("adminDash.pushAllow"),
       );
       return;
     }
-    const r = await sendPush(pushToken, "HiNikki", `Test notification for ${person.full_name}.`);
+    const r = await sendPush(pushToken, "HiNikki", t("adminDash.pushTestBody", { name: person.full_name }));
     Alert.alert(
-      r.ok ? "Notification sent" : "Could not send",
-      r.ok ? `A test notification for ${person.full_name} was sent to this device.` : r.message,
+      r.ok ? t("adminDash.pushSent") : t("adminDash.pushFailed"),
+      r.ok ? t("adminDash.pushSentBody", { name: person.full_name }) : r.message,
     );
   }
 
   return (
     <Screen scroll>
-      <StateView state={state} onRetry={reload} loadingLabel="Loading the dashboard…">
+      <StateView state={state} onRetry={reload} loadingLabel={t("adminDash.loading")}>
         {(data) => (
           <Stack gap="lg">
-            <AppBar title={`${data.adult?.preferred_name ?? data.adult?.display_name ?? "Your"}${data.adult?.preferred_name ? "'s" : ""} day`} subtitle="Everything Nikki is helping with today." onRefresh={reload} />
+            <AppBar
+              title={
+                data.adult?.preferred_name
+                  ? t("adminDash.titlePossessive", { name: data.adult.preferred_name })
+                  : data.adult?.display_name
+                    ? t("adminDash.titleName", { name: data.adult.display_name })
+                    : t("adminDash.titleYour")
+              }
+              subtitle={t("adminDash.subtitle")}
+              onRefresh={reload}
+            />
 
             {data.alerts.length > 0 ? (
               <Card tone="surface" elevation="lg" style={styles.alert}>
@@ -139,10 +149,12 @@ export default function AdminDashboard(): React.ReactElement {
                   <Icon name="warning" color="danger" size={theme.iconSize.lg} />
                   <Stack flex gap="xs">
                     <Text variant="bodyStrong" tone="danger">
-                      {data.alerts.length} alert{data.alerts.length === 1 ? "" : "s"} need attention
+                      {data.alerts.length === 1
+                        ? t("adminDash.alertsOne", { count: 1 })
+                        : t("adminDash.alertsMany", { count: data.alerts.length })}
                     </Text>
                     <Text variant="body" tone="textSecondary">
-                      {data.adult?.preferred_name ?? "They"} may need help. Open the Safety tab for details.
+                      {t("adminDash.alertsBody", { name: data.adult?.preferred_name ?? t("adminDash.alertsTheyFallback") })}
                     </Text>
                   </Stack>
                 </Stack>
@@ -155,10 +167,10 @@ export default function AdminDashboard(): React.ReactElement {
                   <Icon name="location" color="primary" size={theme.iconSize.lg} />
                   <Stack flex gap="xs">
                     <Text variant="overline" tone="textSecondary">
-                      LAST KNOWN LOCATION
+                      {t("adminDash.lastLocation")}
                     </Text>
                     <Text variant="bodyStrong">
-                      {data.latest ? `Seen ${relativeTimeLabel(data.latest.created_at)}` : "Not shared yet"}
+                      {data.latest ? t("admin.seen", { time: relativeTimeLabel(data.latest.created_at) }) : t("admin.notShared")}
                     </Text>
                   </Stack>
                 </Stack>
@@ -173,7 +185,7 @@ export default function AdminDashboard(): React.ReactElement {
 
             {data.recaps.length > 0 ? (
               <View>
-                <SectionHeader title="Conversations" />
+                <SectionHeader title={t("adminDash.conversations")} />
                 <Stack gap="sm">
                   {data.recaps.map((recap) => (
                     <Card key={recap.id} bordered elevation="none">
@@ -181,7 +193,7 @@ export default function AdminDashboard(): React.ReactElement {
                         <Text variant="caption" tone="textTertiary">
                           {relativeTimeLabel(recap.created_at)}
                         </Text>
-                        <Text variant="body">{recapSummary(recap) ?? "A conversation with Nikki."}</Text>
+                        <Text variant="body">{recapSummary(recap) ?? t("adminDash.conversationFallback")}</Text>
                         {recapChanges(recap).length > 0 ? (
                           <View style={styles.pillRow}>
                             {recapChanges(recap).map((change, i) => (
@@ -201,11 +213,11 @@ export default function AdminDashboard(): React.ReactElement {
             ) : null}
 
             <View>
-              <SectionHeader title="Today" />
+              <SectionHeader title={t("adminDash.today")} />
               {data.today.length === 0 ? (
                 <Card bordered elevation="none">
                   <Text variant="body" tone="textSecondary">
-                    No events today. Add one in the Schedule tab so Nikki can prepare them.
+                    {t("adminDash.noEventsToday")}
                   </Text>
                 </Card>
               ) : (
@@ -218,17 +230,17 @@ export default function AdminDashboard(): React.ReactElement {
             </View>
 
             <View>
-              <SectionHeader title="Reminders" />
+              <SectionHeader title={t("admin.reminders")} />
               {data.reminders.length === 0 ? (
                 <Card bordered elevation="none">
                   <Text variant="body" tone="textSecondary">
-                    No reminders yet.
+                    {t("adminDash.noReminders")}
                   </Text>
                 </Card>
               ) : (
                 <Stack gap="sm">
                   {data.reminders.map((r) => (
-                    <ListRow key={r.id} title={r.title} subtitle={r.scheduled_at ? formatTime(r.scheduled_at) : "Anytime"} showChevron={false} />
+                    <ListRow key={r.id} title={r.title} subtitle={r.scheduled_at ? formatTime(r.scheduled_at) : t("admin.anytime")} showChevron={false} />
                   ))}
                 </Stack>
               )}
@@ -236,8 +248,8 @@ export default function AdminDashboard(): React.ReactElement {
 
             {FEATURE_TEST_PUSH_NOTIFICATION ? (
               <View>
-                <SectionHeader title="Notifications" />
-                <Button label="Test push notification" icon="send" variant="secondary" onPress={() => setPickerOpen(true)} />
+                <SectionHeader title={t("adminDash.notifications")} />
+                <Button label={t("adminDash.testPush")} icon="send" variant="secondary" onPress={() => setPickerOpen(true)} />
               </View>
             ) : null}
           </Stack>
@@ -248,8 +260,8 @@ export default function AdminDashboard(): React.ReactElement {
         <BottomSheetModal
           visible={pickerOpen}
           onClose={() => setPickerOpen(false)}
-          title="Send a test notification"
-          subtitle="Choose someone in the family. A test push notification will be sent to this device."
+          title={t("adminDash.pushPickerTitle")}
+          subtitle={t("adminDash.pushPickerSubtitle")}
           maxHeightPercent={80}
         >
           {state.status === "loaded" && state.data.people.length > 0 ? (
@@ -260,10 +272,10 @@ export default function AdminDashboard(): React.ReactElement {
             </Stack>
           ) : (
             <Text variant="body" tone="textSecondary">
-              Add people first, then you can send them a notification.
+              {t("adminDash.pushPickerEmpty")}
             </Text>
           )}
-          <Button label="Cancel" variant="secondary" onPress={() => setPickerOpen(false)} />
+          <Button label={t("common.cancel")} variant="secondary" onPress={() => setPickerOpen(false)} />
         </BottomSheetModal>
       ) : null}
     </Screen>

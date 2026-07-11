@@ -7,11 +7,13 @@ import { AppBar, Button, Card, Field, Icon, Screen, Stack, Text } from "../../sr
 import PairingCode from "../../src/components/shared/PairingCode";
 import { theme } from "../../src/theme";
 import { adminCreateHousehold, joinGroupAsAdmin } from "../../src/services/groupService";
+import { useT } from "../../src/i18n";
 
 type View = "choose" | "create" | "created" | "join";
 
 export default function AdminPairing(): React.ReactElement {
   const router = useRouter();
+  const { t } = useT();
   const { completeSetupWithGroup } = useAppState();
   const [view, setView] = useState<View>("choose");
   const [name, setName] = useState("");
@@ -22,7 +24,7 @@ export default function AdminPairing(): React.ReactElement {
   const created = useRef<{ olderAdultId: string; groupId: string; joinCode: string } | null>(null);
 
   async function createHousehold(): Promise<void> {
-    if (name.trim().length === 0) { setError("Please enter a name."); return; }
+    if (name.trim().length === 0) { setError(t("adminPairing.error.nameRequired")); return; }
     setBusy(true); setError(null);
     try {
       const h = await adminCreateHousehold("Our family", name.trim());
@@ -30,7 +32,7 @@ export default function AdminPairing(): React.ReactElement {
       setCode(h.joinCode);
       setView("created");
     } catch {
-      setError("We could not create the household just now. Please try again.");
+      setError(t("adminPairing.error.createFailed"));
     } finally {
       setBusy(false);
     }
@@ -55,28 +57,28 @@ export default function AdminPairing(): React.ReactElement {
 
   return (
     <Screen scroll>
-      <AppBar title="Set up your household" onBack={() => (view === "choose" ? router.back() : setView("choose"))} />
+      <AppBar title={t("adminPairing.title")} onBack={() => (view === "choose" ? router.back() : setView("choose"))} />
 
       {view === "choose" ? (
         <Stack gap="lg">
-          <Card elevation="card" onPress={() => setView("create")} accessibilityLabel="Create a new household">
+          <Card elevation="card" onPress={() => setView("create")} accessibilityLabel={t("adminPairing.choose.create.a11y")}>
             <Stack direction="row" gap="lg" align="center">
               <Icon name="add" color="primary" size={theme.iconSize.lg} />
               <Stack flex gap="xs">
-                <Text variant="heading">Create a household</Text>
+                <Text variant="heading">{t("adminPairing.choose.create.title")}</Text>
                 <Text variant="body" tone="textSecondary">
-                  Start fresh — you will get a code to share with everyone.
+                  {t("adminPairing.choose.create.body")}
                 </Text>
               </Stack>
             </Stack>
           </Card>
-          <Card elevation="card" onPress={() => setView("join")} accessibilityLabel="Join an existing household">
+          <Card elevation="card" onPress={() => setView("join")} accessibilityLabel={t("adminPairing.choose.join.a11y")}>
             <Stack direction="row" gap="lg" align="center">
               <Icon name="people" color="primary" size={theme.iconSize.lg} />
               <Stack flex gap="xs">
-                <Text variant="heading">Join an existing household</Text>
+                <Text variant="heading">{t("adminPairing.choose.join.title")}</Text>
                 <Text variant="body" tone="textSecondary">
-                  Someone already set things up — enter the family code.
+                  {t("adminPairing.choose.join.body")}
                 </Text>
               </Stack>
             </Stack>
@@ -86,8 +88,8 @@ export default function AdminPairing(): React.ReactElement {
 
       {view === "create" ? (
         <Stack gap="lg">
-          <Field label="Who are you caring for?" value={name} onChangeText={setName} placeholder="e.g. Anna" autoCapitalize="words" error={error} />
-          <Button label="Create our family" icon="check" loading={busy} onPress={createHousehold} />
+          <Field label={t("adminPairing.create.nameLabel")} value={name} onChangeText={setName} placeholder={t("adminPairing.create.namePlaceholder")} autoCapitalize="words" error={error} />
+          <Button label={t("adminPairing.create.submit")} icon="check" loading={busy} onPress={createHousehold} />
         </Stack>
       ) : null}
 
@@ -95,25 +97,25 @@ export default function AdminPairing(): React.ReactElement {
         <Stack gap="lg">
           <PairingCode code={code} />
           <Text variant="body" tone="textSecondary">
-            Share this one code with {name || "your family"} and with the person using Nikki. Everyone enters the same code to connect — it never expires.
+            {t("adminPairing.created.share", { name: name || t("adminPairing.created.shareFallbackName") })}
           </Text>
           <Card elevation="card">
             <Stack gap="xs">
-              <Text variant="bodyStrong">Before you share this code, please set up:</Text>
-              <Text variant="body" tone="textSecondary">• Your loved one's language</Text>
-              <Text variant="body" tone="textSecondary">• Their home address</Text>
-              <Text variant="body" tone="textSecondary">• At least one family phone number to call</Text>
-              <Text variant="caption" tone="textSecondary">You can do all of this from the app.</Text>
+              <Text variant="bodyStrong">{t("adminPairing.created.reminderTitle")}</Text>
+              <Text variant="body" tone="textSecondary">{t("adminPairing.created.reminderLanguage")}</Text>
+              <Text variant="body" tone="textSecondary">{t("adminPairing.created.reminderAddress")}</Text>
+              <Text variant="body" tone="textSecondary">{t("adminPairing.created.reminderPhone")}</Text>
+              <Text variant="caption" tone="textSecondary">{t("adminPairing.created.reminderHint")}</Text>
             </Stack>
           </Card>
-          <Button label="Go to dashboard" icon="check" onPress={finish} />
+          <Button label={t("adminPairing.created.finish")} icon="check" onPress={finish} />
         </Stack>
       ) : null}
 
       {view === "join" ? (
         <Stack gap="lg">
-          <Field label="Family code" value={entered} onChangeText={setEntered} placeholder="8-character code" autoCapitalize="none" error={error} />
-          <Button label="Connect" icon="check" loading={busy} onPress={joinHousehold} />
+          <Field label={t("adminPairing.join.codeLabel")} value={entered} onChangeText={setEntered} placeholder={t("adminPairing.join.codePlaceholder")} autoCapitalize="none" error={error} />
+          <Button label={t("adminPairing.join.submit")} icon="check" loading={busy} onPress={joinHousehold} />
         </Stack>
       ) : null}
     </Screen>

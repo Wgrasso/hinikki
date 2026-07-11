@@ -12,6 +12,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { theme } from "../../theme";
 import { Icon, Text } from "../../primitives";
 import { formatTime } from "../../utils/format";
+import { useT } from "../../i18n";
 
 type PickerMode = "date" | "time";
 
@@ -40,6 +41,7 @@ export default function DateTimePickerField({
   error,
   onClear,
 }: Props): React.ReactElement {
+  const { t } = useT();
   const [androidOpen, setAndroidOpen] = useState(false);
 
   // First tap on an unset field: give it a starting value: also open Android's dialog in the
@@ -93,7 +95,7 @@ export default function DateTimePickerField({
           />
         )}
         {onClear && value ? (
-          <Pressable accessibilityRole="button" accessibilityLabel={`Clear ${label}`} onPress={onClear} hitSlop={8}>
+          <Pressable accessibilityRole="button" accessibilityLabel={t("adminForms.clearField", { label })} onPress={onClear} hitSlop={8}>
             <Icon name="close" size={theme.iconSize.sm} color="textTertiary" />
           </Pressable>
         ) : null}

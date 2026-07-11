@@ -7,6 +7,7 @@ import { theme } from "../../theme";
 import { Button, Field, Icon, Stack, Text } from "../../primitives";
 import BottomSheetModal from "../shared/BottomSheetModal";
 import { createMemory, deleteMemory, updateMemory } from "../../services/memoryService";
+import { useT } from "../../i18n";
 import type { FamilyPerson, PersonMemory } from "../../types/database";
 
 type Props = {
@@ -19,6 +20,7 @@ type Props = {
 };
 
 export default function MemoryFormModal({ visible, olderAdultId, people, memory, onClose, onSaved }: Props): React.ReactElement {
+  const { t } = useT();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [approximateDate, setApproximateDate] = useState("");
@@ -42,7 +44,7 @@ export default function MemoryFormModal({ visible, olderAdultId, people, memory,
 
   async function save(): Promise<void> {
     if (title.trim().length === 0) {
-      setError("Please give the memory a title.");
+      setError(t("adminForms.memory.titleRequired"));
       return;
     }
     setSaving(true);
@@ -60,7 +62,7 @@ export default function MemoryFormModal({ visible, olderAdultId, people, memory,
       onSaved();
       onClose();
     } catch {
-      setError("We could not save just now. Please try again.");
+      setError(t("adminForms.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -75,16 +77,16 @@ export default function MemoryFormModal({ visible, olderAdultId, people, memory,
       onSaved();
       onClose();
     } catch {
-      setError("We could not delete just now. Please try again.");
+      setError(t("adminForms.deleteFailed"));
     } finally {
       setDeleting(false);
     }
   }
 
   function confirmDelete(): void {
-    Alert.alert("Delete this memory?", "This can't be undone.", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: remove },
+    Alert.alert(t("adminForms.memory.deleteConfirmTitle"), t("adminForms.deleteUndone"), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("common.delete"), style: "destructive", onPress: remove },
     ]);
   }
 
@@ -92,17 +94,17 @@ export default function MemoryFormModal({ visible, olderAdultId, people, memory,
     <BottomSheetModal
       visible={visible}
       onClose={onClose}
-      title={memory ? "Edit memory" : "Add a memory"}
-      subtitle="A cherished story Nikki can bring up in conversation."
+      title={memory ? t("adminForms.memory.editTitle") : t("adminForms.memory.addTitle")}
+      subtitle={t("adminForms.memory.subtitle")}
     >
-      <Field label="Title" value={title} onChangeText={setTitle} placeholder="e.g. The bakery in Jordaan" autoCapitalize="sentences" error={error} />
-      <Field label="The story" value={description} onChangeText={setDescription} placeholder="What happened, and why it matters" multiline />
-      <Field label="Roughly when" value={approximateDate} onChangeText={setApproximateDate} placeholder="e.g. the 1970s, or her wedding day" autoCapitalize="none" />
+      <Field label={t("adminForms.titleField")} value={title} onChangeText={setTitle} placeholder={t("adminForms.memory.titlePlaceholder")} autoCapitalize="sentences" error={error} />
+      <Field label={t("adminForms.memory.story")} value={description} onChangeText={setDescription} placeholder={t("adminForms.memory.storyPlaceholder")} multiline />
+      <Field label={t("adminForms.memory.when")} value={approximateDate} onChangeText={setApproximateDate} placeholder={t("adminForms.memory.whenPlaceholder")} autoCapitalize="none" />
 
       {people.length > 0 ? (
         <View style={styles.personSection}>
           <Text variant="caption" tone="textSecondary">
-            Who this memory is about (optional)
+            {t("adminForms.memory.aboutWho")}
           </Text>
           <View style={styles.chipRow}>
             {people.map((p) => {
@@ -127,16 +129,16 @@ export default function MemoryFormModal({ visible, olderAdultId, people, memory,
         </View>
       ) : null}
 
-      <Pressable accessibilityRole="switch" accessibilityState={{ checked: canMention }} accessibilityLabel="Nikki may bring this up" onPress={() => setCanMention((v) => !v)} style={styles.toggleRow}>
+      <Pressable accessibilityRole="switch" accessibilityState={{ checked: canMention }} accessibilityLabel={t("adminForms.memory.mentionToggle")} onPress={() => setCanMention((v) => !v)} style={styles.toggleRow}>
         <Icon name={canMention ? "check" : "add"} color={canMention ? "success" : "textTertiary"} />
-        <Text variant="body">Nikki may bring this up</Text>
+        <Text variant="body">{t("adminForms.memory.mentionToggle")}</Text>
       </Pressable>
 
       <Stack gap="sm" style={styles.actions}>
-        <Button label={memory ? "Save changes" : "Save memory"} icon="check" loading={saving} disabled={deleting} onPress={save} />
-        <Button label="Cancel" variant="secondary" disabled={saving || deleting} onPress={onClose} />
+        <Button label={memory ? t("common.saveChanges") : t("adminForms.memory.addButton")} icon="check" loading={saving} disabled={deleting} onPress={save} />
+        <Button label={t("common.cancel")} variant="secondary" disabled={saving || deleting} onPress={onClose} />
         {memory ? (
-          <Button label="Delete memory" variant="danger" loading={deleting} disabled={saving} onPress={confirmDelete} />
+          <Button label={t("adminForms.memory.deleteButton")} variant="danger" loading={deleting} disabled={saving} onPress={confirmDelete} />
         ) : null}
       </Stack>
     </BottomSheetModal>

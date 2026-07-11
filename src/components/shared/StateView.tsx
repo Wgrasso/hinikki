@@ -8,6 +8,7 @@ import { theme } from "../../theme";
 import type { IconName } from "../../theme";
 import { Button, Stack, Text } from "../../primitives";
 import type { AsyncState } from "../../utils/useAsync";
+import { useT } from "../../i18n";
 import EmptyState from "./EmptyState";
 
 type StateViewProps<T> = {
@@ -25,6 +26,7 @@ type StateViewProps<T> = {
 
 export default function StateView<T>(props: StateViewProps<T>): React.ReactElement {
   const { state, onRetry, loadingLabel } = props;
+  const { t } = useT();
 
   // Full-screen spinner only before the first data arrives.
   if (state.status === "loading") {
@@ -42,12 +44,12 @@ export default function StateView<T>(props: StateViewProps<T>): React.ReactEleme
     return (
       <Stack align="center" justify="center" gap="md" style={styles.center}>
         <Text variant="heading" center>
-          Something went wrong
+          {t("common.somethingWrong")}
         </Text>
         <Text variant="body" tone="textSecondary" center>
-          {state.error} Please try again in a moment.
+          {state.error} {t("common.tryAgainMoment")}
         </Text>
-        <Button label="Try again" icon="check" onPress={onRetry} fullWidth={false} />
+        <Button label={t("common.tryAgain")} icon="check" onPress={onRetry} fullWidth={false} />
       </Stack>
     );
   }

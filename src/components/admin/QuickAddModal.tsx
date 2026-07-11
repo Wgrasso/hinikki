@@ -4,6 +4,7 @@ import { KeyboardTypeOptions, StyleSheet } from "react-native";
 import { theme } from "../../theme";
 import { Button, Field, Stack } from "../../primitives";
 import BottomSheetModal from "../shared/BottomSheetModal";
+import { useT } from "../../i18n";
 
 export type QuickField = {
   key: string;
@@ -24,7 +25,8 @@ type Props = {
   onSubmit: (values: Record<string, string>) => Promise<void>;
 };
 
-export default function QuickAddModal({ visible, title, fields, initialValues, submitLabel = "Save", note, onClose, onSubmit }: Props): React.ReactElement {
+export default function QuickAddModal({ visible, title, fields, initialValues, submitLabel, note, onClose, onSubmit }: Props): React.ReactElement {
+  const { t } = useT();
   const [values, setValues] = useState<Record<string, string>>(initialValues ?? {});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +47,7 @@ export default function QuickAddModal({ visible, title, fields, initialValues, s
   async function submit(): Promise<void> {
     const missing = fields.find((f) => f.required && !(values[f.key] ?? "").trim());
     if (missing) {
-      setError(`Please enter ${missing.label.toLowerCase()}.`);
+      setError(t("adminForms.quickAdd.required", { field: missing.label.toLowerCase() }));
       return;
     }
     setSaving(true);
@@ -54,7 +56,7 @@ export default function QuickAddModal({ visible, title, fields, initialValues, s
       await onSubmit(values);
       onClose();
     } catch {
-      setError("We could not save just now. Please try again.");
+      setError(t("adminForms.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -74,8 +76,8 @@ export default function QuickAddModal({ visible, title, fields, initialValues, s
         />
       ))}
       <Stack gap="sm" style={styles.actions}>
-        <Button label={submitLabel} icon="check" loading={saving} onPress={submit} />
-        <Button label="Cancel" variant="secondary" onPress={onClose} />
+        <Button label={submitLabel ?? t("common.save")} icon="check" loading={saving} onPress={submit} />
+        <Button label={t("common.cancel")} variant="secondary" onPress={onClose} />
       </Stack>
     </BottomSheetModal>
   );

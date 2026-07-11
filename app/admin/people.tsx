@@ -15,11 +15,13 @@ import { subscribeLive } from "../../src/features/sync/liveChannel";
 import { theme } from "../../src/theme";
 import { getPhotoUrl, listPeople } from "../../src/services/peopleService";
 import { listMemories } from "../../src/services/memoryService";
+import { useT } from "../../src/i18n";
 import type { FamilyPerson, PersonMemory } from "../../src/types/database";
 
 type PeopleData = { people: FamilyPerson[]; photos: Record<string, string | null>; memories: PersonMemory[] };
 
 export default function AdminPeople(): React.ReactElement {
+  const { t } = useT();
   const { olderAdultId } = useAppState();
   const id = olderAdultId ?? "";
   const [formOpen, setFormOpen] = useState(false);
@@ -71,17 +73,17 @@ export default function AdminPeople(): React.ReactElement {
   return (
     <Screen padded={false}>
       <View style={styles.bar}>
-        <AppBar title="People & Memories" subtitle="The people Nikki knows, and moments worth remembering." onRefresh={reload} />
+        <AppBar title={t("adminPeople.title")} subtitle={t("adminPeople.subtitle")} onRefresh={reload} />
       </View>
       <StateView
         state={state}
         onRetry={reload}
-        loadingLabel="Loading people…"
+        loadingLabel={t("adminPeople.loading")}
         isEmpty={(d) => d.people.length === 0}
         emptyIcon="people"
-        emptyTitle="No people yet"
-        emptySubtitle="Add the family, friends and carers Nikki should know about."
-        emptyActionLabel="Add the first person"
+        emptyTitle={t("adminPeople.emptyTitle")}
+        emptySubtitle={t("adminPeople.emptySubtitle")}
+        emptyActionLabel={t("adminPeople.emptyAction")}
         onEmptyAction={openAdd}
       >
         {(data) => (
@@ -91,7 +93,7 @@ export default function AdminPeople(): React.ReactElement {
             contentContainerStyle={styles.list}
             ListHeaderComponent={
               <View style={styles.peopleHeader}>
-                <SectionHeader title="People" actionLabel="Add a person" onAction={openAdd} />
+                <SectionHeader title={t("adminPeople.sectionPeople")} actionLabel={t("adminPeople.addPerson")} onAction={openAdd} />
               </View>
             }
             ItemSeparatorComponent={() => <View style={styles.sep} />}
@@ -105,10 +107,10 @@ export default function AdminPeople(): React.ReactElement {
             )}
             ListFooterComponent={
               <View style={styles.memories}>
-                <SectionHeader title="Memories" actionLabel="Add a memory" onAction={openAddMemory} />
+                <SectionHeader title={t("adminPeople.memories")} actionLabel={t("adminPeople.addMemory")} onAction={openAddMemory} />
                 {data.memories.length === 0 ? (
                   <Text variant="body" tone="textSecondary">
-                    Cherished stories Nikki can gently bring up in conversation.
+                    {t("adminPeople.memoriesHint")}
                   </Text>
                 ) : (
                   <View style={styles.memoryList}>

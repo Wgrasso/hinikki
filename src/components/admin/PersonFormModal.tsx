@@ -12,6 +12,7 @@ import { createPerson, deletePerson, listPeople, updatePerson, uploadPersonPhoto
 import { getOlderAdult } from "../../services/profileService";
 import { parseBirthday } from "../../utils/parseBirthday";
 import ConnectionsEditor from "./ConnectionsEditor";
+import { useT } from "../../i18n";
 import type { FamilyPerson } from "../../types/database";
 
 type Props = {
@@ -24,6 +25,7 @@ type Props = {
 };
 
 export default function PersonFormModal({ visible, olderAdultId, person, initialPhotoUrl, onClose, onSaved }: Props): React.ReactElement {
+  const { t } = useT();
   const [fullName, setFullName] = useState("");
   const [preferredName, setPreferredName] = useState("");
   const [relationship, setRelationship] = useState("");
@@ -38,7 +40,7 @@ export default function PersonFormModal({ visible, olderAdultId, person, initial
   const [canBeCalled, setCanBeCalled] = useState(false);
   const [canMention, setCanMention] = useState(true);
   const [people, setPeople] = useState<FamilyPerson[]>([]);
-  const [elderName, setElderName] = useState("the person Nikki helps");
+  const [elderName, setElderName] = useState(t("adminForms.person.elderFallback"));
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -98,13 +100,13 @@ export default function PersonFormModal({ visible, olderAdultId, person, initial
 
   async function save(): Promise<void> {
     if (fullName.trim().length === 0) {
-      setError("Please enter a name.");
+      setError(t("adminForms.person.nameRequired"));
       return;
     }
     // The birthday is free text; never wipe a stored date because we could not read an edit.
     const dateOfBirth = parseBirthday(birthday);
     if (birthday.trim().length > 0 && dateOfBirth === null) {
-      setBirthdayError("We could not read this date. Try e.g. 3 May 1952 or 1952-05-03.");
+      setBirthdayError(t("adminForms.birthdayParseError"));
       return;
     }
     setSaving(true);
@@ -146,7 +148,7 @@ export default function PersonFormModal({ visible, olderAdultId, person, initial
       // Dev builds show the underlying cause — a swallowed RLS/foreign-key message cost
       // us a debugging session once; release keeps the warm copy.
       const detail = __DEV__ && e instanceof Error ? ` (${e.message})` : "";
-      setError(`We could not save just now. Please try again.${detail}`);
+      setError(`${t("adminForms.saveFailed")}${detail}`);
     } finally {
       setSaving(false);
     }
@@ -161,7 +163,7 @@ export default function PersonFormModal({ visible, olderAdultId, person, initial
       onSaved();
       onClose();
     } catch {
-      setError("We could not delete just now. Please try again.");
+      setError(t("adminForms.deleteFailed"));
     } finally {
       setDeleting(false);
     }
@@ -169,11 +171,11 @@ export default function PersonFormModal({ visible, olderAdultId, person, initial
 
   function confirmDelete(): void {
     Alert.alert(
-      "Delete this person?",
-      "This can't be undone. Any connections to other family members will also be removed.",
+      t("adminForms.person.deleteConfirmTitle"),
+      t("adminForms.person.deleteConfirmBody"),
       [
-        { text: "Cancel", style: "cancel" },
-        { text: "Delete", style: "destructive", onPress: remove },
+        { text: t("common.cancel"), style: "cancel" },
+        { text: t("common.delete"), style: "destructive", onPress: remove },
       ],
     );
   }
@@ -182,49 +184,49 @@ export default function PersonFormModal({ visible, olderAdultId, person, initial
     <BottomSheetModal
       visible={visible}
       onClose={onClose}
-      title={person ? "Edit person" : "Add a person"}
-      subtitle="Tell Nikki who this is so they can help your loved one remember."
+      title={person ? t("adminForms.person.editTitle") : t("adminForms.person.addTitle")}
+      subtitle={t("adminForms.person.subtitle")}
     >
       {previewUri ? <Image source={{ uri: previewUri }} style={styles.photoPreview} /> : null}
-      <Pressable accessibilityRole="button" accessibilityLabel={previewUri ? "Change photo" : "Add a photo"} onPress={pickPhoto} style={({ pressed }) => [styles.photoBtn, pressed ? styles.pressed : null]}>
+      <Pressable accessibilityRole="button" accessibilityLabel={previewUri ? t("adminForms.person.changePhoto") : t("adminForms.person.addPhoto")} onPress={pickPhoto} style={({ pressed }) => [styles.photoBtn, pressed ? styles.pressed : null]}>
         <Icon name="camera" color="primary" size={theme.iconSize.lg} />
         <Text variant="bodyStrong" tone="primary">
-          {previewUri ? "Change photo" : "Add a photo"}
+          {previewUri ? t("adminForms.person.changePhoto") : t("adminForms.person.addPhoto")}
         </Text>
       </Pressable>
 
-      <Field label="Full name" value={fullName} onChangeText={setFullName} placeholder="e.g. Sophie de Vries" autoCapitalize="words" error={error} />
-      <Field label="What Nikki calls them" value={preferredName} onChangeText={setPreferredName} placeholder="e.g. Sophie" autoCapitalize="words" />
-      <Field label="Relationship" value={relationship} onChangeText={setRelationship} placeholder="e.g. Daughter" autoCapitalize="words" />
-      <Field label="How to say their name" value={pronunciation} onChangeText={setPronunciation} placeholder="e.g. so-FEE" autoCapitalize="none" />
+      <Field label={t("adminForms.person.fullName")} value={fullName} onChangeText={setFullName} placeholder={t("adminForms.person.fullNamePlaceholder")} autoCapitalize="words" error={error} />
+      <Field label={t("adminForms.person.calledName")} value={preferredName} onChangeText={setPreferredName} placeholder={t("adminForms.person.calledNamePlaceholder")} autoCapitalize="words" />
+      <Field label={t("adminForms.person.relationship")} value={relationship} onChangeText={setRelationship} placeholder={t("adminForms.person.relationshipPlaceholder")} autoCapitalize="words" />
+      <Field label={t("adminForms.person.pronunciation")} value={pronunciation} onChangeText={setPronunciation} placeholder={t("adminForms.person.pronunciationPlaceholder")} autoCapitalize="none" />
       <Field
-        label="Birthday"
+        label={t("adminForms.person.birthday")}
         value={birthday}
         onChangeText={(text) => {
           setBirthday(text);
           setBirthdayError(null);
         }}
-        placeholder="e.g. 3 May 1952 or 1952-05-03"
+        placeholder={t("adminForms.person.birthdayPlaceholder")}
         autoCapitalize="none"
         error={birthdayError}
       />
-      <Field label="Hometown" value={location} onChangeText={setLocation} placeholder="e.g. Amsterdam" />
-      <Field label="How often they visit" value={visit} onChangeText={setVisit} placeholder="e.g. Usually on Thursdays" />
-      <Field label="Important notes" value={notes} onChangeText={setNotes} placeholder="e.g. Brings fresh flowers and stays for lunch" multiline />
-      <Field label="Conversation hints for Nikki" value={hints} onChangeText={setHints} placeholder="e.g. Loves to hear about the garden" multiline />
-      <Field label="Phone" value={phone} onChangeText={setPhone} placeholder="Optional" keyboardType="phone-pad" autoCapitalize="none" />
+      <Field label={t("adminForms.person.hometown")} value={location} onChangeText={setLocation} placeholder={t("adminForms.person.hometownPlaceholder")} />
+      <Field label={t("adminForms.person.visit")} value={visit} onChangeText={setVisit} placeholder={t("adminForms.person.visitPlaceholder")} />
+      <Field label={t("adminForms.person.notes")} value={notes} onChangeText={setNotes} placeholder={t("adminForms.person.notesPlaceholder")} multiline />
+      <Field label={t("adminForms.person.hints")} value={hints} onChangeText={setHints} placeholder={t("adminForms.person.hintsPlaceholder")} multiline />
+      <Field label={t("adminForms.person.phone")} value={phone} onChangeText={setPhone} placeholder={t("common.optional")} keyboardType="phone-pad" autoCapitalize="none" />
 
-      <Pressable accessibilityRole="switch" accessibilityState={{ checked: emergency }} accessibilityLabel="Can be contacted in an emergency" onPress={() => setEmergency((e) => !e)} style={styles.toggleRow}>
+      <Pressable accessibilityRole="switch" accessibilityState={{ checked: emergency }} accessibilityLabel={t("adminForms.person.emergencyToggle")} onPress={() => setEmergency((e) => !e)} style={styles.toggleRow}>
         <Icon name={emergency ? "check" : "add"} color={emergency ? "success" : "textTertiary"} />
-        <Text variant="body">Can be contacted in an emergency</Text>
+        <Text variant="body">{t("adminForms.person.emergencyToggle")}</Text>
       </Pressable>
-      <Pressable accessibilityRole="switch" accessibilityState={{ checked: canBeCalled }} accessibilityLabel="This person may be called by Nikki" onPress={() => setCanBeCalled((v) => !v)} style={styles.toggleRow}>
+      <Pressable accessibilityRole="switch" accessibilityState={{ checked: canBeCalled }} accessibilityLabel={t("adminForms.person.canBeCalledToggle")} onPress={() => setCanBeCalled((v) => !v)} style={styles.toggleRow}>
         <Icon name={canBeCalled ? "check" : "add"} color={canBeCalled ? "success" : "textTertiary"} />
-        <Text variant="body">This person may be called by Nikki</Text>
+        <Text variant="body">{t("adminForms.person.canBeCalledToggle")}</Text>
       </Pressable>
-      <Pressable accessibilityRole="switch" accessibilityState={{ checked: canMention }} accessibilityLabel="Nikki may talk about this person" onPress={() => setCanMention((v) => !v)} style={styles.toggleRow}>
+      <Pressable accessibilityRole="switch" accessibilityState={{ checked: canMention }} accessibilityLabel={t("adminForms.person.canMentionToggle")} onPress={() => setCanMention((v) => !v)} style={styles.toggleRow}>
         <Icon name={canMention ? "check" : "add"} color={canMention ? "success" : "textTertiary"} />
-        <Text variant="body">Nikki may talk about this person</Text>
+        <Text variant="body">{t("adminForms.person.canMentionToggle")}</Text>
       </Pressable>
 
       {person ? (
@@ -238,15 +240,15 @@ export default function PersonFormModal({ visible, olderAdultId, person, initial
         />
       ) : (
         <Text variant="caption" tone="textTertiary">
-          Save first to add connections.
+          {t("adminForms.person.saveFirst")}
         </Text>
       )}
 
       <Stack gap="sm" style={styles.actions}>
-        <Button label={person ? "Save changes" : "Add person"} icon="check" loading={saving} disabled={deleting} onPress={save} />
-        <Button label="Cancel" variant="secondary" disabled={saving || deleting} onPress={onClose} />
+        <Button label={person ? t("common.saveChanges") : t("adminForms.person.addButton")} icon="check" loading={saving} disabled={deleting} onPress={save} />
+        <Button label={t("common.cancel")} variant="secondary" disabled={saving || deleting} onPress={onClose} />
         {person ? (
-          <Button label="Delete person" variant="danger" loading={deleting} disabled={saving} onPress={confirmDelete} />
+          <Button label={t("adminForms.person.deleteButton")} variant="danger" loading={deleting} disabled={saving} onPress={confirmDelete} />
         ) : null}
       </Stack>
     </BottomSheetModal>

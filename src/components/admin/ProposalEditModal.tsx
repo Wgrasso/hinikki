@@ -6,6 +6,7 @@ import React, { useEffect, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { theme } from "../../theme";
 import { Button, Field, Icon, Stack, Text } from "../../primitives";
+import { useT } from "../../i18n";
 import BottomSheetModal from "../shared/BottomSheetModal";
 import { approveAndApply } from "../../services/proposalService";
 import type { NikkiProposal } from "../../types/database";
@@ -17,36 +18,38 @@ type Props = {
   onChanged: () => void;
 };
 
-// Friendly labels for the keys Nikki commonly proposes; anything unknown is humanized.
-const KEY_LABELS: Record<string, string> = {
-  full_name: "Name",
-  preferred_name: "Goes by",
-  relationship_label: "Relationship",
-  date_of_birth: "Birthday",
-  pronunciation_help: "How to say their name",
-  location_description: "Where they live",
-  visit_frequency: "How often they visit",
-  important_notes: "Good to know",
-  conversation_hints: "Things to talk about",
-  approximate_date: "Roughly when",
-  home_address: "Home address",
-  primary_language: "Language",
-  location_name: "Where",
-  what_to_bring: "What to bring",
-  transport_notes: "Getting there",
-  nikki_message: "What Nikki says",
-  can_nikki_mention: "Nikki may bring this up",
-  requires_confirmation: "Ask them to confirm",
-};
+type TFn = (key: string, params?: Record<string, string | number>) => string;
 
-export function humanizeKey(key: string): string {
-  const known = KEY_LABELS[key];
-  if (known) return known;
+// The keys Nikki commonly proposes have friendly labels in the dict; anything unknown is humanized.
+const KNOWN_KEYS = new Set([
+  "full_name",
+  "preferred_name",
+  "relationship_label",
+  "date_of_birth",
+  "pronunciation_help",
+  "location_description",
+  "visit_frequency",
+  "important_notes",
+  "conversation_hints",
+  "approximate_date",
+  "home_address",
+  "primary_language",
+  "location_name",
+  "what_to_bring",
+  "transport_notes",
+  "nikki_message",
+  "can_nikki_mention",
+  "requires_confirmation",
+]);
+
+export function humanizeKey(key: string, t: TFn): string {
+  if (KNOWN_KEYS.has(key)) return t(`review.field.${key}`);
   const words = key.replace(/_/g, " ").trim();
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 export default function ProposalEditModal({ visible, proposal, onClose, onChanged }: Props): React.ReactElement {
+  const { t } = useT();
   const [values, setValues] = useState<Record<string, string>>({});
   const [flags, setFlags] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
@@ -80,7 +83,7 @@ export default function ProposalEditModal({ visible, proposal, onClose, onChange
     const result = await approveAndApply(proposal, edited);
     setSaving(false);
     if (!result.ok) {
-      setError(`We could not add this — ${result.error ?? "please try again"}.`);
+      setError(t("review.error.couldNotAdd", { error: result.error ?? t("review.error.pleaseTryAgain") }));
       return;
     }
     onChanged();
@@ -88,7 +91,7 @@ export default function ProposalEditModal({ visible, proposal, onClose, onChange
   }
 
   return (
-    <BottomSheetModal visible={visible} onClose={onClose} title="Check & edit" subtitle="Fix anything Nikki misheard, then add it.">
+    <BottomSheetModal visible={visible} onClose={onClose} title={t("review.checkEdit")} subtitle={t("review.editSubtitle")}>
       {proposal?.source_quote ? (
         <Text variant="caption" tone="textSecondary" style={styles.quote}>
           {`“${proposal.source_quote}”`}
@@ -98,7 +101,7 @@ export default function ProposalEditModal({ visible, proposal, onClose, onChange
       {Object.keys(values).map((key) => (
         <Field
           key={key}
-          label={humanizeKey(key)}
+          label={humanizeKey(key, t)}
           value={values[key]}
           onChangeText={(v) => setValues((prev) => ({ ...prev, [key]: v }))}
           autoCapitalize="sentences"
@@ -110,19 +113,19 @@ export default function ProposalEditModal({ visible, proposal, onClose, onChange
           key={key}
           accessibilityRole="switch"
           accessibilityState={{ checked: flags[key] }}
-          accessibilityLabel={humanizeKey(key)}
+          accessibilityLabel={humanizeKey(key, t)}
           onPress={() => setFlags((prev) => ({ ...prev, [key]: !prev[key] }))}
           style={styles.toggleRow}
         >
           <Icon name={flags[key] ? "check" : "add"} color={flags[key] ? "success" : "textTertiary"} />
-          <Text variant="body">{humanizeKey(key)}</Text>
+          <Text variant="body">{humanizeKey(key, t)}</Text>
         </Pressable>
       ))}
 
       {readOnly.map(([key, value]) => (
         <View key={key} style={styles.readOnlyRow}>
           <Text variant="overline" tone="textSecondary">
-            {humanizeKey(key).toUpperCase()}
+            {humanizeKey(key, t).toUpperCase()}
           </Text>
           <Text variant="body" tone="textSecondary">
             {typeof value === "number" ? String(value) : JSON.stringify(value)}
@@ -137,8 +140,8 @@ export default function ProposalEditModal({ visible, proposal, onClose, onChange
       ) : null}
 
       <Stack gap="sm" style={styles.actions}>
-        <Button label="Add this" icon="check" loading={saving} onPress={() => void save()} />
-        <Button label="Cancel" variant="secondary" onPress={onClose} />
+        <Button label={t("review.addThis")} icon="check" loading={saving} onPress={() => void save()} />
+        <Button label={t("common.cancel")} variant="secondary" onPress={onClose} />
       </Stack>
     </BottomSheetModal>
   );

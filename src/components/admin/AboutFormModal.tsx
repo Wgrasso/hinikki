@@ -9,6 +9,7 @@ import { Button, Field, Stack, Text } from "../../primitives";
 import BottomSheetModal from "../shared/BottomSheetModal";
 import { updateOlderAdultProfile } from "../../services/profileService";
 import { parseBirthday } from "../../utils/parseBirthday";
+import { useT } from "../../i18n";
 import type { OlderAdultProfile } from "../../types/database";
 
 type Props = {
@@ -25,6 +26,7 @@ const LANGUAGE_OPTIONS = [
 ] as const;
 
 export default function AboutFormModal({ visible, profile, onClose, onSaved }: Props): React.ReactElement {
+  const { t } = useT();
   const [preferredName, setPreferredName] = useState("");
   const [birthday, setBirthday] = useState("");
   const [homeAddress, setHomeAddress] = useState("");
@@ -53,12 +55,12 @@ export default function AboutFormModal({ visible, profile, onClose, onSaved }: P
     // The birthday is free text; never wipe a stored date because we could not read an edit.
     const dateOfBirth = parseBirthday(birthday);
     if (birthday.trim().length > 0 && dateOfBirth === null) {
-      setBirthdayError("We could not read this date. Try e.g. 3 May 1942 or 1942-05-03.");
+      setBirthdayError(t("adminForms.birthdayParseError"));
       return;
     }
     // Language drives both her app and Nikki's spoken language — it must be chosen.
     if (language === null) {
-      setLanguageError("Please choose the language Nikki will speak.");
+      setLanguageError(t("adminForms.about.languageRequired"));
       return;
     }
     setSaving(true);
@@ -73,40 +75,40 @@ export default function AboutFormModal({ visible, profile, onClose, onSaved }: P
       onSaved();
       onClose();
     } catch {
-      setError("We could not save just now. Please try again.");
+      setError(t("adminForms.saveFailed"));
     } finally {
       setSaving(false);
     }
   }
 
-  const name = profile?.preferred_name ?? profile?.display_name ?? "them";
+  const name = profile?.preferred_name ?? profile?.display_name ?? t("adminForms.about.nameFallback");
 
   return (
-    <BottomSheetModal visible={visible} onClose={onClose} title={`About ${name}`} subtitle="The little details that help Nikki greet your loved one warmly.">
-      <Field label="What Nikki calls them" value={preferredName} onChangeText={setPreferredName} placeholder="e.g. Anna" autoCapitalize="words" error={error} />
+    <BottomSheetModal visible={visible} onClose={onClose} title={t("adminForms.about.title", { name })} subtitle={t("adminForms.about.subtitle")}>
+      <Field label={t("adminForms.person.calledName")} value={preferredName} onChangeText={setPreferredName} placeholder={t("adminForms.about.calledNamePlaceholder")} autoCapitalize="words" error={error} />
 
       <Field
-        label="Birthday"
+        label={t("adminForms.person.birthday")}
         value={birthday}
         onChangeText={(text) => {
           setBirthday(text);
           setBirthdayError(null);
         }}
-        placeholder="e.g. 3 May 1942"
+        placeholder={t("adminForms.about.birthdayPlaceholder")}
         autoCapitalize="none"
         error={birthdayError}
       />
 
       <Stack gap="xs">
-        <Field label="Home address" value={homeAddress} onChangeText={setHomeAddress} placeholder="e.g. Lindenstraat 12, Amsterdam" multiline />
+        <Field label={t("adminForms.about.homeAddress")} value={homeAddress} onChangeText={setHomeAddress} placeholder={t("adminForms.about.homeAddressPlaceholder")} multiline />
         <Text variant="caption" tone="textSecondary" style={styles.helper}>
-          Only used by the Help screen — Nikki never speaks the street address.
+          {t("adminForms.about.addressHelper")}
         </Text>
       </Stack>
 
       <Stack gap="xs">
         <Text variant="overline" tone="textSecondary" style={styles.helper}>
-          LANGUAGE
+          {t("adminForms.about.languageLabel")}
         </Text>
         <View style={styles.chipRow}>
           {LANGUAGE_OPTIONS.map((option) => {
@@ -136,13 +138,13 @@ export default function AboutFormModal({ visible, profile, onClose, onSaved }: P
           </Text>
         ) : null}
         <Text variant="caption" tone="textSecondary" style={styles.helper}>
-          In Dutch, “u” is the gentle, formal way to say “you”; “je” is the familiar one. Pick whichever feels natural to them.
+          {t("adminForms.about.languageHelper")}
         </Text>
       </Stack>
 
       <Stack gap="sm" style={styles.actions}>
-        <Button label="Save" icon="check" loading={saving} onPress={save} />
-        <Button label="Cancel" variant="secondary" onPress={onClose} />
+        <Button label={t("common.save")} icon="check" loading={saving} onPress={save} />
+        <Button label={t("common.cancel")} variant="secondary" onPress={onClose} />
       </Stack>
     </BottomSheetModal>
   );

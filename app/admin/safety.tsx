@@ -16,7 +16,10 @@ import { createSafeLocation, getLatestLocation, listSafeLocations, updateSafeLoc
 import { createEmergencyContact, listEmergencyContacts, listEmergencyEvents, resolveEmergencyEvent, updateEmergencyContact } from "../../src/services/emergencyService";
 import { getOlderAdult } from "../../src/services/profileService";
 import { openMapLocation } from "../../src/utils/openMaps";
+import { useT } from "../../src/i18n";
 import type { EmergencyContact, EmergencyEvent, LocationUpdate, SafeLocation } from "../../src/types/database";
+
+type TFn = (key: string, params?: Record<string, string | number>) => string;
 
 type SafetyData = {
   latest: LocationUpdate | null;
@@ -26,6 +29,7 @@ type SafetyData = {
 };
 
 export default function AdminSafety(): React.ReactElement {
+  const { t } = useT();
   const { olderAdultId } = useAppState();
   const id = olderAdultId ?? "";
   const [addingPlace, setAddingPlace] = useState(false);
@@ -70,8 +74,8 @@ export default function AdminSafety(): React.ReactElement {
 
   return (
     <Screen scroll>
-      <AppBar title="Safety" subtitle="Where they are, and who to call." onRefresh={reload} />
-      <StateView state={state} onRetry={reload} loadingLabel="Loading safety…">
+      <AppBar title={t("adminSafety.title")} subtitle={t("adminSafety.subtitle")} onRefresh={reload} />
+      <StateView state={state} onRetry={reload} loadingLabel={t("adminSafety.loading")}>
         {(data) => (
           <Stack gap="lg">
             <Card elevation="card">
@@ -79,14 +83,14 @@ export default function AdminSafety(): React.ReactElement {
                 <Icon name="location" color="primary" size={theme.iconSize.lg} />
                 <Stack flex gap="xs">
                   <Text variant="overline" tone="textSecondary">
-                    CURRENT LOCATION
+                    {t("adminSafety.currentLocation")}
                   </Text>
-                  <Text variant="bodyStrong">{data.latest ? `Seen ${relativeTimeLabel(data.latest.created_at)}` : "Not shared yet"}</Text>
+                  <Text variant="bodyStrong">{data.latest ? t("admin.seen", { time: relativeTimeLabel(data.latest.created_at) }) : t("admin.notShared")}</Text>
                   {data.latest ? (
                     <Pressable
-                      onPress={() => void openMapLocation(data.latest!.latitude, data.latest!.longitude, "Last known location")}
+                      onPress={() => void openMapLocation(data.latest!.latitude, data.latest!.longitude, t("adminSafety.lastKnownLocation"))}
                       accessibilityRole="button"
-                      accessibilityLabel="Open last known location in Maps"
+                      accessibilityLabel={t("adminSafety.openLocationA11y")}
                     >
                       <Text variant="caption" tone="textSecondary">
                         {data.latest.latitude.toFixed(4)}, {data.latest.longitude.toFixed(4)}
@@ -94,7 +98,7 @@ export default function AdminSafety(): React.ReactElement {
                       <Stack direction="row" gap="xs" align="center">
                         <Icon name="location" color="primary" size={theme.iconSize.sm} />
                         <Text variant="caption" tone="primary">
-                          Open in Maps
+                          {t("adminSafety.openInMaps")}
                         </Text>
                       </Stack>
                     </Pressable>
@@ -104,36 +108,36 @@ export default function AdminSafety(): React.ReactElement {
             </Card>
 
             <View>
-              <SectionHeader title="Safe places" actionLabel="Add" onAction={() => setAddingPlace(true)} />
+              <SectionHeader title={t("adminSafety.safePlaces")} actionLabel={t("common.add")} onAction={() => setAddingPlace(true)} />
               <Stack gap="sm">
                 {data.safe.length === 0 ? (
-                  <EmptyHint text="Add home and other familiar places." />
+                  <EmptyHint text={t("adminSafety.safePlacesEmpty")} />
                 ) : (
                   data.safe.map((s) => (
-                    <ListRow key={s.id} title={s.name} subtitle={s.address ?? s.location_type ?? "Safe place"} onPress={() => setEditPlace(s)} accessibilityLabel={`Edit ${s.name}`} />
+                    <ListRow key={s.id} title={s.name} subtitle={s.address ?? s.location_type ?? t("adminSafety.safePlaceFallback")} onPress={() => setEditPlace(s)} accessibilityLabel={t("admin.editName", { name: s.name })} />
                   ))
                 )}
               </Stack>
             </View>
 
             <View>
-              <SectionHeader title="Emergency contacts" actionLabel="Add" onAction={() => setAddingContact(true)} />
+              <SectionHeader title={t("adminSafety.emergencyContacts")} actionLabel={t("common.add")} onAction={() => setAddingContact(true)} />
               <Stack gap="sm">
                 {data.contacts.length === 0 ? (
-                  <EmptyHint text="Add the people to call first if something is wrong." />
+                  <EmptyHint text={t("adminSafety.contactsEmpty")} />
                 ) : (
                   data.contacts.map((c) => (
-                    <ListRow key={c.id} title={c.name} subtitle={`${c.relationship ?? "Contact"}${c.phone ? ` · ${c.phone}` : ""}`} onPress={() => setEditContact(c)} accessibilityLabel={`Edit ${c.name}`} />
+                    <ListRow key={c.id} title={c.name} subtitle={`${c.relationship ?? t("adminSafety.contactFallback")}${c.phone ? ` · ${c.phone}` : ""}`} onPress={() => setEditContact(c)} accessibilityLabel={t("admin.editName", { name: c.name })} />
                   ))
                 )}
               </Stack>
             </View>
 
             <View>
-              <SectionHeader title="Recent alerts" />
+              <SectionHeader title={t("adminSafety.recentAlerts")} />
               <Stack gap="sm">
                 {data.events.length === 0 ? (
-                  <EmptyHint text="No alerts. You will see lost or emergency moments here." />
+                  <EmptyHint text={t("adminSafety.alertsEmpty")} />
                 ) : (
                   data.events.map((e) => (
                     <Card key={e.id} elevation="card">
@@ -145,7 +149,7 @@ export default function AdminSafety(): React.ReactElement {
                             size={theme.iconSize.md}
                           />
                           <Stack flex gap="xs">
-                            <Text variant="bodyStrong">{alertTitle(e.event_type)}</Text>
+                            <Text variant="bodyStrong">{alertTitle(e.event_type, t)}</Text>
                             <Text variant="caption" tone="textSecondary">
                               {e.detected_urgency} · {relativeTimeLabel(e.created_at)}
                             </Text>
@@ -153,11 +157,11 @@ export default function AdminSafety(): React.ReactElement {
                         </Stack>
                         {e.status === "resolved" ? (
                           <Text variant="caption" tone="textSecondary">
-                            Marked as handled
+                            {t("adminSafety.handled")}
                           </Text>
                         ) : (
                           <Button
-                            label="Mark as handled"
+                            label={t("adminSafety.markHandled")}
                             icon="check"
                             variant="secondary"
                             loading={resolvingId === e.id}
@@ -176,12 +180,12 @@ export default function AdminSafety(): React.ReactElement {
 
       <QuickAddModal
         visible={placeVisible}
-        title={editPlace ? "Edit safe place" : "Add a safe place"}
-        submitLabel={editPlace ? "Save changes" : "Save"}
+        title={editPlace ? t("adminSafety.editPlace") : t("adminSafety.addPlace")}
+        submitLabel={editPlace ? t("common.saveChanges") : t("common.save")}
         initialValues={editPlace ? { name: editPlace.name, address: editPlace.address ?? "" } : undefined}
         fields={[
-          { key: "name", label: "Name", placeholder: "e.g. Home", required: true },
-          { key: "address", label: "Address", placeholder: "Optional" },
+          { key: "name", label: t("adminSafety.fieldName"), placeholder: t("adminSafety.placeNamePlaceholder"), required: true },
+          { key: "address", label: t("adminSafety.fieldAddress"), placeholder: t("common.optional") },
         ]}
         onClose={() => {
           setAddingPlace(false);
@@ -198,14 +202,14 @@ export default function AdminSafety(): React.ReactElement {
       />
       <QuickAddModal
         visible={contactVisible}
-        title={editContact ? "Edit emergency contact" : "Add an emergency contact"}
-        note="This phone number is used to call the contact directly."
-        submitLabel={editContact ? "Save changes" : "Save"}
+        title={editContact ? t("adminSafety.editContact") : t("adminSafety.addContact")}
+        note={t("adminSafety.contactNote")}
+        submitLabel={editContact ? t("common.saveChanges") : t("common.save")}
         initialValues={editContact ? { name: editContact.name, phone: editContact.phone ?? "", relationship: editContact.relationship ?? "" } : undefined}
         fields={[
-          { key: "name", label: "Name", placeholder: "e.g. Mark", required: true },
-          { key: "phone", label: "Phone", placeholder: "e.g. +31 6 …", keyboardType: "phone-pad" },
-          { key: "relationship", label: "Relationship", placeholder: "e.g. Son" },
+          { key: "name", label: t("adminSafety.fieldName"), placeholder: t("adminSafety.contactNamePlaceholder"), required: true },
+          { key: "phone", label: t("adminSafety.fieldPhone"), placeholder: t("adminSafety.phonePlaceholder"), keyboardType: "phone-pad" },
+          { key: "relationship", label: t("adminSafety.fieldRelationship"), placeholder: t("adminSafety.relationshipPlaceholder") },
         ]}
         onClose={() => {
           setAddingContact(false);
@@ -256,10 +260,10 @@ export function useSafetySetupComplete(olderAdultId: string | null): boolean {
   return complete;
 }
 
-function alertTitle(type: string): string {
-  if (type === "lost") return "Felt lost";
-  if (type === "distress") return "Asked for help";
-  return "Emergency";
+function alertTitle(type: string, t: TFn): string {
+  if (type === "lost") return t("adminSafety.alertLost");
+  if (type === "distress") return t("adminSafety.alertDistress");
+  return t("adminSafety.alertEmergency");
 }
 
 function EmptyHint({ text }: { text: string }): React.ReactElement {

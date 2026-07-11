@@ -9,8 +9,10 @@ import DevModeSwitch from "../../src/components/shared/DevModeSwitch";
 import { Icon } from "../../src/primitives";
 import { theme } from "../../src/theme";
 import { FEATURE_HELP_TAB } from "../../src/lib/constants";
+import { useT } from "../../src/i18n";
 
 export default function AdminLayout(): React.ReactElement {
+  const { t } = useT();
   const { olderAdultId } = useAppState();
   const pendingCount = usePendingProposalCount(olderAdultId);
   // Nudge the family to finish safety setup (someone to call + a home address) with a "!" badge.
@@ -35,7 +37,7 @@ export default function AdminLayout(): React.ReactElement {
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: "Home",
+          title: t("adminTab.home"),
           tabBarIcon: ({ focused }) => <Icon name="home" color={focused ? "primary" : "textTertiary"} />,
           tabBarBadge: pendingCount > 0 ? pendingCount : undefined,
           tabBarBadgeStyle: {
@@ -46,13 +48,13 @@ export default function AdminLayout(): React.ReactElement {
           },
         }}
       />
-      <Tabs.Screen name="people" options={{ title: "People", tabBarIcon: ({ focused }) => <Icon name="people" color={focused ? "primary" : "textTertiary"} /> }} />
-      <Tabs.Screen name="schedule" options={{ title: "Schedule", tabBarIcon: ({ focused }) => <Icon name="calendar" color={focused ? "primary" : "textTertiary"} /> }} />
+      <Tabs.Screen name="people" options={{ title: t("tab.people"), tabBarIcon: ({ focused }) => <Icon name="people" color={focused ? "primary" : "textTertiary"} /> }} />
+      <Tabs.Screen name="schedule" options={{ title: t("adminTab.schedule"), tabBarIcon: ({ focused }) => <Icon name="calendar" color={focused ? "primary" : "textTertiary"} /> }} />
       <Tabs.Screen
         name="safety"
         options={{
           href: FEATURE_HELP_TAB ? undefined : null,
-          title: "Safety",
+          title: t("adminTab.safety"),
           tabBarIcon: ({ focused }) => <Icon name="shield" color={focused ? "primary" : "textTertiary"} />,
           tabBarBadge: olderAdultId && !safetySetupComplete ? "!" : undefined,
           tabBarBadgeStyle: {
@@ -63,7 +65,7 @@ export default function AdminLayout(): React.ReactElement {
           },
         }}
       />
-      <Tabs.Screen name="settings" options={{ title: "Settings", tabBarIcon: ({ focused }) => <Icon name="settings" color={focused ? "primary" : "textTertiary"} /> }} />
+      <Tabs.Screen name="settings" options={{ title: t("adminTab.settings"), tabBarIcon: ({ focused }) => <Icon name="settings" color={focused ? "primary" : "textTertiary"} /> }} />
     </Tabs>
     <DevModeSwitch />
     </>

@@ -6,9 +6,11 @@ import { useAppState } from "../../src/auth/appState";
 import { AppBar, Button, Field, Screen, Stack, Text } from "../../src/primitives";
 import { adminSignIn, adminSignUp } from "../../src/services/profileService";
 import { getMyGroup } from "../../src/services/groupService";
+import { useT } from "../../src/i18n";
 
 export default function AdminAuth(): React.ReactElement {
   const router = useRouter();
+  const { t } = useT();
   const { completeSetupWithGroup } = useAppState();
   const [signUp, setSignUp] = useState(true);
   const [name, setName] = useState("");
@@ -34,34 +36,34 @@ export default function AdminAuth(): React.ReactElement {
 
   return (
     <Screen scroll>
-      <AppBar title={signUp ? "Create your account" : "Welcome back"} onBack={() => router.back()} />
+      <AppBar title={signUp ? t("adminAuth.title.signUp") : t("adminAuth.title.signIn")} onBack={() => router.back()} />
       <Stack gap="lg">
         <Text variant="body" tone="textSecondary">
-          You will use this to keep Nikki up to date for the person you care for.
+          {t("adminAuth.intro")}
         </Text>
         {signUp ? (
-          <Field label="Your name" value={name} onChangeText={setName} placeholder="e.g. Sophie" autoCapitalize="words" />
+          <Field label={t("adminAuth.name.label")} value={name} onChangeText={setName} placeholder={t("adminAuth.name.placeholder")} autoCapitalize="words" />
         ) : null}
         <Field
-          label="Email"
+          label={t("adminAuth.email.label")}
           value={email}
           onChangeText={setEmail}
-          placeholder="you@example.com"
+          placeholder={t("adminAuth.email.placeholder")}
           keyboardType="email-address"
           autoCapitalize="none"
         />
-        <Field label="Password" value={password} onChangeText={setPassword} placeholder="Your password" secureTextEntry error={error} />
-        <Button label={signUp ? "Create account" : "Sign in"} icon="check" loading={busy} onPress={submit} />
+        <Field label={t("adminAuth.password.label")} value={password} onChangeText={setPassword} placeholder={t("adminAuth.password.placeholder")} secureTextEntry error={error} />
+        <Button label={signUp ? t("adminAuth.submit.signUp") : t("adminAuth.submit.signIn")} icon="check" loading={busy} onPress={submit} />
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={signUp ? "I already have an account" : "Create a new account"}
+          accessibilityLabel={signUp ? t("adminAuth.toggle.toSignIn") : t("adminAuth.toggle.toSignUp")}
           onPress={() => {
             setSignUp((s) => !s);
             setError(null);
           }}
         >
           <Text variant="bodyStrong" tone="primary" center>
-            {signUp ? "I already have an account" : "Create a new account"}
+            {signUp ? t("adminAuth.toggle.toSignIn") : t("adminAuth.toggle.toSignUp")}
           </Text>
         </Pressable>
       </Stack>

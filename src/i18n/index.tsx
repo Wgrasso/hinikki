@@ -9,13 +9,17 @@ import { getAdminLanguage, setAdminLanguage } from "../storage/localStore";
 import { common } from "./dict/common";
 import { user } from "./dict/user";
 import { onboarding } from "./dict/onboarding";
+import { admin } from "./dict/admin";
+import { adminForms } from "./dict/adminForms";
+import { adminReview } from "./dict/adminReview";
+import { adminOnboarding } from "./dict/adminOnboarding";
 
 export type Lang = "en" | "nl";
 
 // Every dict module contributes { en, nl }; merged into one lookup per language.
 const merged: Record<Lang, Record<string, string>> = {
-  en: { ...common.en, ...user.en, ...onboarding.en },
-  nl: { ...common.nl, ...user.nl, ...onboarding.nl },
+  en: { ...common.en, ...user.en, ...onboarding.en, ...admin.en, ...adminForms.en, ...adminReview.en, ...adminOnboarding.en },
+  nl: { ...common.nl, ...user.nl, ...onboarding.nl, ...admin.nl, ...adminForms.nl, ...adminReview.nl, ...adminOnboarding.nl },
 };
 
 type LanguageValue = {

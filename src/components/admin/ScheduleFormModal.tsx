@@ -11,10 +11,12 @@ import BottomSheetModal from "../shared/BottomSheetModal";
 import DateTimePickerField from "./DateTimePickerField";
 import { createEvent, deleteEvent, updateEvent } from "../../services/calendarService";
 import { createReminder, deleteReminder, updateReminder } from "../../services/reminderService";
+import { useT } from "../../i18n";
 import type { CalendarEvent, Reminder } from "../../types/database";
 
 type Kind = "event" | "reminder";
 type DateMode = "today" | "tomorrow" | "pick" | "anytime";
+type RepeatsMode = "once" | "daily" | "weekly" | "custom";
 
 type Props = {
   visible: boolean;
@@ -25,26 +27,6 @@ type Props = {
   onClose: () => void;
   onSaved: () => void;
 };
-
-const DATE_OPTIONS: { value: DateMode; label: string }[] = [
-  { value: "today", label: "Today" },
-  { value: "tomorrow", label: "Tomorrow" },
-  { value: "pick", label: "Pick a day" },
-];
-
-// Reminders can also be "Anytime" — stored with scheduled_at null, no clock time at all.
-const REMINDER_DATE_OPTIONS: { value: DateMode; label: string }[] = [
-  ...DATE_OPTIONS,
-  { value: "anytime", label: "Anytime" },
-];
-
-const REPEATS_OPTIONS = [
-  { value: "once", label: "Just once" },
-  { value: "daily", label: "Every day" },
-  { value: "weekly", label: "Every week" },
-  { value: "custom", label: "Custom…" },
-] as const;
-type RepeatsMode = (typeof REPEATS_OPTIONS)[number]["value"];
 
 // Local calendar-day key ("2026-07-09") so date comparisons ignore the time of day.
 function dayKey(d: Date): string {
@@ -167,7 +149,25 @@ function ChipRow<T extends string>({ label, options, value, onChange }: {
 }
 
 export default function ScheduleFormModal({ visible, kind, olderAdultId, event, reminder, onClose, onSaved }: Props): React.ReactElement {
+  const { t } = useT();
   const isEditing = kind === "event" ? Boolean(event) : Boolean(reminder);
+
+  const DATE_OPTIONS: { value: DateMode; label: string }[] = [
+    { value: "today", label: t("adminForms.day.today") },
+    { value: "tomorrow", label: t("adminForms.day.tomorrow") },
+    { value: "pick", label: t("adminForms.day.pick") },
+  ];
+  // Reminders can also be "Anytime" — stored with scheduled_at null, no clock time at all.
+  const REMINDER_DATE_OPTIONS: { value: DateMode; label: string }[] = [
+    ...DATE_OPTIONS,
+    { value: "anytime", label: t("adminForms.day.anytime") },
+  ];
+  const REPEATS_OPTIONS: { value: RepeatsMode; label: string }[] = [
+    { value: "once", label: t("adminForms.repeats.once") },
+    { value: "daily", label: t("adminForms.repeats.daily") },
+    { value: "weekly", label: t("adminForms.repeats.weekly") },
+    { value: "custom", label: t("adminForms.repeats.custom") },
+  ];
 
   // Common
   const [title, setTitle] = useState("");
@@ -241,14 +241,14 @@ export default function ScheduleFormModal({ visible, kind, olderAdultId, event, 
 
   async function save(): Promise<void> {
     if (title.trim().length === 0) {
-      setError("Please enter a title.");
+      setError(t("adminForms.schedule.titleRequired"));
       return;
     }
     // A reminder stays unscheduled (scheduled_at null) only when the Anytime chip is chosen.
     const unscheduled = kind === "reminder" && dateMode === "anytime";
     const chosenDay = unscheduled ? null : resolveChosenDay(dateMode, pickedDate);
     if (!unscheduled && !chosenDay) {
-      setDateError("Please choose a date.");
+      setDateError(t("adminForms.schedule.dateRequired"));
       return;
     }
     const startAt = chosenDay ? atClock(chosenDay, startTime ?? defaultClock()) : null;
@@ -291,7 +291,7 @@ export default function ScheduleFormModal({ visible, kind, olderAdultId, event, 
       onSaved();
       onClose();
     } catch {
-      setError("We could not save just now. Please try again.");
+      setError(t("adminForms.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -306,35 +306,41 @@ export default function ScheduleFormModal({ visible, kind, olderAdultId, event, 
       onSaved();
       onClose();
     } catch {
-      setError("We could not delete just now. Please try again.");
+      setError(t("adminForms.deleteFailed"));
     } finally {
       setDeleting(false);
     }
   }
 
   function confirmDelete(): void {
-    const label = kind === "event" ? "event" : "reminder";
-    Alert.alert(`Delete this ${label}?`, "This can't be undone.", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: remove },
+    const confirmTitle = kind === "event" ? t("adminForms.event.deleteConfirmTitle") : t("adminForms.reminder.deleteConfirmTitle");
+    Alert.alert(confirmTitle, t("adminForms.deleteUndone"), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("common.delete"), style: "destructive", onPress: remove },
     ]);
   }
 
   const heading =
-    kind === "event" ? (isEditing ? "Edit event" : "Add an event") : isEditing ? "Edit reminder" : "Add a reminder";
+    kind === "event"
+      ? isEditing
+        ? t("adminForms.event.editTitle")
+        : t("adminForms.event.addTitle")
+      : isEditing
+        ? t("adminForms.reminder.editTitle")
+        : t("adminForms.reminder.addTitle");
 
   return (
     <BottomSheetModal visible={visible} onClose={onClose} title={heading}>
-      <Field label="Title" value={title} onChangeText={setTitle} placeholder={kind === "event" ? "e.g. Doctor appointment" : "e.g. Water the plants"} autoCapitalize="sentences" error={error} />
+      <Field label={t("adminForms.titleField")} value={title} onChangeText={setTitle} placeholder={kind === "event" ? t("adminForms.event.titlePlaceholder") : t("adminForms.reminder.titlePlaceholder")} autoCapitalize="sentences" error={error} />
 
-      <ChipRow label="Which day" options={kind === "reminder" ? REMINDER_DATE_OPTIONS : DATE_OPTIONS} value={dateMode} onChange={setDateMode} />
+      <ChipRow label={t("adminForms.schedule.whichDay")} options={kind === "reminder" ? REMINDER_DATE_OPTIONS : DATE_OPTIONS} value={dateMode} onChange={setDateMode} />
       {dateMode === "pick" ? (
         <DateTimePickerField
-          label="Date"
+          label={t("adminForms.schedule.dateLabel")}
           mode="date"
           value={pickedDate}
           initialValue={pickedDate ?? new Date()}
-          placeholder="Choose a date"
+          placeholder={t("adminForms.schedule.datePlaceholder")}
           error={dateError}
           onChange={(d) => {
             setPickedDate(d);
@@ -347,22 +353,22 @@ export default function ScheduleFormModal({ visible, kind, olderAdultId, event, 
         <View style={styles.timeRow}>
           <View style={styles.timeField}>
             <DateTimePickerField
-              label="Start time"
+              label={t("adminForms.schedule.startTime")}
               mode="time"
               value={startTime}
               initialValue={startTime ?? defaultClock()}
-              placeholder="Choose a time"
+              placeholder={t("adminForms.schedule.startTimePlaceholder")}
               onChange={setStartTime}
             />
           </View>
           {kind === "event" ? (
             <View style={styles.timeField}>
               <DateTimePickerField
-                label="End time (optional)"
+                label={t("adminForms.schedule.endTime")}
                 mode="time"
                 value={endTime}
                 initialValue={endTime ?? startTime ?? defaultClock()}
-                placeholder="No end time"
+                placeholder={t("adminForms.schedule.endTimePlaceholder")}
                 onChange={setEndTime}
                 onClear={() => setEndTime(null)}
               />
@@ -373,37 +379,37 @@ export default function ScheduleFormModal({ visible, kind, olderAdultId, event, 
 
       {kind === "event" ? (
         <>
-          <Field label="Place" value={place} onChangeText={setPlace} placeholder="e.g. Dr. Jansen's practice" />
-          <CheckRow label="Goes with someone" value={withSomeone} onChange={setWithSomeone} />
+          <Field label={t("adminForms.event.place")} value={place} onChangeText={setPlace} placeholder={t("adminForms.event.placePlaceholder")} />
+          <CheckRow label={t("adminForms.event.withSomeone")} value={withSomeone} onChange={setWithSomeone} />
           {withSomeone ? (
-            <Field label="With whom (person or group)" value={companion} onChangeText={setCompanion} placeholder="e.g. Mark, or the walking group" />
+            <Field label={t("adminForms.event.companion")} value={companion} onChangeText={setCompanion} placeholder={t("adminForms.event.companionPlaceholder")} />
           ) : null}
-          <Field label="How they get there" value={transport} onChangeText={setTransport} placeholder="e.g. Mark picks them up" multiline />
-          <Field label="Announce how many minutes before" value={leadMinutes} onChangeText={setLeadMinutes} placeholder="e.g. 30" keyboardType="number-pad" autoCapitalize="none" />
-          <Field label="Notes for Nikki (preparation, clothing, things to bring)" value={whatToBring} onChangeText={setWhatToBring} placeholder="Optional" multiline />
+          <Field label={t("adminForms.event.transport")} value={transport} onChangeText={setTransport} placeholder={t("adminForms.event.transportPlaceholder")} multiline />
+          <Field label={t("adminForms.event.lead")} value={leadMinutes} onChangeText={setLeadMinutes} placeholder={t("adminForms.event.leadPlaceholder")} keyboardType="number-pad" autoCapitalize="none" />
+          <Field label={t("adminForms.event.bring")} value={whatToBring} onChangeText={setWhatToBring} placeholder={t("common.optional")} multiline />
         </>
       ) : (
         <>
-          <ChipRow label="Repeats" options={REPEATS_OPTIONS} value={repeatsMode} onChange={setRepeatsMode} />
+          <ChipRow label={t("adminForms.reminder.repeats")} options={REPEATS_OPTIONS} value={repeatsMode} onChange={setRepeatsMode} />
           {repeatsMode === "custom" ? (
-            <Field label="How often it repeats" value={customFrequency} onChangeText={setCustomFrequency} placeholder="e.g. Every other day" />
+            <Field label={t("adminForms.reminder.customFrequency")} value={customFrequency} onChangeText={setCustomFrequency} placeholder={t("adminForms.reminder.customFrequencyPlaceholder")} />
           ) : null}
-          <Field label="What Nikki should say" value={nikkiMessage} onChangeText={setNikkiMessage} placeholder="e.g. Time to water the plants on the windowsill" multiline />
+          <Field label={t("adminForms.reminder.message")} value={nikkiMessage} onChangeText={setNikkiMessage} placeholder={t("adminForms.reminder.messagePlaceholder")} multiline />
           <CheckRow
-            label="Ask later if it was done"
+            label={t("adminForms.reminder.confirm")}
             value={requiresConfirmation}
             onChange={setRequiresConfirmation}
-            caption="Nikki will check in about it, and you'll see the answer here."
+            caption={t("adminForms.reminder.confirmCaption")}
           />
         </>
       )}
 
       <Stack gap="sm" style={styles.actions}>
-        <Button label={isEditing ? "Save changes" : "Save"} icon="check" loading={saving} disabled={deleting} onPress={save} />
-        <Button label="Cancel" variant="secondary" disabled={saving || deleting} onPress={onClose} />
+        <Button label={isEditing ? t("common.saveChanges") : t("common.save")} icon="check" loading={saving} disabled={deleting} onPress={save} />
+        <Button label={t("common.cancel")} variant="secondary" disabled={saving || deleting} onPress={onClose} />
         {isEditing ? (
           <Button
-            label={kind === "event" ? "Delete event" : "Delete reminder"}
+            label={kind === "event" ? t("adminForms.event.deleteButton") : t("adminForms.reminder.deleteButton")}
             variant="danger"
             loading={deleting}
             disabled={saving}

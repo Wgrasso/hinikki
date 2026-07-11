@@ -14,7 +14,10 @@ import { theme } from "../../src/theme";
 import { formatTime } from "../../src/utils/format";
 import { listEvents } from "../../src/services/calendarService";
 import { listLatestConfirmations, listReminders, type LatestConfirmation } from "../../src/services/reminderService";
+import { useT } from "../../src/i18n";
 import type { CalendarEvent, Reminder } from "../../src/types/database";
+
+type TFn = (key: string, params?: Record<string, string | number>) => string;
 
 type ScheduleData = {
   events: CalendarEvent[];
@@ -51,14 +54,17 @@ function splitByRecency<T>(items: T[], dateOf: (item: T) => string | null, now: 
 }
 
 // "Confirmed 5:32 pm by voice" — the quiet line under reminders the elder has confirmed.
-function confirmationLine(conf: LatestConfirmation): string {
-  const method = conf.confirmation_method === "voice" ? " by voice" : conf.confirmation_method === "tap" ? " in the app" : "";
-  return `Confirmed ${formatTime(conf.confirmed_at)}${method}`;
+function confirmationLine(conf: LatestConfirmation, t: TFn): string {
+  const time = formatTime(conf.confirmed_at);
+  if (conf.confirmation_method === "voice") return t("adminSchedule.confirmedByVoice", { time });
+  if (conf.confirmation_method === "tap") return t("adminSchedule.confirmedInApp", { time });
+  return t("adminSchedule.confirmed", { time });
 }
 
 // A collapsed-by-default "Past …" drawer nested under a section, so recent history is one
 // tap away without cluttering the default view.
 function PastSection({ title, count, children }: { title: string; count: number; children: React.ReactNode }): React.ReactElement | null {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   if (count === 0) return null;
   return (
@@ -66,7 +72,7 @@ function PastSection({ title, count, children }: { title: string; count: number;
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
-        accessibilityLabel={`${title}, ${count} item${count === 1 ? "" : "s"}`}
+        accessibilityLabel={count === 1 ? t("adminSchedule.pastCountOne", { title, count }) : t("adminSchedule.pastCountMany", { title, count })}
         onPress={() => setOpen((o) => !o)}
         style={({ pressed }) => [styles.pastHeader, pressed ? styles.pressed : null]}
       >
@@ -87,6 +93,7 @@ function PastSection({ title, count, children }: { title: string; count: number;
 }
 
 export default function AdminSchedule(): React.ReactElement {
+  const { t } = useT();
   const { olderAdultId } = useAppState();
   const id = olderAdultId ?? "";
   const [addingKind, setAddingKind] = useState<"event" | "reminder" | null>(null);
@@ -124,7 +131,7 @@ export default function AdminSchedule(): React.ReactElement {
 
   return (
     <Screen scroll>
-      <StateView state={state} onRetry={reload} loadingLabel="Loading the schedule…">
+      <StateView state={state} onRetry={reload} loadingLabel={t("adminSchedule.loading")}>
         {(data) => {
           const now = new Date();
           const { current: upcomingEvents, past: pastEvents } = splitByRecency(data.events, (e) => e.start_at, now);
@@ -139,42 +146,42 @@ export default function AdminSchedule(): React.ReactElement {
 
           return (
             <Stack gap="lg">
-              <AppBar title="Schedule" subtitle="What's coming up, in Nikki's words." onRefresh={reload} />
+              <AppBar title={t("adminSchedule.title")} subtitle={t("adminSchedule.subtitle")} onRefresh={reload} />
 
               <View>
-                <SectionHeader title="Events" actionLabel="Add an event" onAction={() => setAddingKind("event")} />
+                <SectionHeader title={t("adminSchedule.events")} actionLabel={t("adminSchedule.addEvent")} onAction={() => setAddingKind("event")} />
                 {upcomingEvents.length === 0 ? (
-                  <EmptyHint text="No events yet. Add one so Nikki can prepare your loved one calmly." />
+                  <EmptyHint text={t("adminSchedule.noEvents")} />
                 ) : (
                   <Stack gap="sm">
                     {upcomingEvents.map((item) => (
                       <ListRow
                         key={item.id}
                         title={item.user_friendly_summary ?? item.title}
-                        subtitle={`${formatTime(item.start_at)}${item.what_to_bring ? ` · bring ${item.what_to_bring}` : ""}`}
+                        subtitle={`${formatTime(item.start_at)}${item.what_to_bring ? ` ${t("adminSchedule.bring", { item: item.what_to_bring })}` : ""}`}
                         onPress={() => setEditEvent(item)}
-                        accessibilityLabel={`Edit ${item.title}`}
+                        accessibilityLabel={t("admin.editName", { name: item.title })}
                       />
                     ))}
                   </Stack>
                 )}
-                <PastSection title="Past events" count={pastEvents.length}>
+                <PastSection title={t("adminSchedule.pastEvents")} count={pastEvents.length}>
                   {pastEvents.map((item) => (
                     <ListRow
                       key={item.id}
                       title={item.user_friendly_summary ?? item.title}
                       subtitle={formatTime(item.start_at)}
                       onPress={() => setEditEvent(item)}
-                      accessibilityLabel={`Edit ${item.title}`}
+                      accessibilityLabel={t("admin.editName", { name: item.title })}
                     />
                   ))}
                 </PastSection>
               </View>
 
               <View>
-                <SectionHeader title="Reminders" actionLabel="Add a reminder" onAction={() => setAddingKind("reminder")} />
+                <SectionHeader title={t("admin.reminders")} actionLabel={t("adminSchedule.addReminder")} onAction={() => setAddingKind("reminder")} />
                 {currentReminders.length === 0 ? (
-                  <EmptyHint text="No reminders yet. Add routine, hydration or visit reminders." />
+                  <EmptyHint text={t("adminSchedule.noReminders")} />
                 ) : (
                   <Stack gap="sm">
                     {currentReminders.map((item) => (
@@ -182,7 +189,7 @@ export default function AdminSchedule(): React.ReactElement {
                     ))}
                   </Stack>
                 )}
-                <PastSection title="Past reminders" count={pastReminders.length}>
+                <PastSection title={t("adminSchedule.pastReminders")} count={pastReminders.length}>
                   {pastReminders.map((item) => (
                     <ReminderRow key={item.id} item={item} confirmations={data.confirmations} onPress={() => setEditReminder(item)} />
                   ))}
@@ -215,18 +222,19 @@ function ReminderRow({
   confirmations: Record<string, LatestConfirmation>;
   onPress: () => void;
 }): React.ReactElement {
+  const { t } = useT();
   const conf = item.requires_confirmation ? confirmations[item.id] : undefined;
   return (
     <View>
       <ListRow
         title={item.title}
-        subtitle={item.scheduled_at ? formatTime(item.scheduled_at) : "Anytime"}
+        subtitle={item.scheduled_at ? formatTime(item.scheduled_at) : t("admin.anytime")}
         onPress={onPress}
-        accessibilityLabel={`Edit ${item.title}`}
+        accessibilityLabel={t("admin.editName", { name: item.title })}
       />
       {conf ? (
         <Text variant="caption" tone="success" style={styles.confirmed}>
-          {confirmationLine(conf)}
+          {confirmationLine(conf, t)}
         </Text>
       ) : null}
     </View>

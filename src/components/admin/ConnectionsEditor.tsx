@@ -7,6 +7,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { theme } from "../../theme";
 import { Icon, Text } from "../../primitives";
+import { useT } from "../../i18n";
 import { RELATIONSHIP_TYPES, createRelationship, deleteRelationship, listRelationships, updatePerson } from "../../services/peopleService";
 import type { RelationshipType } from "../../services/peopleService";
 import type { FamilyPerson, FamilyRelationship } from "../../types/database";
@@ -25,15 +26,15 @@ type Props = {
 
 // One chip per D5 type, phrased as "{edited person} is <label> {picked person}".
 // editedIs says which side of the stored row the edited person takes.
-type ChipOption = { label: string; type: RelationshipType; editedIs: "a" | "b" };
+type ChipOption = { labelKey: string; type: RelationshipType; editedIs: "a" | "b" };
 
 const CHIP_OPTIONS: ChipOption[] = [
-  { label: "child of", type: "child_of", editedIs: "a" },
-  { label: "cared for by", type: "carer_of", editedIs: "b" },
-  { label: "spouse of", type: "spouse_of", editedIs: "a" },
-  { label: "sibling of", type: "sibling_of", editedIs: "a" },
-  { label: "friend of", type: "friend_of", editedIs: "a" },
-  { label: "neighbour of", type: "neighbour_of", editedIs: "a" },
+  { labelKey: "connections.chip.child_of", type: "child_of", editedIs: "a" },
+  { labelKey: "connections.chip.carer_of", type: "carer_of", editedIs: "b" },
+  { labelKey: "connections.chip.spouse_of", type: "spouse_of", editedIs: "a" },
+  { labelKey: "connections.chip.sibling_of", type: "sibling_of", editedIs: "a" },
+  { labelKey: "connections.chip.friend_of", type: "friend_of", editedIs: "a" },
+  { labelKey: "connections.chip.neighbour_of", type: "neighbour_of", editedIs: "a" },
 ];
 
 // When the connection target is the older adult, the D5 type becomes the person's
@@ -55,6 +56,7 @@ export default function ConnectionsEditor({
   relationshipLabel,
   onRelationshipLabelChange,
 }: Props): React.ReactElement {
+  const { t } = useT();
   const [connections, setConnections] = useState<FamilyRelationship[]>([]);
   const [pending, setPending] = useState<ChipOption | null>(null);
   const [busy, setBusy] = useState(false);
@@ -77,9 +79,9 @@ export default function ConnectionsEditor({
   const nameOf = useCallback(
     (id: string): string => {
       const p = people.find((x) => x.id === id);
-      return p ? (p.preferred_name ?? p.full_name) : "Someone";
+      return p ? (p.preferred_name ?? p.full_name) : t("connections.someone");
     },
-    [people],
+    [people, t],
   );
 
   const editedName = nameOf(personId);
@@ -89,21 +91,22 @@ export default function ConnectionsEditor({
   function describe(rel: FamilyRelationship): string {
     const editedIsA = rel.person_a_id === personId;
     const other = nameOf(editedIsA ? rel.person_b_id : rel.person_a_id);
+    const params = { other, name: editedName };
     switch (rel.relationship_type) {
       case "child_of":
-        return editedIsA ? `${other} — parent of ${editedName}` : `${other} — child of ${editedName}`;
+        return editedIsA ? t("connections.describe.parentOf", params) : t("connections.describe.childOf", params);
       case "carer_of":
-        return editedIsA ? `${other} — cared for by ${editedName}` : `${other} — cares for ${editedName}`;
+        return editedIsA ? t("connections.describe.caredForBy", params) : t("connections.describe.caresFor", params);
       case "spouse_of":
-        return `${other} — spouse of ${editedName}`;
+        return t("connections.describe.spouseOf", params);
       case "sibling_of":
-        return `${other} — sibling of ${editedName}`;
+        return t("connections.describe.siblingOf", params);
       case "friend_of":
-        return `${other} — friend of ${editedName}`;
+        return t("connections.describe.friendOf", params);
       case "neighbour_of":
-        return `${other} — neighbour of ${editedName}`;
+        return t("connections.describe.neighbourOf", params);
       default:
-        return `${other} — connected to ${editedName}`;
+        return t("connections.describe.connectedTo", params);
     }
   }
 
@@ -120,7 +123,7 @@ export default function ConnectionsEditor({
       onRelationshipLabelChange(label);
       setPending(null);
     } catch {
-      setError("We could not save that connection just now. Please try again.");
+      setError(t("connections.errSave"));
     } finally {
       setBusy(false);
     }
@@ -135,7 +138,7 @@ export default function ConnectionsEditor({
       await updatePerson(personId, { relationship_label: null });
       onRelationshipLabelChange(null);
     } catch {
-      setError("We could not remove that connection just now. Please try again.");
+      setError(t("connections.errRemove"));
     } finally {
       setBusy(false);
     }
@@ -157,7 +160,7 @@ export default function ConnectionsEditor({
         (r) => r.relationship_type === pending.type && r.person_a_id === wantA && r.person_b_id === wantB,
       );
       if (exists) {
-        setNotice("They are already connected that way.");
+        setNotice(t("connections.alreadyConnected"));
         setPending(null);
         return;
       }
@@ -165,7 +168,7 @@ export default function ConnectionsEditor({
       setPending(null);
       await load();
     } catch {
-      setError("We could not save that connection just now. Please try again.");
+      setError(t("connections.errSave"));
     } finally {
       setBusy(false);
     }
@@ -180,7 +183,7 @@ export default function ConnectionsEditor({
       await deleteRelationship(rel.id);
       await load();
     } catch {
-      setError("We could not remove that connection just now. Please try again.");
+      setError(t("connections.errRemove"));
     } finally {
       setBusy(false);
     }
@@ -189,23 +192,23 @@ export default function ConnectionsEditor({
   return (
     <View style={styles.wrap}>
       <Text variant="overline" tone="textSecondary" style={styles.label}>
-        CONNECTIONS
+        {t("connections.title")}
       </Text>
 
       {connections.length === 0 && !relationshipLabel ? (
         <Text variant="caption" tone="textTertiary">
-          No connections yet — link {editedName} to {olderAdultName} or the rest of the family below.
+          {t("connections.empty", { name: editedName, elder: olderAdultName })}
         </Text>
       ) : null}
 
       {relationshipLabel ? (
         <View style={styles.row}>
           <Text variant="body" style={styles.rowLabel}>
-            {`${olderAdultName} — ${relationshipLabel} of ${editedName}`}
+            {t("connections.elderRow", { elder: olderAdultName, label: relationshipLabel, name: editedName })}
           </Text>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Remove: ${editedName} is ${olderAdultName}'s ${relationshipLabel}`}
+            accessibilityLabel={t("connections.removeElderA11y", { name: editedName, elder: olderAdultName, label: relationshipLabel })}
             onPress={() => void clearElder()}
             hitSlop={10}
             style={({ pressed }) => [pressed ? styles.pressed : null]}
@@ -222,7 +225,7 @@ export default function ConnectionsEditor({
           </Text>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Remove: ${describe(rel)}`}
+            accessibilityLabel={t("connections.removeA11y", { desc: describe(rel) })}
             onPress={() => void remove(rel)}
             hitSlop={10}
             style={({ pressed }) => [pressed ? styles.pressed : null]}
@@ -233,20 +236,22 @@ export default function ConnectionsEditor({
       ))}
 
       <Text variant="caption" tone="textSecondary">
-        {pending ? `${editedName} is ${pending.label}…` : `Add a connection — ${editedName} is…`}
+        {pending
+          ? t("connections.isDoing", { name: editedName, label: t(pending.labelKey) })
+          : t("connections.addPrompt", { name: editedName })}
       </Text>
       {pending == null ? (
         <View style={styles.chipRow}>
           {CHIP_OPTIONS.map((opt) => (
             <Pressable
-              key={opt.label}
+              key={opt.type}
               accessibilityRole="button"
-              accessibilityLabel={opt.label}
+              accessibilityLabel={t(opt.labelKey)}
               onPress={() => setPending(opt)}
               style={({ pressed }) => [styles.chip, pressed ? styles.pressed : null]}
             >
               <Text variant="bodyStrong" tone="textSecondary">
-                {opt.label}
+                {t(opt.labelKey)}
               </Text>
             </Pressable>
           ))}
@@ -256,12 +261,12 @@ export default function ConnectionsEditor({
           {/* The older adult is always a valid target — this is the "friend of {elder}" case. */}
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`${olderAdultName} (the person Nikki helps)`}
+            accessibilityLabel={t("connections.elderA11y", { elder: olderAdultName })}
             onPress={() => void addToElder()}
             style={({ pressed }) => [styles.chip, styles.chipElder, pressed ? styles.pressed : null]}
           >
             <Text variant="bodyStrong" tone="onPrimary">
-              {olderAdultName} (Nikki's person)
+              {t("connections.elderChip", { elder: olderAdultName })}
             </Text>
           </Pressable>
           {others.map((p) => {
@@ -282,12 +287,12 @@ export default function ConnectionsEditor({
           })}
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Never mind"
+            accessibilityLabel={t("connections.neverMindA11y")}
             onPress={() => setPending(null)}
             style={({ pressed }) => [styles.chip, pressed ? styles.pressed : null]}
           >
             <Text variant="bodyStrong" tone="textSecondary">
-              never mind
+              {t("connections.neverMind")}
             </Text>
           </Pressable>
         </View>
