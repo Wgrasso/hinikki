@@ -50,6 +50,10 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
   // Inactivity watchdog: armed on connect, reset on every USER turn, cleared on end.
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const endRef = useRef<() => void>(() => undefined);
+  // How many times begin() has run this mount, and whether the NEXT connect is a restart —
+  // used to work around a known iOS/LiveKit bug where the mic stays silent on the 2nd+ call.
+  const startCount = useRef(0);
+  const restartPending = useRef(false);
   const clearIdle = useCallback((): void => {
     if (idleTimer.current) {
       clearTimeout(idleTimer.current);
@@ -72,6 +76,25 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
     onConnect: () => {
       setPhase("live");
       armIdle(); // start the quiet-timer as soon as we're live
+      // Known iOS/LiveKit bug: after a previous call stopped the shared audio session, the mic
+      // can stay dead on the next call even though it connects. Toggling the mic off→on drives
+      // the native audio engine's "recording enabled" edge, which re-arms capture. Only needed
+      // on a restart; the toggle happens during Nikki's opening line, so it's inaudible.
+      if (restartPending.current) {
+        restartPending.current = false;
+        try {
+          conversation.setMuted(true);
+          setTimeout(() => {
+            try {
+              conversation.setMuted(false);
+            } catch {
+              /* session may have ended; ignore */
+            }
+          }, 250);
+        } catch {
+          /* setMuted unavailable; ignore */
+        }
+      }
       // A Help-screen "I am lost" / People "Who is Emma?" entry speaks for the user right away.
       if (openingRef.current) {
         conversation.sendUserMessage(openingRef.current);
@@ -130,6 +153,10 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
       clearIdle(); // no stale watchdog from a previous attempt
       photosRef.current = []; // fresh face lookup for THIS conversation
       toolSet.reset(); // fresh recap chips + push budget for THIS conversation
+      // Second+ conversation of this mount: mark it so onConnect re-arms the mic.
+      const isRestart = startCount.current > 0;
+      startCount.current += 1;
+      restartPending.current = isRestart;
       setPhase("preparing");
       // Facts queued while offline get their catch-up now — at most one push for the
       // whole flushed batch (plan §4.5).
@@ -143,6 +170,11 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
           setPhase("error");
           return;
         }
+        // On a restart, let the previous call's native audio-session teardown finish before we
+        // start a new one. The SDK's endSession() is async and NOT awaitable from here, and its
+        // tail calls the process-global stopAudioSession(); starting too soon lets that stop land
+        // on top of the new session and mute the mic. A short settle beat avoids that overlap.
+        if (isRestart) await new Promise((resolve) => setTimeout(resolve, 700));
         // Face lookup for the transcript: best-effort, never blocks the connection.
         void loadPersonPhotos(olderAdultId)
           .then((photos) => {

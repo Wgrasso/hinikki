@@ -2,7 +2,7 @@
 // ConversationProvider + the session hook + orb/captions. The session is scoped to this screen on
 // purpose — leaving the Nikki tab says goodbye (predictable for the user, and live agent minutes
 // are billed). Metro picks VoiceExperience.tsx on web, so the SDK import below never reaches web.
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { ConversationProvider } from "@elevenlabs/react-native";
 import { theme } from "../../theme";
@@ -25,55 +25,39 @@ export type VoiceExperienceProps = {
 
 export default function VoiceExperience(props: VoiceExperienceProps): React.ReactElement {
   const { t } = useT();
-  // Each conversation runs inside a FRESH ConversationProvider. The SDK starts/stops the native
-  // AudioSession per session, and reusing one provider across goodbye→restart leaves the mic
-  // capture stale — the second conversation would connect but hear nothing. Remounting on a new
-  // generation guarantees a clean room + audio session every time. begin()'s async preamble
-  // (mic check, token, variables) runs well after the old provider's teardown, so there's no
-  // start/stop race on the audio session.
-  const [generation, setGeneration] = useState(0);
-  const startFresh = useCallback(() => setGeneration((g) => g + 1), []);
-
   if (!HAS_VOICE) {
     return <NikkiCard message={t("voice.notSetUp")} />;
   }
+  // ONE ConversationProvider for the whole screen — never remounted. The SDK has no JS-level
+  // singleton to reset (each startSession builds a fresh Room), and remounting only makes the old
+  // provider's un-awaited endSession() call the process-global stopAudioSession() AFTER the new
+  // session's startAudioSession(), killing the mic. Restart is handled inside the session hook
+  // (settle delay + mic re-arm) instead.
   return (
-    <ConversationProvider key={generation}>
-      <VoiceSession {...props} generation={generation} onRequestRestart={startFresh} />
+    <ConversationProvider>
+      <VoiceSession {...props} />
     </ConversationProvider>
   );
 }
 
-function VoiceSession({
-  olderAdultId,
-  preferredName,
-  initialAsk,
-  generation,
-  onRequestRestart,
-}: VoiceExperienceProps & { generation: number; onRequestRestart: () => void }): React.ReactElement {
+function VoiceSession({ olderAdultId, preferredName, initialAsk }: VoiceExperienceProps): React.ReactElement {
   const { t } = useT();
   const session = useNikkiSession(olderAdultId, preferredName);
   const autoStartedRef = useRef(false);
 
-  // Auto-begin on mount when this is a restart (a fresh generation), or on first entry when a
-  // phrase was handed in (Help's "I am lost" / People's "Who is Emma?"). Runs once per mount.
+  // Auto-start once on entry when a phrase was handed in (Help's "I am lost" / People's "Who is Emma?").
   useEffect(() => {
-    if (autoStartedRef.current || session.phase !== "idle") return;
-    if (generation > 0) {
-      autoStartedRef.current = true;
-      void session.begin();
-    } else if (initialAsk) {
+    if (initialAsk && !autoStartedRef.current && session.phase === "idle") {
       autoStartedRef.current = true;
       void session.begin(initialAsk);
     }
-  }, [generation, initialAsk, session]);
+  }, [initialAsk, session]);
 
-  // "Talk" starts the first conversation of this mount; once one has ended, tapping asks the
-  // host for a brand-new provider (which auto-begins) rather than restarting the stale one.
+  // "Talk" starts a conversation, and starts another after one has ended — the hook makes the
+  // restart safe (waits out the old native teardown, then re-arms the mic).
   const onTalk = useCallback((): void => {
-    if (session.phase === "ended" || session.phase === "error") onRequestRestart();
-    else void session.begin();
-  }, [session, onRequestRestart]);
+    void session.begin();
+  }, [session]);
 
   // End the session when the user leaves the screen — never leave a live call behind.
   const endRef = useRef(session.end);
