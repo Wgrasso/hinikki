@@ -52,7 +52,7 @@ export default function VoiceCaptions({ captions }: { captions: NikkiCaption[] }
 }
 
 // Big enough for older eyes to read a face; several still fit across a bubble by wrapping.
-const FACE_SIZE = 96;
+const FACE_SIZE = 128;
 
 const styles = StyleSheet.create({
   wrap: { gap: theme.spacing.sm },
