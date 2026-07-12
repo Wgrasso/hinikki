@@ -11,20 +11,46 @@ import { useAppState } from "../../auth/appState";
 import { supabase } from "../../lib/supabase";
 import { clearSession } from "../../storage/localStore";
 import { becomeAdmin, becomeUser } from "../../features/dev/devHarness";
-import { DEV_FAMILIES, getActiveDevFamily, setActiveDevFamilyCode, type DevFamily } from "../../features/dev/devConfig";
+import { getActiveDevFamily, getAllDevFamilies, setActiveDevFamilyCode, upsertSavedDevFamily, type DevFamily } from "../../features/dev/devConfig";
 
 export default function DevModeSwitch(): React.ReactElement | null {
-  const { mode, refresh, completeSetupWithGroup } = useAppState();
+  const { mode, joinCode, refresh, completeSetupWithGroup } = useAppState();
   const router = useRouter();
   const [busy, setBusy] = useState<null | "admin" | "user">(null);
   const [active, setActive] = useState<DevFamily | null>(null);
+  const [families, setFamilies] = useState<DevFamily[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
 
+  async function refreshFamilies(): Promise<void> {
+    setFamilies(await getAllDevFamilies());
+    setActive(await getActiveDevFamily());
+  }
+
   useEffect(() => {
-    void getActiveDevFamily().then(setActive);
+    void refreshFamilies();
   }, []);
 
-  if (!__DEV__ || !supabase || DEV_FAMILIES.length === 0) return null;
+  // Stay where you are: whenever you land in a family, remember it (and, if you're its admin,
+  // capture the session so you can hop back to Admin later without a password), and make it the
+  // active target so pressing User/Admin never bounces you to a different family.
+  useEffect(() => {
+    if (!joinCode) return;
+    void (async () => {
+      const fam: DevFamily = { label: joinCode, familyCode: joinCode, elderName: "" };
+      if (mode === "admin" && supabase) {
+        const { data } = await supabase.auth.getSession();
+        if (data.session) {
+          fam.accessToken = data.session.access_token;
+          fam.refreshToken = data.session.refresh_token;
+        }
+      }
+      await upsertSavedDevFamily(fam);
+      await setActiveDevFamilyCode(joinCode);
+      await refreshFamilies();
+    })();
+  }, [joinCode, mode]);
+
+  if (!__DEV__ || !supabase) return null;
 
   async function pickFamily(family: DevFamily): Promise<void> {
     await setActiveDevFamilyCode(family.familyCode);
@@ -72,7 +98,7 @@ export default function DevModeSwitch(): React.ReactElement | null {
 
       {pickerOpen ? (
         <View style={styles.menu}>
-          {DEV_FAMILIES.map((f) => (
+          {families.map((f) => (
             <Pressable
               key={f.familyCode}
               accessibilityRole="button"

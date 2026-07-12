@@ -1,23 +1,22 @@
 // src/features/dev/devConfig.ts — DEV ONLY targets for the dev harness (devHarness.ts).
-// Each entry is one family you can jump into as admin OR user. The ACTIVE one is remembered in
-// AsyncStorage, so you can switch families from the on-screen dropdown without losing work in
-// another family — and picking a family then tapping Admin/User always lands in that same family.
-//
-// To add a family: create it once through normal onboarding (an admin signs up → creates the
-// family → adds the elder), then append a row below with that family's code, the admin account
-// you used, and the elder's display name. These are throwaway test credentials, never shipped
-// (every caller checks __DEV__).
+// Families come from two places, merged: a hardcoded seed list, and families you land in at
+// runtime (creating/joining one auto-saves it, with the admin session captured so you can hop
+// back to Admin without a password). The ACTIVE family is remembered, so the switch always
+// stays where you are and past family codes stay in the dropdown. All DEV-only, never shipped.
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export type DevFamily = {
-  label: string; // short name shown in the dropdown
+  label: string; // shown in the dropdown
   familyCode: string;
-  adminEmail: string;
-  adminPassword: string;
-  elderName: string; // the older adult to become on the user side
+  elderName: string; // elder to become on the user side ("" = just take the first one)
+  adminEmail?: string; // seed families sign in with these…
+  adminPassword?: string;
+  accessToken?: string; // …runtime families restore this captured admin session instead
+  refreshToken?: string;
 };
 
-export const DEV_FAMILIES: DevFamily[] = __DEV__
+// Seed families (full credentials). Add more here if you want a permanent, password-based entry.
+const SEED_FAMILIES: DevFamily[] = __DEV__
   ? [
       {
         label: "Alexu",
@@ -26,25 +25,60 @@ export const DEV_FAMILIES: DevFamily[] = __DEV__
         adminPassword: "devharness-XZVX2D2T-2026",
         elderName: "Alexu",
       },
-      // ← add more dev families here, e.g.
-      // { label: "Oma", familyCode: "ABCD1234", adminEmail: "you@example.com", adminPassword: "…", elderName: "Oma" },
     ]
   : [];
 
+// Kept for callers that just need "are there any dev families / is this dev".
+export const DEV_FAMILIES = SEED_FAMILIES;
+
+const SAVED_KEY = "dev.savedFamilies";
 const ACTIVE_KEY = "dev.activeFamilyCode";
 
-// The family the dev switch currently targets — the stored choice if it still exists, else the
-// first configured family. Null only when there are no dev families (or not in dev).
+async function getSaved(): Promise<DevFamily[]> {
+  try {
+    const raw = await AsyncStorage.getItem(SAVED_KEY);
+    return raw ? (JSON.parse(raw) as DevFamily[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+// Seed ∪ runtime-saved, keyed by code (saved entries override/extend the seed, e.g. add tokens).
+export async function getAllDevFamilies(): Promise<DevFamily[]> {
+  if (!__DEV__) return [];
+  const byCode = new Map<string, DevFamily>();
+  for (const f of SEED_FAMILIES) byCode.set(f.familyCode, f);
+  for (const f of await getSaved()) byCode.set(f.familyCode, { ...byCode.get(f.familyCode), ...f });
+  return [...byCode.values()];
+}
+
+// Remember (or update) a family discovered at runtime, without clobbering a captured session
+// when the incoming entry has none.
+export async function upsertSavedDevFamily(fam: DevFamily): Promise<void> {
+  if (!__DEV__) return;
+  try {
+    const saved = await getSaved();
+    const i = saved.findIndex((f) => f.familyCode === fam.familyCode);
+    if (i >= 0) saved[i] = { ...saved[i], ...fam };
+    else saved.push(fam);
+    await AsyncStorage.setItem(SAVED_KEY, JSON.stringify(saved));
+  } catch {
+    // best-effort
+  }
+}
+
 export async function getActiveDevFamily(): Promise<DevFamily | null> {
-  if (!__DEV__ || DEV_FAMILIES.length === 0) return null;
+  if (!__DEV__) return null;
+  const all = await getAllDevFamilies();
+  if (all.length === 0) return null;
   try {
     const code = await AsyncStorage.getItem(ACTIVE_KEY);
-    const match = DEV_FAMILIES.find((f) => f.familyCode === code);
+    const match = all.find((f) => f.familyCode === code);
     if (match) return match;
   } catch {
-    // fall through to the default
+    // fall through to default
   }
-  return DEV_FAMILIES[0];
+  return all[0];
 }
 
 export async function setActiveDevFamilyCode(familyCode: string): Promise<void> {
@@ -52,6 +86,6 @@ export async function setActiveDevFamilyCode(familyCode: string): Promise<void> 
   try {
     await AsyncStorage.setItem(ACTIVE_KEY, familyCode);
   } catch {
-    // best-effort; the default just stays active
+    // best-effort
   }
 }

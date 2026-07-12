@@ -20,8 +20,19 @@ export async function becomeAdmin(): Promise<BecomeResult> {
   const cfg = await getActiveDevFamily();
   if (!__DEV__ || !supabase || !cfg) return { ok: false, message: "dev only" };
   await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
-  const r = await adminSignIn(cfg.adminEmail, cfg.adminPassword);
-  if (!r.ok) return { ok: false, message: r.message };
+  if (cfg.adminEmail && cfg.adminPassword) {
+    // Seed family: sign in with its fixed credentials.
+    const r = await adminSignIn(cfg.adminEmail, cfg.adminPassword);
+    if (!r.ok) return { ok: false, message: r.message };
+  } else if (cfg.refreshToken) {
+    // Runtime family: restore the admin session we captured when you were last its admin.
+    const { data, error } = await supabase.auth.refreshSession({ refresh_token: cfg.refreshToken });
+    if (error || !data.session) {
+      return { ok: false, message: "This family's saved admin session expired — open it as admin once more to refresh it." };
+    }
+  } else {
+    return { ok: false, message: "No admin login saved for this family yet. Open it as admin once (it'll be remembered), then use the switch." };
+  }
   await joinGroupAsAdmin(cfg.familyCode).catch(() => undefined); // idempotent link
   return { ok: true };
 }
