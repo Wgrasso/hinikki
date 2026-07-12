@@ -8,12 +8,13 @@ import SectionHeader from "../../src/components/admin/SectionHeader";
 import ListRow from "../../src/components/shared/ListRow";
 import StateView from "../../src/components/shared/StateView";
 import QuickAddModal from "../../src/components/admin/QuickAddModal";
+import SafeLocationFormModal from "../../src/components/admin/SafeLocationFormModal";
 import SwipeToDismiss from "../../src/components/shared/SwipeToDismiss";
 import { useAsync } from "../../src/utils/useAsync";
 import { subscribeLive } from "../../src/features/sync/liveChannel";
 import { theme } from "../../src/theme";
 import { relativeTimeLabel } from "../../src/utils/format";
-import { createSafeLocation, getLatestLocation, getLocationById, listSafeLocations, updateSafeLocation } from "../../src/services/locationService";
+import { getLatestLocation, getLocationById, listSafeLocations } from "../../src/services/locationService";
 import { createEmergencyContact, listEmergencyContacts, listEmergencyEvents, resolveEmergencyEvent, updateEmergencyContact } from "../../src/services/emergencyService";
 import { describePlace } from "../../src/features/safety/locationCapture";
 import { getHiddenAlertIds, hideAlertId } from "../../src/features/safety/hiddenAlerts";
@@ -247,27 +248,15 @@ export default function AdminSafety(): React.ReactElement {
         }}
       </StateView>
 
-      <QuickAddModal
+      <SafeLocationFormModal
         visible={placeVisible}
-        title={editPlace ? t("adminSafety.editPlace") : t("adminSafety.addPlace")}
-        submitLabel={editPlace ? t("common.saveChanges") : t("common.save")}
-        initialValues={editPlace ? { name: editPlace.name, address: editPlace.address ?? "" } : undefined}
-        fields={[
-          { key: "name", label: t("adminSafety.fieldName"), placeholder: t("adminSafety.placeNamePlaceholder"), required: true },
-          { key: "address", label: t("adminSafety.fieldAddress"), placeholder: t("adminSafety.placeAddressPlaceholder"), required: true },
-        ]}
+        olderAdultId={id}
+        place={editPlace}
         onClose={() => {
           setAddingPlace(false);
           setEditPlace(null);
         }}
-        onSubmit={async (v) => {
-          if (editPlace) {
-            await updateSafeLocation(editPlace.id, { name: v.name, address: v.address || null });
-          } else {
-            await createSafeLocation(id, { name: v.name, address: v.address ?? null, location_type: "familiar" });
-          }
-          reload();
-        }}
+        onSaved={reload}
       />
       <QuickAddModal
         visible={contactVisible}

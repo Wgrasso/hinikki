@@ -90,7 +90,7 @@ export async function listSafeLocations(olderAdultId: string): Promise<SafeLocat
 
 export async function createSafeLocation(
   olderAdultId: string,
-  input: { name: string; address?: string | null; location_type?: string | null },
+  input: { name: string; address?: string | null; location_type?: string | null; latitude?: number | null; longitude?: number | null },
 ): Promise<SafeLocation> {
   if (!supabase) {
     const loc: SafeLocation = {
@@ -98,8 +98,8 @@ export async function createSafeLocation(
       older_adult_id: olderAdultId,
       name: input.name,
       address: input.address ?? null,
-      latitude: null,
-      longitude: null,
+      latitude: input.latitude ?? null,
+      longitude: input.longitude ?? null,
       radius_meters: 150,
       location_type: input.location_type ?? null,
     };
@@ -119,7 +119,7 @@ export async function createSafeLocation(
 
 export async function updateSafeLocation(
   id: string,
-  patch: { name?: string; address?: string | null; location_type?: string | null },
+  patch: { name?: string; address?: string | null; location_type?: string | null; latitude?: number | null; longitude?: number | null },
 ): Promise<void> {
   if (!supabase) {
     await mutateDemo((s) => {
