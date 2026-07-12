@@ -14,8 +14,9 @@ import { subscribeLive } from "../../src/features/sync/liveChannel";
 import { theme } from "../../src/theme";
 import { relativeTimeLabel } from "../../src/utils/format";
 import { createSafeLocation, getLatestLocation, getLocationById, listSafeLocations, updateSafeLocation } from "../../src/services/locationService";
-import { createEmergencyContact, deleteEmergencyEvent, listEmergencyContacts, listEmergencyEvents, resolveEmergencyEvent, updateEmergencyContact } from "../../src/services/emergencyService";
+import { createEmergencyContact, listEmergencyContacts, listEmergencyEvents, resolveEmergencyEvent, updateEmergencyContact } from "../../src/services/emergencyService";
 import { describePlace } from "../../src/features/safety/locationCapture";
+import { getHiddenAlertIds, hideAlertId } from "../../src/features/safety/hiddenAlerts";
 import { openMapLocation } from "../../src/utils/openMaps";
 import { useT } from "../../src/i18n";
 import type { EmergencyContact, EmergencyEvent, LocationUpdate, SafeLocation } from "../../src/types/database";
@@ -40,6 +41,12 @@ export default function AdminSafety(): React.ReactElement {
   const [editPlace, setEditPlace] = useState<SafeLocation | null>(null);
   const [editContact, setEditContact] = useState<EmergencyContact | null>(null);
   const [resolvingId, setResolvingId] = useState<string | null>(null);
+  // Alerts this admin has swiped away — hidden on THIS device only (personal declutter).
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    void getHiddenAlertIds().then((ids) => setHidden(new Set(ids)));
+  }, []);
 
   const { state, reload } = useAsync<SafetyData>(async () => {
     const [latest, safe, contacts, events] = await Promise.all([
@@ -90,14 +97,11 @@ export default function AdminSafety(): React.ReactElement {
     }
   }
 
-  // Swipe-to-trash removes the alert from the log entirely.
-  async function handleDelete(id: string): Promise<void> {
-    try {
-      await deleteEmergencyEvent(id);
-      reload();
-    } catch {
-      // ignore — a blocked delete just leaves the alert in place
-    }
+  // Swipe-to-hide removes the alert from THIS admin's list only (local); the shared record and
+  // its resolved state are untouched, so other admins still see it.
+  function handleHide(alertId: string): void {
+    setHidden((prev) => new Set(prev).add(alertId));
+    void hideAlertId(alertId);
   }
 
   return (
@@ -107,6 +111,8 @@ export default function AdminSafety(): React.ReactElement {
         {(data) => {
           const needsSafePlace = data.safe.length === 0;
           const needsContact = !data.contacts.some((c) => (c.phone ?? "").trim().length > 0);
+          // Everything except what this admin has personally swiped away.
+          const visibleAlerts = data.events.filter((e) => !hidden.has(e.id));
           return (
           <Stack gap="lg">
             <Card elevation="card">
@@ -177,15 +183,15 @@ export default function AdminSafety(): React.ReactElement {
             <View>
               <SectionHeader title={t("adminSafety.recentAlerts")} />
               <Stack gap="sm">
-                {data.events.length === 0 ? (
+                {visibleAlerts.length === 0 ? (
                   <EmptyHint text={t("adminSafety.alertsEmpty")} />
                 ) : (
-                  data.events.map((e) => {
+                  visibleAlerts.map((e) => {
                     const isCall = e.event_type === "call_family";
                     const where = data.eventLocations[e.id];
                     const resolved = e.status === "resolved";
                     return (
-                    <SwipeToDismiss key={e.id} onDismiss={() => void handleDelete(e.id)} accessibilityLabel={t("adminSafety.dismissAlert")}>
+                    <SwipeToDismiss key={e.id} onDismiss={() => handleHide(e.id)} accessibilityLabel={t("adminSafety.dismissAlert")}>
                       <Card elevation="card">
                         <Stack gap="md">
                           <Stack direction="row" gap="md" align="center">

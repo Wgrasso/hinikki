@@ -113,18 +113,6 @@ export async function listEmergencyEvents(olderAdultId: string): Promise<Emergen
   return (data ?? []) as EmergencyEvent[];
 }
 
-// Permanently remove an alert from the log (swipe-to-delete). Needs the delete RLS policy.
-export async function deleteEmergencyEvent(id: string): Promise<void> {
-  if (!supabase) {
-    await mutateDemo((s) => {
-      s.emergencyEvents = s.emergencyEvents.filter((e) => e.id !== id);
-    });
-    return;
-  }
-  const { error } = await supabase.from("emergency_events").delete().eq("id", id);
-  if (error) throw new Error(error.message);
-}
-
 export async function resolveEmergencyEvent(id: string): Promise<void> {
   if (!supabase) {
     await mutateDemo((s) => {
