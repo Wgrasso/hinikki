@@ -11,14 +11,29 @@ import { subscribeLive } from "../../src/features/sync/liveChannel";
 import { theme } from "../../src/theme";
 import { createEmergencyEvent, listEmergencyContacts } from "../../src/services/emergencyService";
 import { getOlderAdult } from "../../src/services/profileService";
+import { listSafeLocations } from "../../src/services/locationService";
 import { captureAndStoreLocation } from "../../src/features/safety/locationCapture";
 import { openMapDirections } from "../../src/utils/openMaps";
 import { useT } from "../../src/i18n";
-import type { EmergencyContact } from "../../src/types/database";
+import type { EmergencyContact, SafeLocation } from "../../src/types/database";
 
-// The Help screen leans on two things: who to call (emergency contacts) and where home is
-// (the elder's saved address). Load them together so every button knows if it can safely act.
-type HelpData = { contacts: EmergencyContact[]; homeAddress: string | null };
+// The Help screen leans on two things: who to call (emergency contacts) and where "home" is —
+// either the saved home address OR a safe place (e.g. a pinned "Home"). Load them together so
+// every button knows if it can safely act.
+type HelpData = { contacts: EmergencyContact[]; homeAddress: string | null; safe: SafeLocation[] };
+
+// Where "I'm lost" should guide them: the home address if set, otherwise a safe place — preferring
+// one literally called "home", else the first with an address or map pin. Coordinates are passed
+// as "lat,lng" (the maps app routes to them). Null when there's nowhere to send them.
+function homeDestination(homeAddress: string | null, safe: SafeLocation[]): string | null {
+  if (homeAddress && homeAddress.trim().length > 0) return homeAddress.trim();
+  const named = safe.find((s) => /\b(home|thuis|huis)\b/i.test(s.name));
+  const pick = named ?? safe.find((s) => (s.address && s.address.trim()) || (s.latitude != null && s.longitude != null));
+  if (!pick) return null;
+  if (pick.address && pick.address.trim().length > 0) return pick.address.trim();
+  if (pick.latitude != null && pick.longitude != null) return `${pick.latitude},${pick.longitude}`;
+  return null;
+}
 
 export default function HelpScreen(): React.ReactElement {
   const { t } = useT();
@@ -27,8 +42,8 @@ export default function HelpScreen(): React.ReactElement {
   const [note, setNote] = useState<string | null>(null);
 
   const { state, reload } = useAsync<HelpData>(async () => {
-    const [contacts, profile] = await Promise.all([listEmergencyContacts(id), getOlderAdult(id)]);
-    return { contacts, homeAddress: profile?.home_address ?? null };
+    const [contacts, profile, safe] = await Promise.all([listEmergencyContacts(id), getOlderAdult(id), listSafeLocations(id)]);
+    return { contacts, homeAddress: profile?.home_address ?? null, safe };
   }, [id]);
 
   // Refetch on focus and on live changes; stale-while-refresh keeps it flicker-free.
@@ -59,9 +74,9 @@ export default function HelpScreen(): React.ReactElement {
 
   // "I'm lost": let the family know right away (alert + a fresh location), then open the phone's
   // maps app with directions home so they can start walking back to somewhere familiar.
-  async function goHome(homeAddress: string): Promise<void> {
+  async function goHome(destination: string): Promise<void> {
     setNote(t("help.openingMap"));
-    const ok = await openMapDirections(homeAddress); // open the map first — no waiting for a GPS fix
+    const ok = await openMapDirections(destination); // open the map first — no waiting for a GPS fix
     const locId = await captureAndStoreLocation(id, true); // then record WHERE they were, and link it
     void createEmergencyEvent(id, { event_type: "lost", user_message: "Pressed “I feel lost”", detected_urgency: "high", location_update_id: locId }).catch(() => undefined);
     if (!ok) setNote(t("help.mapFailed"));
@@ -71,17 +86,17 @@ export default function HelpScreen(): React.ReactElement {
     <Screen scroll>
       <AppBar title={t("tab.help")} subtitle={t("help.subtitle")} />
       <StateView state={state} onRetry={reload} loadingLabel={t("help.loading")}>
-        {({ contacts, homeAddress }) => {
+        {({ contacts, homeAddress, safe }) => {
           const hasPhone = contacts.some((c) => c.phone);
-          const hasHome = Boolean(homeAddress && homeAddress.trim().length > 0);
+          const destination = homeDestination(homeAddress, safe);
           return (
             <Stack gap="md">
               <BigHelpButton
                 icon="location"
                 label={t("help.lost.label")}
-                description={hasHome ? t("help.lost.desc") : t("help.lost.noHome")}
-                disabled={!hasHome}
-                onPress={() => goHome(homeAddress as string)}
+                description={destination ? t("help.lost.desc") : t("help.lost.noHome")}
+                disabled={!destination}
+                onPress={() => goHome(destination as string)}
               />
               <BigHelpButton
                 icon="phone"
