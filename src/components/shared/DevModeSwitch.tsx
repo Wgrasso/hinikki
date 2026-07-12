@@ -35,25 +35,16 @@ export default function DevModeSwitch(): React.ReactElement | null {
     void refreshFamilies();
   }, []);
 
-  // Stay where you are: whenever you land in a family, remember it (and, if you're its admin,
-  // capture the session so you can hop back to Admin later without a password), and make it the
-  // active target so pressing User/Admin never bounces you to a different family.
+  // Stay where you are: whenever you land in a family, remember it (so it shows in the dropdown)
+  // and make it the active target, so pressing User/Admin never bounces you to a different family.
   useEffect(() => {
     if (!joinCode) return;
     void (async () => {
-      const fam: DevFamily = { label: joinCode, familyCode: joinCode, elderName: "" };
-      if (mode === "admin" && supabase) {
-        const { data } = await supabase.auth.getSession();
-        if (data.session) {
-          fam.accessToken = data.session.access_token;
-          fam.refreshToken = data.session.refresh_token;
-        }
-      }
-      await upsertSavedDevFamily(fam);
+      await upsertSavedDevFamily({ label: joinCode, familyCode: joinCode, elderName: "" });
       await setActiveDevFamilyCode(joinCode);
       await refreshFamilies();
     })();
-  }, [joinCode, mode]);
+  }, [joinCode]);
 
   if (!__DEV__ || !supabase) return null;
 

@@ -9,11 +9,14 @@ export type DevFamily = {
   label: string; // shown in the dropdown
   familyCode: string;
   elderName: string; // elder to become on the user side ("" = just take the first one)
-  adminEmail?: string; // seed families sign in with these…
+  adminEmail?: string; // seed families sign in with these; runtime families fall back to SHARED_DEV_ADMIN
   adminPassword?: string;
-  accessToken?: string; // …runtime families restore this captured admin session instead
-  refreshToken?: string;
 };
+
+// A persistent dev admin account used to become admin of ANY family: it signs in, then joins the
+// target family by its code (join_group_as_admin), so there's no per-family password or expiring
+// session to manage. It's the same throwaway account as the seed family.
+export const SHARED_DEV_ADMIN = { email: "dev-harness@hinikki.test", password: "devharness-XZVX2D2T-2026" };
 
 // Seed families (full credentials). Add more here if you want a permanent, password-based entry.
 const SEED_FAMILIES: DevFamily[] = __DEV__

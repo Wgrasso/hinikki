@@ -50,7 +50,8 @@ export default function HelpScreen(): React.ReactElement {
       return;
     }
     void createEmergencyEvent(id, { event_type: "call_family", user_message: `Pressed “Call family” — called ${contact.name}`, detected_urgency: "low" }).catch(() => undefined);
-    setNote(t("help.calling", { name: contact.name }));
+    // Hand off to the phone dialer. We deliberately show no "calling…" note — the app can't tell
+    // when the call connects or ends, so a lingering status would be misleading.
     Linking.openURL(`tel:${contact.phone.replace(/\s/g, "")}`).catch(() =>
       setNote(t("help.callFailed")),
     );
