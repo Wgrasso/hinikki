@@ -204,6 +204,8 @@ export function buildDemoReminders(): Reminder[] {
       requires_confirmation: true,
       priority_level: "high",
       active: true,
+      announce_lead_minutes: null,
+      second_lead_minutes: null,
     },
     {
       id: "rm-water",
@@ -217,6 +219,8 @@ export function buildDemoReminders(): Reminder[] {
       requires_confirmation: false,
       priority_level: "normal",
       active: true,
+      announce_lead_minutes: null,
+      second_lead_minutes: null,
     },
   ];
 }

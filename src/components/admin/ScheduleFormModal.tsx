@@ -16,7 +16,7 @@ import type { CalendarEvent, Reminder } from "../../types/database";
 
 type Kind = "event" | "reminder";
 type DateMode = "today" | "tomorrow" | "pick" | "anytime";
-type RepeatsMode = "once" | "daily" | "weekly" | "custom";
+type RepeatsMode = "once" | "daily" | "weekly" | "monthly";
 
 type Props = {
   visible: boolean;
@@ -78,19 +78,19 @@ function atClock(day: Date, clock: Date): Date {
   return d;
 }
 
-// A saved recurrence_rule string back into a Repeats chip + any custom text it doesn't match.
-function prefillRepeats(rule: string | null): { mode: RepeatsMode; custom: string } {
-  if (!rule) return { mode: "once", custom: "" };
-  if (rule === "Every day") return { mode: "daily", custom: "" };
-  if (rule === "Every week") return { mode: "weekly", custom: "" };
-  return { mode: "custom", custom: rule };
+// A saved recurrence_rule string back into a Repeats chip.
+function prefillRepeats(rule: string | null): RepeatsMode {
+  if (rule === "Every day") return "daily";
+  if (rule === "Every week") return "weekly";
+  if (rule === "Every month") return "monthly";
+  return "once";
 }
 
-function repeatsToRule(mode: RepeatsMode, custom: string): string | null {
-  if (mode === "once") return null;
+function repeatsToRule(mode: RepeatsMode): string | null {
   if (mode === "daily") return "Every day";
   if (mode === "weekly") return "Every week";
-  return custom.trim() || null;
+  if (mode === "monthly") return "Every month";
+  return null;
 }
 
 function CheckRow({ label, value, onChange, caption }: { label: string; value: boolean; onChange: (v: boolean) => void; caption?: string }): React.ReactElement {
@@ -164,7 +164,7 @@ export default function ScheduleFormModal({ visible, kind, olderAdultId, event, 
     { value: "once", label: t("adminForms.repeats.once") },
     { value: "daily", label: t("adminForms.repeats.daily") },
     { value: "weekly", label: t("adminForms.repeats.weekly") },
-    { value: "custom", label: t("adminForms.repeats.custom") },
+    { value: "monthly", label: t("adminForms.repeats.monthly") },
   ];
 
   // Common
@@ -182,7 +182,8 @@ export default function ScheduleFormModal({ visible, kind, olderAdultId, event, 
   const [endTime, setEndTime] = useState<Date | null>(null);
   // Reminder
   const [repeatsMode, setRepeatsMode] = useState<RepeatsMode>("once");
-  const [customFrequency, setCustomFrequency] = useState("");
+  const [alert1Minutes, setAlert1Minutes] = useState(""); // minutes before to alert (blank = at the time)
+  const [alert2Minutes, setAlert2Minutes] = useState(""); // optional second alert, minutes before
   const [nikkiMessage, setNikkiMessage] = useState("");
   const [requiresConfirmation, setRequiresConfirmation] = useState(false);
 
@@ -212,9 +213,9 @@ export default function ScheduleFormModal({ visible, kind, olderAdultId, event, 
     } else if (kind === "reminder" && reminder) {
       setTitle(reminder.title);
       setStartTime(reminder.scheduled_at ? new Date(reminder.scheduled_at) : null);
-      const repeats = prefillRepeats(reminder.recurrence_rule);
-      setRepeatsMode(repeats.mode);
-      setCustomFrequency(repeats.custom);
+      setRepeatsMode(prefillRepeats(reminder.recurrence_rule));
+      setAlert1Minutes(reminder.announce_lead_minutes != null ? String(reminder.announce_lead_minutes) : "");
+      setAlert2Minutes(reminder.second_lead_minutes != null ? String(reminder.second_lead_minutes) : "");
       setNikkiMessage(reminder.nikki_message ?? reminder.instructions ?? "");
       setRequiresConfirmation(reminder.requires_confirmation);
     } else {
@@ -231,7 +232,8 @@ export default function ScheduleFormModal({ visible, kind, olderAdultId, event, 
       setWhatToBring("");
       setEndTime(null);
       setRepeatsMode("once");
-      setCustomFrequency("");
+      setAlert1Minutes("");
+      setAlert2Minutes("");
       setNikkiMessage("");
       setRequiresConfirmation(false);
     }
@@ -275,12 +277,18 @@ export default function ScheduleFormModal({ visible, kind, olderAdultId, event, 
         if (event) await updateEvent(event.id, patch);
         else await createEvent(olderAdultId, patch);
       } else if (kind === "reminder") {
+        const parseLead = (v: string): number | null => {
+          const n = Number.parseInt(v.trim(), 10);
+          return v.trim() && Number.isFinite(n) && n >= 0 ? n : null;
+        };
         const patch = {
           title: title.trim(),
           scheduled_at: startAt.toISOString(),
-          recurrence_rule: repeatsToRule(repeatsMode, customFrequency),
+          recurrence_rule: repeatsToRule(repeatsMode),
           nikki_message: nikkiMessage.trim() || null,
           requires_confirmation: requiresConfirmation,
+          announce_lead_minutes: parseLead(alert1Minutes),
+          second_lead_minutes: parseLead(alert2Minutes),
         };
         if (reminder) await updateReminder(reminder.id, patch);
         else await createReminder(olderAdultId, patch);
@@ -401,9 +409,14 @@ export default function ScheduleFormModal({ visible, kind, olderAdultId, event, 
       ) : (
         <>
           <ChipRow label={t("adminForms.reminder.repeats")} options={REPEATS_OPTIONS} value={repeatsMode} onChange={setRepeatsMode} />
-          {repeatsMode === "custom" ? (
-            <Field label={t("adminForms.reminder.customFrequency")} value={customFrequency} onChangeText={setCustomFrequency} placeholder={t("adminForms.reminder.customFrequencyPlaceholder")} />
-          ) : null}
+          <View style={styles.timeRow}>
+            <View style={styles.timeField}>
+              <Field label={t("adminForms.reminder.alert1")} value={alert1Minutes} onChangeText={setAlert1Minutes} placeholder={t("adminForms.reminder.alertPlaceholder")} keyboardType="number-pad" autoCapitalize="none" />
+            </View>
+            <View style={styles.timeField}>
+              <Field label={t("adminForms.reminder.alert2")} value={alert2Minutes} onChangeText={setAlert2Minutes} placeholder={t("common.optional")} keyboardType="number-pad" autoCapitalize="none" />
+            </View>
+          </View>
           <Field label={t("adminForms.reminder.message")} value={nikkiMessage} onChangeText={setNikkiMessage} placeholder={t("adminForms.reminder.messagePlaceholder")} multiline />
           <CheckRow
             label={t("adminForms.reminder.confirm")}

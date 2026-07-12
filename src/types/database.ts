@@ -119,6 +119,8 @@ export type Reminder = {
   requires_confirmation: boolean;
   priority_level: "low" | "normal" | "high";
   active: boolean;
+  announce_lead_minutes: number | null; // minutes before scheduled_at to send the first alert
+  second_lead_minutes: number | null; // optional minutes before for a second alert
 };
 
 export type ReminderConfirmation = {

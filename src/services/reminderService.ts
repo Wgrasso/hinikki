@@ -5,7 +5,7 @@ import type { Reminder } from "../types/database";
 import { isSameDay } from "../utils/format";
 
 const REMINDER_COLUMNS =
-  "id, older_adult_id, title, reminder_type, recurrence_rule, scheduled_at, nikki_message, instructions, requires_confirmation, priority_level, active";
+  "id, older_adult_id, title, reminder_type, recurrence_rule, scheduled_at, nikki_message, instructions, requires_confirmation, priority_level, active, announce_lead_minutes, second_lead_minutes";
 
 export async function listReminders(olderAdultId: string): Promise<Reminder[]> {
   if (!supabase) {
@@ -41,6 +41,8 @@ export type NewReminder = {
   instructions?: string | null;
   requires_confirmation?: boolean;
   priority_level?: "low" | "normal" | "high";
+  announce_lead_minutes?: number | null;
+  second_lead_minutes?: number | null;
 };
 
 export async function createReminder(olderAdultId: string, input: NewReminder): Promise<Reminder> {
@@ -57,6 +59,8 @@ export async function createReminder(olderAdultId: string, input: NewReminder): 
       requires_confirmation: input.requires_confirmation ?? false,
       priority_level: input.priority_level ?? "normal",
       active: true,
+      announce_lead_minutes: input.announce_lead_minutes ?? null,
+      second_lead_minutes: input.second_lead_minutes ?? null,
     };
     await mutateDemo((s) => {
       s.reminders.push(reminder);

@@ -72,6 +72,9 @@ export const adminForms = {
     "adminForms.reminder.repeats": "Repeats",
     "adminForms.reminder.customFrequency": "How often it repeats",
     "adminForms.reminder.customFrequencyPlaceholder": "e.g. Every other day",
+    "adminForms.reminder.alert1": "Alert (minutes before)",
+    "adminForms.reminder.alert2": "Second alert (minutes)",
+    "adminForms.reminder.alertPlaceholder": "e.g. 15",
     "adminForms.reminder.message": "What Nikki should say",
     "adminForms.reminder.messagePlaceholder": "e.g. Time to water the plants on the windowsill",
     "adminForms.reminder.confirm": "Ask later if it was done",
@@ -98,6 +101,7 @@ export const adminForms = {
     "adminForms.repeats.once": "Just once",
     "adminForms.repeats.daily": "Every day",
     "adminForms.repeats.weekly": "Every week",
+    "adminForms.repeats.monthly": "Every month",
     "adminForms.repeats.custom": "Custom…",
 
     // About form
@@ -199,6 +203,9 @@ export const adminForms = {
     "adminForms.reminder.repeats": "Herhaalt",
     "adminForms.reminder.customFrequency": "Hoe vaak het zich herhaalt",
     "adminForms.reminder.customFrequencyPlaceholder": "bijv. Om de dag",
+    "adminForms.reminder.alert1": "Waarschuwing (minuten ervoor)",
+    "adminForms.reminder.alert2": "Tweede waarschuwing (minuten)",
+    "adminForms.reminder.alertPlaceholder": "bijv. 15",
     "adminForms.reminder.message": "Wat Nikki moet zeggen",
     "adminForms.reminder.messagePlaceholder": "bijv. Tijd om de planten op de vensterbank water te geven",
     "adminForms.reminder.confirm": "Later vragen of het gelukt is",
@@ -225,6 +232,7 @@ export const adminForms = {
     "adminForms.repeats.once": "Eenmalig",
     "adminForms.repeats.daily": "Elke dag",
     "adminForms.repeats.weekly": "Elke week",
+    "adminForms.repeats.monthly": "Elke maand",
     "adminForms.repeats.custom": "Aangepast…",
 
     // About form

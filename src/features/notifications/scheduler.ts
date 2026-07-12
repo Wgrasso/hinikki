@@ -18,8 +18,11 @@ async function schedule(body: string, trigger: Notifications.NotificationTrigger
 // first (HiNikki is the only source), so edits/deletes never leave stale pings behind.
 export async function syncScheduledNotifications(olderAdultId: string): Promise<void> {
   try {
-    const perm = await Notifications.getPermissionsAsync();
-    if (!perm.granted) return; // permission is requested during push registration; don't nag here
+    // The elder's phone needs notification permission for reminders to fire — request it here
+    // (this is the only place the elder app asks). After a decision it won't nag again.
+    let perm = await Notifications.getPermissionsAsync();
+    if (!perm.granted && perm.canAskAgain) perm = await Notifications.requestPermissionsAsync();
+    if (!perm.granted) return;
     await Notifications.cancelAllScheduledNotificationsAsync();
     const now = Date.now();
 
@@ -33,14 +36,24 @@ export async function syncScheduledNotifications(olderAdultId: string): Promise<
       const when = new Date(r.scheduled_at);
       if (Number.isNaN(when.getTime())) continue;
       const body = r.nikki_message ?? r.title;
-      if (r.recurrence_rule === "Every day") {
-        await schedule(body, { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: when.getHours(), minute: when.getMinutes() });
-      } else if (r.recurrence_rule === "Every week") {
-        // expo weekday is 1–7 with 1 = Sunday; JS getDay() is 0–6 with 0 = Sunday.
-        await schedule(body, { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, weekday: when.getDay() + 1, hour: when.getHours(), minute: when.getMinutes() });
-      } else if (when.getTime() > now) {
-        // One-off (or an unrecognised custom rule): a single ping at the set time, if still ahead.
-        await schedule(body, { type: Notifications.SchedulableTriggerInputTypes.DATE, date: when });
+      // One ping per configured alert: the first alert (default at the time) plus an optional
+      // second. Each fires `lead` minutes before the reminder's time.
+      const leads = Array.from(
+        new Set([r.announce_lead_minutes ?? 0, ...(r.second_lead_minutes != null ? [r.second_lead_minutes] : [])]),
+      );
+      for (const lead of leads) {
+        const fire = new Date(when.getTime() - lead * 60_000);
+        if (r.recurrence_rule === "Every day") {
+          await schedule(body, { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: fire.getHours(), minute: fire.getMinutes() });
+        } else if (r.recurrence_rule === "Every week") {
+          // expo weekday is 1–7 with 1 = Sunday; JS getDay() is 0–6 with 0 = Sunday.
+          await schedule(body, { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, weekday: fire.getDay() + 1, hour: fire.getHours(), minute: fire.getMinutes() });
+        } else if (r.recurrence_rule === "Every month") {
+          await schedule(body, { type: Notifications.SchedulableTriggerInputTypes.MONTHLY, day: fire.getDate(), hour: fire.getHours(), minute: fire.getMinutes() });
+        } else if (fire.getTime() > now) {
+          // One-off: a single ping at the (lead-adjusted) time, if it's still ahead.
+          await schedule(body, { type: Notifications.SchedulableTriggerInputTypes.DATE, date: fire });
+        }
       }
     }
 
