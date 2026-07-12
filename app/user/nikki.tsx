@@ -15,7 +15,8 @@ import { theme } from "../../src/theme";
 import { greetingKey, formatTime } from "../../src/utils/format";
 import { useT } from "../../src/i18n";
 import { getNextEvent } from "../../src/services/calendarService";
-import { getWeather, localityCandidates } from "../../src/services/weatherService";
+import { getWeather, getWeatherByCoords, localityCandidates } from "../../src/services/weatherService";
+import { getCurrentPlace } from "../../src/features/safety/locationCapture";
 import { openWeather } from "../../src/utils/openMaps";
 import { getOlderAdult } from "../../src/services/profileService";
 import type { WeatherSnapshot as Weather } from "../../src/types/domain";
@@ -25,6 +26,7 @@ type NikkiData = {
   adult: OlderAdultProfile | null;
   nextEvent: CalendarEvent | null;
   weather: Weather | null;
+  weatherCity: string | null;
 };
 
 export default function NikkiScreen(): React.ReactElement {
@@ -36,9 +38,15 @@ export default function NikkiScreen(): React.ReactElement {
 
   const { state, reload } = useAsync<NikkiData>(async () => {
     const [adult, nextEvent] = await Promise.all([getOlderAdult(id), getNextEvent(id)]);
-    // Weather needs the home address; the service caches, so this is instant after first load.
+    // Weather follows where they ACTUALLY are right now (GPS) — open the app in Amsterdam today,
+    // Berlin tomorrow, and it updates. Falls back to the home town if location isn't available.
+    const place = await getCurrentPlace();
+    if (place) {
+      const weather = await getWeatherByCoords(place.latitude, place.longitude);
+      if (weather) return { adult, nextEvent, weather, weatherCity: place.city };
+    }
     const weather = await getWeather(adult?.home_address ?? null);
-    return { adult, nextEvent, weather };
+    return { adult, nextEvent, weather, weatherCity: localityCandidates(adult?.home_address ?? null)[0] ?? null };
   }, [id]);
 
   // Refetch on focus and on live changes; stale-while-refresh keeps it flicker-free.
@@ -59,11 +67,9 @@ export default function NikkiScreen(): React.ReactElement {
       <StateView state={state} onRetry={reload} loadingLabel={t("nikki.wakingUp")}>
         {(data) => {
           const name = data.adult?.preferred_name ?? null;
-          // The town the weather is for (from the home address) — shown beside the weather.
-          const weatherCity = localityCandidates(data.adult?.home_address ?? null)[0] ?? null;
           return (
             <View style={styles.column}>
-              <NikkiHeader name={name} nextEvent={data.nextEvent} weather={data.weather} city={weatherCity} />
+              <NikkiHeader name={name} nextEvent={data.nextEvent} weather={data.weather} city={data.weatherCity} />
               <View style={styles.voice}>
                 <VoiceExperience olderAdultId={id} preferredName={name} initialAsk={initialAsk} />
               </View>

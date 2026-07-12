@@ -205,13 +205,17 @@ export async function buildSessionVariables(
   const profile = tiers?.profile ?? null;
   const { language_name, register } = languageSettings(profile?.primary_language);
 
-  // getWeather stays in weatherService's own fail-soft world; the family's advice line
-  // rides the snapshot (tier day). Weather itself is best-effort — located from the home
-  // address (city only reaches the geocoder), null when unavailable.
+  // Weather follows where the elder ACTUALLY is: use their last captured GPS location (from the
+  // app's foreground location sharing) so a traveller's weather is right, and fall back to the
+  // home town when there's no recent fix. Best-effort — null/errors keep the safe default.
   let weatherText = "Weather information is not available right now.";
   try {
-    const { getWeather } = await import("../../services/weatherService");
-    const weather = await getWeather(profile?.home_address ?? null);
+    const { getWeather, getWeatherByCoords } = await import("../../services/weatherService");
+    const { getLatestLocation } = await import("../../services/locationService");
+    let weather = null;
+    const loc = await getLatestLocation(olderAdultId).catch(() => null);
+    if (loc) weather = await getWeatherByCoords(loc.latitude, loc.longitude);
+    if (!weather) weather = await getWeather(profile?.home_address ?? null);
     if (weather) weatherText = formatWeather(weather, tiers?.weatherAdvice);
   } catch {
     // keep default

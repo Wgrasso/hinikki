@@ -175,6 +175,37 @@ async function resolveGeo(homeAddress: string, localities: string[]): Promise<Ge
   return geo;
 }
 
+// Fetch + shape the forecast at explicit coordinates. Shared by the address path (below) and
+// the GPS path (getWeatherByCoords).
+async function fetchForecastAt(latitude: number, longitude: number): Promise<WeatherSnapshot> {
+  const forecast = (await fetchJson(
+    `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}` +
+      "&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m" +
+      "&hourly=precipitation_probability&daily=temperature_2m_max,temperature_2m_min" +
+      "&forecast_days=1&timezone=auto",
+  )) as OpenMeteoForecast;
+  return snapshotFromApi(forecast);
+}
+
+// Weather at the device's actual coordinates (real-time GPS), skipping geocoding entirely.
+// Cached in-memory by rounded coordinates so repeated screen focuses within FRESH_MS reuse it,
+// but moving to a new place (different rounded coords) fetches fresh.
+let coordMemo: { key: string; fetchedAt: number; snapshot: WeatherSnapshot } | null = null;
+export async function getWeatherByCoords(latitude: number, longitude: number): Promise<WeatherSnapshot | null> {
+  const key = `${latitude.toFixed(2)},${longitude.toFixed(2)}`;
+  const now = Date.now();
+  if (coordMemo && coordMemo.key === key && now - coordMemo.fetchedAt < FRESH_MS) return coordMemo.snapshot;
+  try {
+    const snapshot = await fetchForecastAt(latitude, longitude);
+    coordMemo = { key, fetchedAt: now, snapshot };
+    return snapshot;
+  } catch {
+    // Reuse the last coords result if it's still within the stale window, else give up.
+    if (coordMemo && coordMemo.key === key && now - coordMemo.fetchedAt <= STALE_MAX_MS) return coordMemo.snapshot;
+    return null;
+  }
+}
+
 async function loadSnapshotCache(): Promise<SnapshotCache | null> {
   if (snapshotMemo) return snapshotMemo;
   try {
@@ -205,13 +236,7 @@ export class OpenMeteoWeatherProvider implements WeatherProvider {
     try {
       const geo = await resolveGeo(homeAddress, localities);
       if (!geo) return usableStale(cached, homeAddress, now);
-      const forecast = (await fetchJson(
-        `https://api.open-meteo.com/v1/forecast?latitude=${geo.latitude}&longitude=${geo.longitude}` +
-          "&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m" +
-          "&hourly=precipitation_probability&daily=temperature_2m_max,temperature_2m_min" +
-          "&forecast_days=1&timezone=auto",
-      )) as OpenMeteoForecast;
-      const snapshot = snapshotFromApi(forecast);
+      const snapshot = await fetchForecastAt(geo.latitude, geo.longitude);
       snapshotMemo = { address: homeAddress, fetchedAt: now, snapshot };
       try {
         await AsyncStorage.setItem(STORE_KEYS.weatherSnapshot, JSON.stringify(snapshotMemo));
