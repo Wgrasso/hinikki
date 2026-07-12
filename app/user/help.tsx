@@ -13,6 +13,7 @@ import { createEmergencyEvent, listEmergencyContacts } from "../../src/services/
 import { getOlderAdult } from "../../src/services/profileService";
 import { listSafeLocations } from "../../src/services/locationService";
 import { captureAndStoreLocation } from "../../src/features/safety/locationCapture";
+import { resolveHomeDestination } from "../../src/features/safety/homeDestination";
 import { openMapDirections } from "../../src/utils/openMaps";
 import { useT } from "../../src/i18n";
 import type { EmergencyContact, SafeLocation } from "../../src/types/database";
@@ -21,19 +22,6 @@ import type { EmergencyContact, SafeLocation } from "../../src/types/database";
 // either the saved home address OR a safe place (e.g. a pinned "Home"). Load them together so
 // every button knows if it can safely act.
 type HelpData = { contacts: EmergencyContact[]; homeAddress: string | null; safe: SafeLocation[] };
-
-// Where "I'm lost" should guide them: the home address if set, otherwise a safe place — preferring
-// one literally called "home", else the first with an address or map pin. Coordinates are passed
-// as "lat,lng" (the maps app routes to them). Null when there's nowhere to send them.
-function homeDestination(homeAddress: string | null, safe: SafeLocation[]): string | null {
-  if (homeAddress && homeAddress.trim().length > 0) return homeAddress.trim();
-  const named = safe.find((s) => /\b(home|thuis|huis)\b/i.test(s.name));
-  const pick = named ?? safe.find((s) => (s.address && s.address.trim()) || (s.latitude != null && s.longitude != null));
-  if (!pick) return null;
-  if (pick.address && pick.address.trim().length > 0) return pick.address.trim();
-  if (pick.latitude != null && pick.longitude != null) return `${pick.latitude},${pick.longitude}`;
-  return null;
-}
 
 export default function HelpScreen(): React.ReactElement {
   const { t } = useT();
@@ -88,7 +76,7 @@ export default function HelpScreen(): React.ReactElement {
       <StateView state={state} onRetry={reload} loadingLabel={t("help.loading")}>
         {({ contacts, homeAddress, safe }) => {
           const hasPhone = contacts.some((c) => c.phone);
-          const destination = homeDestination(homeAddress, safe);
+          const destination = resolveHomeDestination(homeAddress, safe);
           return (
             <Stack gap="md">
               <BigHelpButton
