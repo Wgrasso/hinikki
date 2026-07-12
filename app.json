@@ -55,7 +55,7 @@
       "package": "com.willemgrasso.hinikki",
       "config": {
         "googleMaps": {
-          "apiKey": "YOUR_ANDROID_GOOGLE_MAPS_API_KEY"
+          "apiKey": "AIzaSyCioAZNErsp5Qp-zjQ8DAPnkmJhT303sKE"
         }
       },
       "permissions": [

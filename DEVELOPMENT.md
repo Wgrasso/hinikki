@@ -47,6 +47,30 @@ npm test           # test suite — must be green
 screens (dashboard, people, schedule). The one thing the browser can NOT do is talk to Nikki —
 voice only works on a real iPhone/Android device.
 
+## Maps (safe places & event location)
+
+Adding a safe place or an event location uses an embedded map (drop/drag a pin, or "use my
+current location"). Nothing to do day-to-day — but here's how it's wired:
+
+- **iOS** uses **Apple Maps** — free, no API key, no setup. It just works after a rebuild.
+- **Android** uses **Google Maps**, which needs a Google Maps API key. The key already lives in
+  `app.json` → `expo.android.config.googleMaps.apiKey`, so a normal build picks it up automatically.
+
+**Setting up / rotating the Android key (Willem — do this with your own Google account):**
+1. Go to https://console.cloud.google.com and sign in.
+2. Top bar → **create a project** (e.g. "HiNikki"), then select it.
+3. Left menu → **APIs & Services → Library** → search **"Maps SDK for Android"** → open it → **Enable**.
+4. Left menu → **APIs & Services → Credentials** → **+ Create credentials → API key** → copy the key.
+5. (Recommended) Click the key → **Application restrictions → Android apps** → add package name
+   `com.willemgrasso.hinikki` and the build's SHA‑1 fingerprint. **API restrictions →** restrict to
+   "Maps SDK for Android". This stops anyone else reusing the key.
+6. Paste the key into `app.json` at `expo.android.config.googleMaps.apiKey`, then rebuild (below).
+
+Displaying the map on a phone is **free** (Google's per-call pricing is for the web/Places APIs,
+not the native mobile map), though the project may need a billing account attached to activate the
+key. A blank/grey Android map almost always means the key is missing, the SDK isn't enabled, or the
+restrictions don't match the build.
+
 ## When is a real rebuild needed?
 
 Almost never. Only when the app's *native ingredients* change:
@@ -58,6 +82,7 @@ Then anyone on the team runs (needs the Expo login, ~20 min on Expo's servers):
 
 ```bash
 eas build --profile development --platform ios
+eas build --profile development --platform android   # for Android testers (and the Google Maps key)
 ```
 
 …and everyone installs the new build once from the link it prints. Day-to-day code changes
