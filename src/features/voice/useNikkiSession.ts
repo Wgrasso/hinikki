@@ -37,6 +37,12 @@ export type NikkiSession = {
 // stay live (and billing) forever.
 const IDLE_TIMEOUT_MS = 2 * 60 * 1000;
 
+// After a call ends, the native audio session keeps deactivating for a beat. Starting a new
+// call inside this window re-activates the shared, un-refcounted session mid-deactivation and
+// leaves the mic dead. We wait out only the REMAINING slice of this window (measured from the
+// actual end), so a restart after a pause has no delay while a fast re-tap is still protected.
+const AUDIO_SETTLE_MS = 700;
+
 export function useNikkiSession(olderAdultId: string, preferredName: string | null): NikkiSession {
   const [phase, setPhase] = useState<NikkiSessionPhase>("idle");
   const [captions, setCaptions] = useState<NikkiCaption[]>([]);
@@ -50,9 +56,9 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
   // Inactivity watchdog: armed on connect, reset on every USER turn, cleared on end.
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const endRef = useRef<() => void>(() => undefined);
-  // How many times begin() has run this mount, and whether the NEXT connect is a restart —
+  // When the previous session began tearing down, and whether the NEXT connect is a restart —
   // used to work around a known iOS/LiveKit bug where the mic stays silent on the 2nd+ call.
-  const startCount = useRef(0);
+  const lastEndAt = useRef<number | null>(null);
   const restartPending = useRef(false);
   const clearIdle = useCallback((): void => {
     if (idleTimer.current) {
@@ -103,6 +109,7 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
     },
     onDisconnect: (details) => {
       clearIdle();
+      lastEndAt.current = Date.now(); // mark when native teardown began, for the restart settle
       setPhase((current) => {
         if (details.reason === "error") {
           setErrorMessage("The connection was lost.");
@@ -153,10 +160,9 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
       clearIdle(); // no stale watchdog from a previous attempt
       photosRef.current = []; // fresh face lookup for THIS conversation
       toolSet.reset(); // fresh recap chips + push budget for THIS conversation
-      // Second+ conversation of this mount: mark it so onConnect re-arms the mic.
-      const isRestart = startCount.current > 0;
-      startCount.current += 1;
-      restartPending.current = isRestart;
+      // A previous session ended → this is a restart: re-arm the mic on connect, and settle the
+      // native audio session (below) before starting.
+      restartPending.current = lastEndAt.current != null;
       setPhase("preparing");
       // Facts queued while offline get their catch-up now — at most one push for the
       // whole flushed batch (plan §4.5).
@@ -170,11 +176,6 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
           setPhase("error");
           return;
         }
-        // On a restart, let the previous call's native audio-session teardown finish before we
-        // start a new one. The SDK's endSession() is async and NOT awaitable from here, and its
-        // tail calls the process-global stopAudioSession(); starting too soon lets that stop land
-        // on top of the new session and mute the mic. A short settle beat avoids that overlap.
-        if (isRestart) await new Promise((resolve) => setTimeout(resolve, 700));
         // Face lookup for the transcript: best-effort, never blocks the connection.
         void loadPersonPhotos(olderAdultId)
           .then((photos) => {
@@ -189,6 +190,14 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
         // Pin the agent's language to this elder's so the voice never drifts to English
         // for a Dutch speaker (or vice versa). Dutch variants → "nl", everything else → "en".
         const language: "nl" | "en" = tiers?.profile?.primary_language?.startsWith("nl") ? "nl" : "en";
+        // Wait out only the REMAINING native-teardown window from the previous call, measured
+        // from when it actually ended. The token/variable fetch above already overlaps most of
+        // it, so this usually adds nothing; a fast goodbye→talk re-tap gets the full protection.
+        if (lastEndAt.current != null) {
+          const remaining = AUDIO_SETTLE_MS - (Date.now() - lastEndAt.current);
+          if (remaining > 0) await new Promise((resolve) => setTimeout(resolve, remaining));
+          lastEndAt.current = null;
+        }
         openingRef.current = openingMessage ?? null;
         setPhase("connecting");
         conversation.startSession({
