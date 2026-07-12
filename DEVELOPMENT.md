@@ -53,10 +53,10 @@ Adding a safe place or an event location uses an embedded map (drop/drag a pin, 
 current location"). Nothing to do day-to-day — but here's how it's wired:
 
 - **iOS** uses **Apple Maps** — free, no API key, no setup. It just works after a rebuild.
-- **Android** uses **Google Maps**, which needs a Google Maps API key. The key already lives in
-  `app.json` → `expo.android.config.googleMaps.apiKey`, so a normal build picks it up automatically.
+- **Android** uses **Google Maps**, which needs a Google Maps API key. The key is **never committed**:
+  `app.config.js` injects it from the `GOOGLE_MAPS_ANDROID_KEY` environment variable at build time.
 
-**Setting up / rotating the Android key (Willem — do this with your own Google account):**
+**Setting up the Android key (Willem — do this with your own Google account):**
 1. Go to https://console.cloud.google.com and sign in.
 2. Top bar → **create a project** (e.g. "HiNikki"), then select it.
 3. Left menu → **APIs & Services → Library** → search **"Maps SDK for Android"** → open it → **Enable**.
@@ -64,12 +64,19 @@ current location"). Nothing to do day-to-day — but here's how it's wired:
 5. (Recommended) Click the key → **Application restrictions → Android apps** → add package name
    `com.willemgrasso.hinikki` and the build's SHA‑1 fingerprint. **API restrictions →** restrict to
    "Maps SDK for Android". This stops anyone else reusing the key.
-6. Paste the key into `app.json` at `expo.android.config.googleMaps.apiKey`, then rebuild (below).
+6. Put the key where builds read it — NOT in any committed file:
+   - **Local builds** (`expo run:android`): add `GOOGLE_MAPS_ANDROID_KEY=<key>` to your `.env` (gitignored).
+   - **Cloud builds** (`eas build`): `eas secret:create --name GOOGLE_MAPS_ANDROID_KEY --value <key>`
+     (once per project). EAS injects it into the build automatically.
+7. Rebuild (below).
 
 Displaying the map on a phone is **free** (Google's per-call pricing is for the web/Places APIs,
 not the native mobile map), though the project may need a billing account attached to activate the
 key. A blank/grey Android map almost always means the key is missing, the SDK isn't enabled, or the
 restrictions don't match the build.
+
+**If a key ever leaks (e.g. committed by mistake):** revoke it in Google Cloud → Credentials, then
+create a fresh one. A leaked key is compromised permanently — rotating is the fix, not deleting the file.
 
 ## When is a real rebuild needed?
 

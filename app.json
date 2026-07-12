@@ -53,11 +53,6 @@
     "android": {
       "edgeToEdgeEnabled": true,
       "package": "com.willemgrasso.hinikki",
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyCioAZNErsp5Qp-zjQ8DAPnkmJhT303sKE"
-        }
-      },
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
