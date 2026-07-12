@@ -13,6 +13,11 @@ import { clearSession } from "../../storage/localStore";
 import { becomeAdmin, becomeUser } from "../../features/dev/devHarness";
 import { getActiveDevFamily, getAllDevFamilies, setActiveDevFamilyCode, upsertSavedDevFamily, type DevFamily } from "../../features/dev/devConfig";
 
+// Show the code once when the label is just the code (runtime-captured families), else "Label · CODE".
+function famLabel(f: DevFamily): string {
+  return f.label && f.label !== f.familyCode ? `${f.label} · ${f.familyCode}` : f.familyCode;
+}
+
 export default function DevModeSwitch(): React.ReactElement | null {
   const { mode, joinCode, refresh, completeSetupWithGroup } = useAppState();
   const router = useRouter();
@@ -93,7 +98,7 @@ export default function DevModeSwitch(): React.ReactElement | null {
         onPress={() => setPickerOpen((o) => !o)}
         style={styles.code}
       >
-        <RNText style={styles.codeText}>{active ? `${active.label} · ${active.familyCode}` : "…"} ▾</RNText>
+        <RNText style={styles.codeText}>{active ? famLabel(active) : "…"} ▾</RNText>
       </Pressable>
 
       {pickerOpen ? (
@@ -107,7 +112,7 @@ export default function DevModeSwitch(): React.ReactElement | null {
               style={({ pressed }) => [styles.menuItem, pressed ? styles.pressed : null]}
             >
               <RNText style={[styles.menuText, active?.familyCode === f.familyCode ? styles.menuTextActive : null]}>
-                {f.label} · {f.familyCode}
+                {famLabel(f)}
               </RNText>
             </Pressable>
           ))}

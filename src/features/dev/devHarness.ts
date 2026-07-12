@@ -6,7 +6,7 @@
 import { supabase } from "../../lib/supabase";
 import { adminSignIn, ensureAnonSession } from "../../services/profileService";
 import { claimOlderAdult, getGroupRoster, joinGroupAsAdmin } from "../../services/groupService";
-import { getActiveDevFamily } from "./devConfig";
+import { getActiveDevFamily, upsertSavedDevFamily } from "./devConfig";
 
 export type BecomeResult = { ok: true } | { ok: false; message: string };
 export type BecomeUserResult =
@@ -24,10 +24,12 @@ export async function becomeAdmin(): Promise<BecomeResult> {
     // Seed family: sign in with its fixed credentials.
     const r = await adminSignIn(cfg.adminEmail, cfg.adminPassword);
     if (!r.ok) return { ok: false, message: r.message };
-  } else if (cfg.refreshToken) {
-    // Runtime family: restore the admin session we captured when you were last its admin.
-    const { data, error } = await supabase.auth.refreshSession({ refresh_token: cfg.refreshToken });
-    if (error || !data.session) {
+  } else if (cfg.accessToken && cfg.refreshToken) {
+    // Runtime family: restore the admin session captured when you were last its admin. setSession
+    // reuses the still-valid access token (no refresh round-trip), so rotating refresh tokens
+    // don't bite when hopping admin↔user within the token's lifetime.
+    const { error } = await supabase.auth.setSession({ access_token: cfg.accessToken, refresh_token: cfg.refreshToken });
+    if (error) {
       return { ok: false, message: "This family's saved admin session expired — open it as admin once more to refresh it." };
     }
   } else {
@@ -43,6 +45,23 @@ export async function becomeAdmin(): Promise<BecomeResult> {
 export async function becomeUser(): Promise<BecomeUserResult> {
   const cfg = await getActiveDevFamily();
   if (!__DEV__ || !supabase || !cfg) return { ok: false, message: "dev only" };
+  // Before dropping the current session to become the elder, snapshot it IF it's a real admin
+  // account (not the anonymous elder), so tapping Admin later restores this exact session.
+  try {
+    const { data } = await supabase.auth.getSession();
+    const user = data.session?.user;
+    if (data.session && user && user.is_anonymous !== true) {
+      await upsertSavedDevFamily({
+        label: cfg.label,
+        familyCode: cfg.familyCode,
+        elderName: cfg.elderName ?? "",
+        accessToken: data.session.access_token,
+        refreshToken: data.session.refresh_token,
+      });
+    }
+  } catch {
+    // best-effort capture
+  }
   await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
   await ensureAnonSession();
   const roster = await getGroupRoster(cfg.familyCode);
