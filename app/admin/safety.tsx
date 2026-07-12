@@ -8,6 +8,7 @@ import SectionHeader from "../../src/components/admin/SectionHeader";
 import ListRow from "../../src/components/shared/ListRow";
 import StateView from "../../src/components/shared/StateView";
 import QuickAddModal from "../../src/components/admin/QuickAddModal";
+import SwipeToDismiss from "../../src/components/shared/SwipeToDismiss";
 import { useAsync } from "../../src/utils/useAsync";
 import { subscribeLive } from "../../src/features/sync/liveChannel";
 import { theme } from "../../src/theme";
@@ -27,7 +28,7 @@ type SafetyData = {
   safe: SafeLocation[];
   contacts: EmergencyContact[];
   events: EmergencyEvent[];
-  eventLocations: Record<string, LocationUpdate>; // alert id → where it happened (when known)
+  eventLocations: Record<string, { loc: LocationUpdate; place: string | null }>; // alert id → where it happened (when known)
 };
 
 export default function AdminSafety(): React.ReactElement {
@@ -49,14 +50,18 @@ export default function AdminSafety(): React.ReactElement {
     ]);
     // Turn the last coordinates into a readable town for the card (never show raw coordinates).
     const latestPlace = latest ? await describePlace(latest.latitude, latest.longitude) : null;
-    // Where each alert happened, so a "lost" alert can be opened on the map (spot patterns).
+    // Where each alert happened + its town name, so a "lost" alert reads at a glance and opens
+    // on the map (spot patterns) — never raw coordinates.
     const withLoc = events.filter((e) => e.location_update_id);
-    const locs = await Promise.all(withLoc.map((e) => getLocationById(e.location_update_id as string).catch(() => null)));
-    const eventLocations: Record<string, LocationUpdate> = {};
-    withLoc.forEach((e, i) => {
-      const loc = locs[i];
-      if (loc) eventLocations[e.id] = loc;
-    });
+    const eventLocations: Record<string, { loc: LocationUpdate; place: string | null }> = {};
+    await Promise.all(
+      withLoc.map(async (e) => {
+        const loc = await getLocationById(e.location_update_id as string).catch(() => null);
+        if (!loc) return;
+        const place = await describePlace(loc.latitude, loc.longitude).catch(() => null);
+        eventLocations[e.id] = { loc, place };
+      }),
+    );
     return { latest, latestPlace, safe, contacts, events, eventLocations };
   }, [id]);
 
@@ -91,6 +96,8 @@ export default function AdminSafety(): React.ReactElement {
         {(data) => {
           const needsSafePlace = data.safe.length === 0;
           const needsContact = !data.contacts.some((c) => (c.phone ?? "").trim().length > 0);
+          // Only alerts still needing attention; dismissing (or "mark handled") resolves + hides them.
+          const openAlerts = data.events.filter((e) => e.status !== "resolved");
           return (
           <Stack gap="lg">
             <Card elevation="card">
@@ -161,47 +168,43 @@ export default function AdminSafety(): React.ReactElement {
             <View>
               <SectionHeader title={t("adminSafety.recentAlerts")} />
               <Stack gap="sm">
-                {data.events.length === 0 ? (
+                {openAlerts.length === 0 ? (
                   <EmptyHint text={t("adminSafety.alertsEmpty")} />
                 ) : (
-                  data.events.map((e) => {
+                  openAlerts.map((e) => {
                     const isCall = e.event_type === "call_family";
                     const where = data.eventLocations[e.id];
                     return (
-                    <Card key={e.id} elevation="card">
-                      <Stack gap="md">
-                        <Stack direction="row" gap="md" align="center">
-                          <Icon
-                            name={e.status === "resolved" ? "check" : isCall ? "phone" : "warning"}
-                            color={e.status === "resolved" ? "success" : isCall ? "primary" : "danger"}
-                            size={theme.iconSize.md}
-                          />
-                          <Stack flex gap="xs">
-                            <Text variant="bodyStrong">{e.user_message ?? alertTitle(e.event_type, t)}</Text>
-                            <Text variant="caption" tone="textSecondary">
-                              {relativeTimeLabel(e.created_at, undefined, t, { withClockTime: true })}
-                            </Text>
-                          </Stack>
-                        </Stack>
-                        {where ? (
-                          <Pressable
-                            accessibilityRole="button"
-                            accessibilityLabel={t("adminSafety.whereA11y")}
-                            onPress={() => void openMapLocation(where.latitude, where.longitude, t("adminSafety.whereLabel"))}
-                          >
-                            <Stack direction="row" gap="xs" align="center">
-                              <Icon name="location" color="primary" size={theme.iconSize.sm} />
-                              <Text variant="caption" tone="primary">
-                                {t("adminSafety.whereHappened")}
+                    <SwipeToDismiss key={e.id} onDismiss={() => void handleResolve(e.id)} accessibilityLabel={t("adminSafety.dismissAlert")}>
+                      <Card elevation="card">
+                        <Stack gap="md">
+                          <Stack direction="row" gap="md" align="center">
+                            <Icon
+                              name={isCall ? "phone" : "warning"}
+                              color={isCall ? "primary" : "danger"}
+                              size={theme.iconSize.md}
+                            />
+                            <Stack flex gap="xs">
+                              <Text variant="bodyStrong">{e.user_message ?? alertTitle(e.event_type, t)}</Text>
+                              <Text variant="caption" tone="textSecondary">
+                                {relativeTimeLabel(e.created_at, undefined, t, { withClockTime: true })}
                               </Text>
                             </Stack>
-                          </Pressable>
-                        ) : null}
-                        {e.status === "resolved" ? (
-                          <Text variant="caption" tone="textSecondary">
-                            {t("adminSafety.handled")}
-                          </Text>
-                        ) : (
+                          </Stack>
+                          {where ? (
+                            <Pressable
+                              accessibilityRole="button"
+                              accessibilityLabel={t("adminSafety.whereA11y")}
+                              onPress={() => void openMapLocation(where.loc.latitude, where.loc.longitude, t("adminSafety.whereLabel"))}
+                            >
+                              <Stack direction="row" gap="xs" align="center">
+                                <Icon name="location" color="primary" size={theme.iconSize.sm} />
+                                <Text variant="caption" tone="primary">
+                                  {where.place ?? t("adminSafety.whereHappened")}
+                                </Text>
+                              </Stack>
+                            </Pressable>
+                          ) : null}
                           <Button
                             label={t("adminSafety.markHandled")}
                             icon="check"
@@ -209,9 +212,9 @@ export default function AdminSafety(): React.ReactElement {
                             loading={resolvingId === e.id}
                             onPress={() => void handleResolve(e.id)}
                           />
-                        )}
-                      </Stack>
-                    </Card>
+                        </Stack>
+                      </Card>
+                    </SwipeToDismiss>
                     );
                   })
                 )}

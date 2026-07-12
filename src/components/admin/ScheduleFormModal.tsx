@@ -160,11 +160,6 @@ export default function ScheduleFormModal({ visible, kind, olderAdultId, event, 
     { value: "tomorrow", label: t("adminForms.day.tomorrow") },
     { value: "pick", label: t("adminForms.day.pick") },
   ];
-  // Reminders can also be "Anytime" — stored with scheduled_at null, no clock time at all.
-  const REMINDER_DATE_OPTIONS: { value: DateMode; label: string }[] = [
-    ...DATE_OPTIONS,
-    { value: "anytime", label: t("adminForms.day.anytime") },
-  ];
   const REPEATS_OPTIONS: { value: RepeatsMode; label: string }[] = [
     { value: "once", label: t("adminForms.repeats.once") },
     { value: "daily", label: t("adminForms.repeats.daily") },
@@ -202,9 +197,7 @@ export default function ScheduleFormModal({ visible, kind, olderAdultId, event, 
     setError(null);
     setDateError(null);
     const prefill = prefillDate(kind === "event" ? event?.start_at ?? null : reminder?.scheduled_at ?? null);
-    // A reminder saved without a set time starts out on the "Anytime" chip.
-    const startedUnscheduled = kind === "reminder" && Boolean(reminder) && !reminder?.scheduled_at;
-    setDateMode(startedUnscheduled ? "anytime" : prefill.mode);
+    setDateMode(prefill.mode);
     setPickedDate(prefill.pickedDate);
     if (kind === "event" && event) {
       setTitle(event.title);
@@ -250,14 +243,12 @@ export default function ScheduleFormModal({ visible, kind, olderAdultId, event, 
       setError(t("adminForms.schedule.titleRequired"));
       return;
     }
-    // A reminder stays unscheduled (scheduled_at null) only when the Anytime chip is chosen.
-    const unscheduled = kind === "reminder" && dateMode === "anytime";
-    const chosenDay = unscheduled ? null : resolveChosenDay(dateMode, pickedDate);
-    if (!unscheduled && !chosenDay) {
+    const chosenDay = resolveChosenDay(dateMode, pickedDate);
+    if (!chosenDay) {
       setDateError(t("adminForms.schedule.dateRequired"));
       return;
     }
-    const startAt = chosenDay ? atClock(chosenDay, startTime ?? defaultClock()) : null;
+    const startAt = atClock(chosenDay, startTime ?? defaultClock());
     setSaving(true);
     setError(null);
     setDateError(null);
@@ -286,7 +277,7 @@ export default function ScheduleFormModal({ visible, kind, olderAdultId, event, 
       } else if (kind === "reminder") {
         const patch = {
           title: title.trim(),
-          scheduled_at: startAt ? startAt.toISOString() : null,
+          scheduled_at: startAt.toISOString(),
           recurrence_rule: repeatsToRule(repeatsMode, customFrequency),
           nikki_message: nikkiMessage.trim() || null,
           requires_confirmation: requiresConfirmation,
@@ -337,11 +328,20 @@ export default function ScheduleFormModal({ visible, kind, olderAdultId, event, 
 
   return (
     <BottomSheetModal visible={visible} onClose={onClose} title={heading}>
+      {/* For a new item the day is already chosen in the schedule's date bar — show it up top, no day question. */}
+      {!isEditing ? (
+        <Text variant="overline" tone="primary" style={styles.chipLabel}>
+          {t("adminForms.schedule.onDay", {
+            date: addDay.toLocaleDateString(lang === "nl" ? "nl-NL" : "en-US", { weekday: "long", day: "numeric", month: "long" }),
+          }).toUpperCase()}
+        </Text>
+      ) : null}
+
       <Field label={t("adminForms.titleField")} value={title} onChangeText={setTitle} placeholder={kind === "event" ? t("adminForms.event.titlePlaceholder") : t("adminForms.reminder.titlePlaceholder")} autoCapitalize="sentences" error={error} />
 
       {isEditing ? (
         <>
-          <ChipRow label={t("adminForms.schedule.whichDay")} options={kind === "reminder" ? REMINDER_DATE_OPTIONS : DATE_OPTIONS} value={dateMode} onChange={setDateMode} />
+          <ChipRow label={t("adminForms.schedule.whichDay")} options={DATE_OPTIONS} value={dateMode} onChange={setDateMode} />
           {dateMode === "pick" ? (
             <DateTimePickerField
               label={t("adminForms.schedule.dateLabel")}
@@ -357,27 +357,9 @@ export default function ScheduleFormModal({ visible, kind, olderAdultId, event, 
             />
           ) : null}
         </>
-      ) : (
-        <>
-          {/* The day comes from the schedule's date bar; reminders can still be "any time of day". */}
-          {kind === "reminder" ? (
-            <CheckRow
-              label={t("adminForms.reminder.anytime")}
-              value={dateMode === "anytime"}
-              onChange={(v) => setDateMode(v ? "anytime" : "pick")}
-            />
-          ) : null}
-          {dateMode !== "anytime" ? (
-            <Text variant="overline" tone="textSecondary" style={styles.chipLabel}>
-              {t("adminForms.schedule.onDay", {
-                date: addDay.toLocaleDateString(lang === "nl" ? "nl-NL" : "en-US", { weekday: "long", day: "numeric", month: "long" }),
-              }).toUpperCase()}
-            </Text>
-          ) : null}
-        </>
-      )}
+      ) : null}
 
-      {dateMode === "anytime" ? null : (
+      {(
         <View style={styles.timeRow}>
           <View style={styles.timeField}>
             <DateTimePickerField

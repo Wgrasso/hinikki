@@ -10,6 +10,7 @@ import { flushProposalQueue } from "../../src/services/proposalService";
 import { notifyAdminsOfProposal } from "../../src/services/pushService";
 import { markSnapshotDirty } from "../../src/features/voice/snapshot";
 import { captureAndStoreLocation } from "../../src/features/safety/locationCapture";
+import { syncScheduledNotifications } from "../../src/features/notifications/scheduler";
 import DevModeSwitch from "../../src/components/shared/DevModeSwitch";
 import { Icon } from "../../src/primitives";
 import { theme } from "../../src/theme";
@@ -23,6 +24,21 @@ export default function UserLayout(): React.ReactElement {
   useEffect(() => {
     if (!olderAdultId) return;
     return subscribeLive(olderAdultId, (table) => markSnapshotDirty(olderAdultId, table));
+  }, [olderAdultId]);
+
+  // Keep the phone's scheduled reminder/event notifications in step with the family's schedule:
+  // rebuild them on open, whenever the schedule changes live, and on return to the foreground.
+  useEffect(() => {
+    if (!olderAdultId) return;
+    void syncScheduledNotifications(olderAdultId);
+    const unsub = subscribeLive(olderAdultId, () => void syncScheduledNotifications(olderAdultId));
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") void syncScheduledNotifications(olderAdultId);
+    });
+    return () => {
+      unsub();
+      sub.remove();
+    };
   }, [olderAdultId]);
 
   // Keep the family's "current location" fresh so they can always see where their person is:

@@ -81,6 +81,7 @@ const iconGlyphs = {
   refresh: "refresh",
   edit: "pencil",
   copy: "copy-outline",
+  trash: "trash",
 } as const;
 
 const iconSize = { sm: 18, md: 24, lg: 32, xl: 48 } as const;
