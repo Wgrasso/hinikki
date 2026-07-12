@@ -6,7 +6,7 @@
 import { supabase } from "../../lib/supabase";
 import { adminSignIn, ensureAnonSession } from "../../services/profileService";
 import { claimOlderAdult, getGroupRoster, joinGroupAsAdmin } from "../../services/groupService";
-import { DEV_HARNESS } from "./devConfig";
+import { getActiveDevFamily } from "./devConfig";
 
 export type BecomeResult = { ok: true } | { ok: false; message: string };
 export type BecomeUserResult =
@@ -17,11 +17,12 @@ export type BecomeUserResult =
 // clears the local mode cache and calls appState.refresh(), which re-derives admin mode +
 // the family group from get_my_group().
 export async function becomeAdmin(): Promise<BecomeResult> {
-  if (!__DEV__ || !supabase || !DEV_HARNESS) return { ok: false, message: "dev only" };
+  const cfg = await getActiveDevFamily();
+  if (!__DEV__ || !supabase || !cfg) return { ok: false, message: "dev only" };
   await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
-  const r = await adminSignIn(DEV_HARNESS.adminEmail, DEV_HARNESS.adminPassword);
+  const r = await adminSignIn(cfg.adminEmail, cfg.adminPassword);
   if (!r.ok) return { ok: false, message: r.message };
-  await joinGroupAsAdmin(DEV_HARNESS.familyCode).catch(() => undefined); // idempotent link
+  await joinGroupAsAdmin(cfg.familyCode).catch(() => undefined); // idempotent link
   return { ok: true };
 }
 
@@ -29,8 +30,8 @@ export async function becomeAdmin(): Promise<BecomeResult> {
 // named older adult by code (moves ownership to this session). The caller finishes with
 // completeSetupWithGroup(...) so the local state is set to user mode immediately.
 export async function becomeUser(): Promise<BecomeUserResult> {
-  if (!__DEV__ || !supabase || !DEV_HARNESS) return { ok: false, message: "dev only" };
-  const cfg = DEV_HARNESS;
+  const cfg = await getActiveDevFamily();
+  if (!__DEV__ || !supabase || !cfg) return { ok: false, message: "dev only" };
   await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
   await ensureAnonSession();
   const roster = await getGroupRoster(cfg.familyCode);
@@ -42,5 +43,5 @@ export async function becomeUser(): Promise<BecomeUserResult> {
   if (!target) return { ok: false, message: "no older adult in the dev family yet" };
   const claim = await claimOlderAdult(cfg.familyCode, target.id);
   if (!claim.ok) return { ok: false, message: claim.message };
-  return { ok: true, olderAdultId: claim.value.olderAdultId, groupId: roster.value.groupId, joinCode: DEV_HARNESS.familyCode };
+  return { ok: true, olderAdultId: claim.value.olderAdultId, groupId: roster.value.groupId, joinCode: cfg.familyCode };
 }
