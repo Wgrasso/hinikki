@@ -38,7 +38,6 @@ export default function PersonFormModal({ visible, olderAdultId, person, initial
   const [phone, setPhone] = useState("");
   const [emergency, setEmergency] = useState(false);
   const [canBeCalled, setCanBeCalled] = useState(false);
-  const [canMention, setCanMention] = useState(true);
   const [people, setPeople] = useState<FamilyPerson[]>([]);
   const [elderName, setElderName] = useState(t("adminForms.person.elderFallback"));
   const [photoUri, setPhotoUri] = useState<string | null>(null);
@@ -61,7 +60,6 @@ export default function PersonFormModal({ visible, olderAdultId, person, initial
     setPhone(person?.phone ?? "");
     setEmergency(person?.can_contact_in_emergency ?? false);
     setCanBeCalled(person?.can_be_called_by_nikki ?? false);
-    setCanMention(person?.can_nikki_mention ?? true);
     setPhotoUri(null);
     setError(null);
     setBirthdayError(null);
@@ -124,8 +122,8 @@ export default function PersonFormModal({ visible, olderAdultId, person, initial
         conversation_hints: hints.trim() || null,
         phone: phone.trim() || null,
         can_contact_in_emergency: emergency,
-        // Written from the toggle, never forced true: Nikki's never-raise list relies on it.
-        can_nikki_mention: canMention,
+        // People are never hidden: once added, Nikki may always talk about them (add or delete only).
+        can_nikki_mention: true,
         can_be_called_by_nikki: canBeCalled,
       };
       let personId = person?.id;
@@ -223,10 +221,6 @@ export default function PersonFormModal({ visible, olderAdultId, person, initial
       <Pressable accessibilityRole="switch" accessibilityState={{ checked: canBeCalled }} accessibilityLabel={t("adminForms.person.canBeCalledToggle")} onPress={() => setCanBeCalled((v) => !v)} style={styles.toggleRow}>
         <Icon name={canBeCalled ? "check" : "add"} color={canBeCalled ? "success" : "textTertiary"} />
         <Text variant="body">{t("adminForms.person.canBeCalledToggle")}</Text>
-      </Pressable>
-      <Pressable accessibilityRole="switch" accessibilityState={{ checked: canMention }} accessibilityLabel={t("adminForms.person.canMentionToggle")} onPress={() => setCanMention((v) => !v)} style={styles.toggleRow}>
-        <Icon name={canMention ? "check" : "add"} color={canMention ? "success" : "textTertiary"} />
-        <Text variant="body">{t("adminForms.person.canMentionToggle")}</Text>
       </Pressable>
 
       {person ? (

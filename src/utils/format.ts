@@ -65,7 +65,15 @@ export function isSameDay(iso: string, ref: Date = new Date()): boolean {
 // Always relative ("3 minutes ago", "2 days ago", "5 weeks ago") — never a bare date.
 // Pass t (from useT) to localize; without it, plain English (keeps the pure unit tests green).
 type Translate = (key: string, params?: Record<string, string | number>) => string;
-export function relativeTimeLabel(iso: string | null, now: Date = new Date(), t?: Translate): string {
+// `withClockTime` appends the actual time of day ("2 days ago at 3:45 pm") for anything an hour
+// or older, so a caretaker can be sure exactly when something happened — used for the last-known
+// location and the conversation recaps (where several may land on the same day).
+export function relativeTimeLabel(
+  iso: string | null,
+  now: Date = new Date(),
+  t?: Translate,
+  opts?: { withClockTime?: boolean },
+): string {
   const say = (singKey: string, plurKey: string, n: number, engS: string, engP: string): string => {
     if (t) return t(n === 1 ? singKey : plurKey, { n });
     return (n === 1 ? engS : engP).replace("{n}", String(n));
@@ -74,14 +82,16 @@ export function relativeTimeLabel(iso: string | null, now: Date = new Date(), t?
   const then = new Date(iso).getTime();
   if (Number.isNaN(then)) return t ? t("time.notShared") : "not yet shared";
   const mins = Math.max(0, Math.round((now.getTime() - then) / 60000));
+  const withClock = (label: string): string =>
+    opts?.withClockTime && mins >= 60 ? `${label} ${t ? t("time.at") : "at"} ${formatTime(iso)}` : label;
   if (mins < 1) return t ? t("time.justNow") : "just now";
   if (mins < 60) return say("time.minuteAgo", "time.minutesAgo", mins, "{n} minute ago", "{n} minutes ago");
   const hours = Math.round(mins / 60);
-  if (hours < 24) return say("time.hourAgo", "time.hoursAgo", hours, "{n} hour ago", "{n} hours ago");
+  if (hours < 24) return withClock(say("time.hourAgo", "time.hoursAgo", hours, "{n} hour ago", "{n} hours ago"));
   const days = Math.round(mins / 1440);
-  if (days < 7) return say("time.dayAgo", "time.daysAgo", days, "{n} day ago", "{n} days ago");
+  if (days < 7) return withClock(say("time.dayAgo", "time.daysAgo", days, "{n} day ago", "{n} days ago"));
   const weeks = Math.round(days / 7);
-  if (weeks < 5) return say("time.weekAgo", "time.weeksAgo", weeks, "{n} week ago", "{n} weeks ago");
+  if (weeks < 5) return withClock(say("time.weekAgo", "time.weeksAgo", weeks, "{n} week ago", "{n} weeks ago"));
   const months = Math.round(days / 30);
-  return say("time.monthAgo", "time.monthsAgo", months, "{n} month ago", "{n} months ago");
+  return withClock(say("time.monthAgo", "time.monthsAgo", months, "{n} month ago", "{n} months ago"));
 }

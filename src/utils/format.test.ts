@@ -39,6 +39,16 @@ describe("relativeTimeLabel", () => {
     expect(relativeTimeLabel(new Date(2026, 0, 1, 11, 55, 0).toISOString(), now)).toBe("5 minutes ago");
     expect(relativeTimeLabel(null, now)).toBe("not yet shared");
   });
+  it("appends the clock time for hours+ old when asked, but not for recent minutes", () => {
+    // 2 days ago at 9:30 am
+    expect(relativeTimeLabel(new Date(2025, 11, 30, 9, 30, 0).toISOString(), now, undefined, { withClockTime: true })).toBe(
+      "2 days ago at 9:30 am",
+    );
+    // still within the hour → no clock time appended
+    expect(relativeTimeLabel(new Date(2026, 0, 1, 11, 40, 0).toISOString(), now, undefined, { withClockTime: true })).toBe(
+      "20 minutes ago",
+    );
+  });
 });
 
 describe("stripStageDirections", () => {

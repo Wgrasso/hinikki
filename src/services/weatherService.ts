@@ -10,7 +10,7 @@ import { STORE_KEYS } from "../lib/constants";
 import { supabase } from "../lib/supabase";
 import type { WeatherProvider, WeatherSnapshot } from "../types/domain";
 
-const FRESH_MS = 30 * 60 * 1000; // serve from cache without network
+const FRESH_MS = 15 * 60 * 1000; // serve from cache without network; matches Open-Meteo's own ~15-min update cadence, so a call at conversation start is effectively current
 const STALE_MAX_MS = 3 * 60 * 60 * 1000; // acceptable when the network fails
 const FETCH_TIMEOUT_MS = 6000;
 

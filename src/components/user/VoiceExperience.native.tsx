@@ -13,7 +13,6 @@ import { useNikkiSession } from "../../features/voice/useNikkiSession";
 import VoiceOrb from "./VoiceOrb";
 import VoiceCaptions from "./VoiceCaptions";
 import NikkiCard from "./NikkiCard";
-import RecapCard from "./RecapCard";
 
 export type VoiceExperienceProps = {
   olderAdultId: string;
@@ -87,13 +86,9 @@ function VoiceSession({ olderAdultId, preferredName, initialAsk }: VoiceExperien
             message={preferredName ? t("voice.idleNamed", { name: preferredName }) : t("voice.idlePlain")}
           />
         ) : null}
-        {session.phase === "ended" ? (
-          session.recap ? (
-            <RecapCard summary={session.recap.summary} changes={session.recap.changes} />
-          ) : (
-            <NikkiCard message={t("voice.ended")} />
-          )
-        ) : null}
+        {/* The elder sees a warm goodbye, never the recap — the recap is written quietly for the
+            family and shown only on the admin Home screen. */}
+        {session.phase === "ended" ? <NikkiCard message={t("voice.ended")} /> : null}
         {session.phase === "error" && session.errorMessage ? <NikkiCard message={session.errorMessage} /> : null}
 
         <VoiceCaptions captions={session.captions} />

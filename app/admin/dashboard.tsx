@@ -77,7 +77,7 @@ export default function AdminDashboard(): React.ReactElement {
       listSafeLocations(id),
       listEmergencyContacts(id),
       listPendingProposals(id),
-      listRecaps(id, 5),
+      listRecaps(id, 20),
     ]);
     const checklist: SetupChecklistItem[] = [
       { key: "people", label: t("admin.checklist.people"), done: people.length > 0 },
@@ -191,7 +191,7 @@ export default function AdminDashboard(): React.ReactElement {
                     <Card key={recap.id} bordered elevation="none">
                       <Stack gap="sm">
                         <Text variant="caption" tone="textTertiary">
-                          {relativeTimeLabel(recap.created_at, undefined, t)}
+                          {relativeTimeLabel(recap.created_at, undefined, t, { withClockTime: true })}
                         </Text>
                         <Text variant="body">{recapSummary(recap) ?? t("adminDash.conversationFallback")}</Text>
                         {recapChanges(recap).length > 0 ? (

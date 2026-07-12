@@ -87,7 +87,7 @@ export default function AdminSafety(): React.ReactElement {
                   <Text variant="overline" tone="textSecondary">
                     {t("adminSafety.currentLocation")}
                   </Text>
-                  <Text variant="bodyStrong">{data.latest ? t("admin.seen", { time: relativeTimeLabel(data.latest.created_at, undefined, t) }) : t("admin.notShared")}</Text>
+                  <Text variant="bodyStrong">{data.latest ? t("admin.seen", { time: relativeTimeLabel(data.latest.created_at, undefined, t, { withClockTime: true }) }) : t("admin.notShared")}</Text>
                   {data.latest ? (
                     <Pressable
                       onPress={() => void openMapLocation(data.latest!.latitude, data.latest!.longitude, t("adminSafety.lastKnownLocation"))}
