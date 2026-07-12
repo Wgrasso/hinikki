@@ -48,10 +48,15 @@ export default function DevModeSwitch(): React.ReactElement | null {
 
   if (!__DEV__ || !supabase) return null;
 
+  // Picking a family SWITCHES into it right away (keeping your current role), so the choice
+  // sticks instead of snapping back to whichever family you're currently in.
   async function pickFamily(family: DevFamily): Promise<void> {
+    setPickerOpen(false);
+    if (family.familyCode === active?.familyCode) return; // already here
     await setActiveDevFamilyCode(family.familyCode);
     setActive(family);
-    setPickerOpen(false);
+    if (mode === "user") await goUser();
+    else await goAdmin();
   }
 
   async function goAdmin(): Promise<void> {
