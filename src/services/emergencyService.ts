@@ -90,7 +90,7 @@ export async function createEmergencyEvent(
   if (error) throw new Error(error.message);
   // Push the family right away — an emergency must reach them even with the app closed,
   // unlike the in-app-only alert banner. Fire-and-forget so it never blocks the call flow.
-  void notifyAdminsOfEmergency(olderAdultId).catch(() => undefined);
+  void notifyAdminsOfEmergency(olderAdultId, input.event_type).catch(() => undefined);
   return data as EmergencyEvent;
 }
 

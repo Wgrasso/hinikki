@@ -51,11 +51,12 @@ export async function notifyAdminsOfProposal(): Promise<boolean> {
   return sendToAdmins(PUSH_TITLE, PROPOSAL_BODY, "normal");
 }
 
-// An EMERGENCY was triggered — urgency beats lock-screen privacy here: the family must know
-// it's their person and act. Includes the name when we can resolve it.
-export async function notifyAdminsOfEmergency(olderAdultId: string): Promise<boolean> {
+// A safety event was triggered — the message is tailored so the family knows exactly what
+// happened. "lost" is loud (they need to see where their person is); calling family is a quiet
+// heads-up; anything else is a loud generic alert. Includes the name when we can resolve it.
+export async function notifyAdminsOfEmergency(olderAdultId: string, eventType = "help"): Promise<boolean> {
   if (!supabase) return false;
-  let name = "your family member";
+  let name = "Your family member";
   try {
     const { data } = await supabase
       .from("older_adult_profiles")
@@ -65,6 +66,12 @@ export async function notifyAdminsOfEmergency(olderAdultId: string): Promise<boo
     name = (data?.preferred_name as string) ?? (data?.display_name as string) ?? name;
   } catch {
     // fall back to the generic name
+  }
+  if (eventType === "lost") {
+    return sendToAdmins("🚨 HiNikki — someone may be lost", `${name} may be lost right now. Open HiNikki to see where they are.`, "emergency");
+  }
+  if (eventType === "call_family") {
+    return sendToAdmins("HiNikki", `${name} is calling family.`, "normal");
   }
   return sendToAdmins("🚨 HiNikki — help needed", `${name} needs help right now. Open HiNikki.`, "emergency");
 }

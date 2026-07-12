@@ -275,10 +275,12 @@ export function makeAgentTools(
       return bits.join(". ");
     },
 
-    // guide_to_safe_place — only when the person is PHYSICALLY lost (not just confused) and has
-    // AGREED to be shown the way. Alerts the family, drops a fresh location pin, and opens the
-    // phone's maps app with walking directions to their home.
-    guide_to_safe_place: async (): Promise<string> => {
+    // guide_to_safe_place(reason) — only when the person is PHYSICALLY lost (not just confused)
+    // and has AGREED to be shown the way. Alerts the family, drops a fresh location pin, and opens
+    // the maps app with walking directions home. `reason` = what they said that prompted this, so
+    // the family sees why Nikki acted.
+    guide_to_safe_place: async (parameters: unknown): Promise<string> => {
+      const reason = asString(asParams(parameters).reason);
       const tiers = await getSnapshotTiers(olderAdultId);
       const home = tiers.profile?.home_address?.trim();
       if (!home) {
@@ -286,20 +288,21 @@ export function makeAgentTools(
       }
       void createEmergencyEvent(olderAdultId, {
         event_type: "lost",
-        user_message: "Nikki is guiding them home",
+        user_message: reason ? `Told Nikki: “${reason}” — Nikki guided them home` : "Told Nikki they felt lost — Nikki guided them home",
         detected_urgency: "high",
       }).catch(() => undefined);
       void captureAndStoreLocation(olderAdultId, true);
       const opened = await openMapDirections(home);
-      changes.push({ kind: "confirmed", label: "Nikki opened directions home" });
       return opened
         ? "The map is opening with the way home, and the family has been told where they are. Tell them gently to follow it and that family is aware — stay warm and calm."
         : "The map could not open. Reassure them warmly and suggest calling family.";
     },
 
-    // call_family_member — only when the person clearly needs a person (not for every small
-    // worry) and has AGREED. Places a normal phone call to the family's first reachable contact.
-    call_family_member: async (): Promise<string> => {
+    // call_family_member(reason) — only when the person clearly needs a person (not for every
+    // small worry) and has AGREED. Logs it for the family, then places a call to the priority
+    // contact. `reason` = what they said that prompted this.
+    call_family_member: async (parameters: unknown): Promise<string> => {
+      const reason = asString(asParams(parameters).reason);
       const contacts = await listEmergencyContacts(olderAdultId).catch(() => []);
       const contact = contacts
         .filter((c) => c.active && (c.phone ?? "").trim().length > 0)
@@ -307,6 +310,11 @@ export function makeAgentTools(
       if (!contact?.phone) {
         return "There is no family phone number on file, so a call can't be placed. Reassure them warmly.";
       }
+      void createEmergencyEvent(olderAdultId, {
+        event_type: "call_family",
+        user_message: reason ? `Told Nikki: “${reason}” — Nikki called the family` : "Told Nikki they needed family — Nikki called the family",
+        detected_urgency: "low",
+      }).catch(() => undefined);
       try {
         await Linking.openURL(`tel:${contact.phone.replace(/\s/g, "")}`);
         return `Connecting them to ${contact.name} now. Let them know warmly that you're putting the call through.`;

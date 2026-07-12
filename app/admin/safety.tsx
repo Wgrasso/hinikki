@@ -14,6 +14,7 @@ import { theme } from "../../src/theme";
 import { relativeTimeLabel } from "../../src/utils/format";
 import { createSafeLocation, getLatestLocation, listSafeLocations, updateSafeLocation } from "../../src/services/locationService";
 import { createEmergencyContact, listEmergencyContacts, listEmergencyEvents, resolveEmergencyEvent, updateEmergencyContact } from "../../src/services/emergencyService";
+import { describePlace } from "../../src/features/safety/locationCapture";
 import { openMapLocation } from "../../src/utils/openMaps";
 import { useT } from "../../src/i18n";
 import type { EmergencyContact, EmergencyEvent, LocationUpdate, SafeLocation } from "../../src/types/database";
@@ -22,6 +23,7 @@ type TFn = (key: string, params?: Record<string, string | number>) => string;
 
 type SafetyData = {
   latest: LocationUpdate | null;
+  latestPlace: string | null;
   safe: SafeLocation[];
   contacts: EmergencyContact[];
   events: EmergencyEvent[];
@@ -44,7 +46,9 @@ export default function AdminSafety(): React.ReactElement {
       listEmergencyContacts(id),
       listEmergencyEvents(id),
     ]);
-    return { latest, safe, contacts, events };
+    // Turn the last coordinates into a readable town for the card (never show raw coordinates).
+    const latestPlace = latest ? await describePlace(latest.latitude, latest.longitude) : null;
+    return { latest, latestPlace, safe, contacts, events };
   }, [id]);
 
   // Refetch on focus and on live changes; stale-while-refresh keeps it flicker-free.
@@ -94,9 +98,11 @@ export default function AdminSafety(): React.ReactElement {
                       accessibilityRole="button"
                       accessibilityLabel={t("adminSafety.openLocationA11y")}
                     >
-                      <Text variant="caption" tone="textSecondary">
-                        {data.latest.latitude.toFixed(4)}, {data.latest.longitude.toFixed(4)}
-                      </Text>
+                      {data.latestPlace ? (
+                        <Text variant="caption" tone="textSecondary">
+                          {t("adminSafety.near", { place: data.latestPlace })}
+                        </Text>
+                      ) : null}
                       <Stack direction="row" gap="xs" align="center">
                         <Icon name="location" color="primary" size={theme.iconSize.sm} />
                         <Text variant="caption" tone="primary">
@@ -149,19 +155,21 @@ export default function AdminSafety(): React.ReactElement {
                 {data.events.length === 0 ? (
                   <EmptyHint text={t("adminSafety.alertsEmpty")} />
                 ) : (
-                  data.events.map((e) => (
+                  data.events.map((e) => {
+                    const isCall = e.event_type === "call_family";
+                    return (
                     <Card key={e.id} elevation="card">
                       <Stack gap="md">
                         <Stack direction="row" gap="md" align="center">
                           <Icon
-                            name={e.status === "resolved" ? "check" : "warning"}
-                            color={e.status === "resolved" ? "success" : "danger"}
+                            name={e.status === "resolved" ? "check" : isCall ? "phone" : "warning"}
+                            color={e.status === "resolved" ? "success" : isCall ? "primary" : "danger"}
                             size={theme.iconSize.md}
                           />
                           <Stack flex gap="xs">
-                            <Text variant="bodyStrong">{alertTitle(e.event_type, t)}</Text>
+                            <Text variant="bodyStrong">{e.user_message ?? alertTitle(e.event_type, t)}</Text>
                             <Text variant="caption" tone="textSecondary">
-                              {e.detected_urgency} · {relativeTimeLabel(e.created_at, undefined, t)}
+                              {relativeTimeLabel(e.created_at, undefined, t, { withClockTime: true })}
                             </Text>
                           </Stack>
                         </Stack>
@@ -180,7 +188,8 @@ export default function AdminSafety(): React.ReactElement {
                         )}
                       </Stack>
                     </Card>
-                  ))
+                    );
+                  })
                 )}
               </Stack>
             </View>
@@ -274,6 +283,7 @@ export function useSafetySetupComplete(olderAdultId: string | null): boolean {
 
 function alertTitle(type: string, t: TFn): string {
   if (type === "lost") return t("adminSafety.alertLost");
+  if (type === "call_family") return t("adminSafety.alertCall");
   if (type === "distress") return t("adminSafety.alertDistress");
   return t("adminSafety.alertEmergency");
 }

@@ -2,8 +2,8 @@
 // and what still needs setup. "Nikki asks" and "Conversations" are the human-in-the-loop
 // review surface (plan §4.3/§4.6); realtime + focus refetch keep them fresh without pull.
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Platform, StyleSheet, View } from "react-native";
-import { useFocusEffect } from "expo-router";
+import { Alert, Platform, Pressable, StyleSheet, View } from "react-native";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useAppState } from "../../src/auth/appState";
 import { AppBar, Button, Card, Icon, Screen, Stack, Text } from "../../src/primitives";
 import SetupChecklist from "../../src/components/admin/SetupChecklist";
@@ -55,6 +55,7 @@ function recapChanges(recap: NikkiProposal): RecapChange[] {
 
 export default function AdminDashboard(): React.ReactElement {
   const { t } = useT();
+  const router = useRouter();
   const { olderAdultId } = useAppState();
   const id = olderAdultId ?? "";
   const [pushToken, setPushToken] = useState<string | null>(null);
@@ -143,21 +144,29 @@ export default function AdminDashboard(): React.ReactElement {
             />
 
             {data.alerts.length > 0 ? (
-              <Card tone="surface" elevation="lg" style={styles.alert}>
-                <Stack direction="row" gap="md" align="center">
-                  <Icon name="warning" color="danger" size={theme.iconSize.lg} />
-                  <Stack flex gap="xs">
-                    <Text variant="bodyStrong" tone="danger">
-                      {data.alerts.length === 1
-                        ? t("adminDash.alertsOne", { count: 1 })
-                        : t("adminDash.alertsMany", { count: data.alerts.length })}
-                    </Text>
-                    <Text variant="body" tone="textSecondary">
-                      {t("adminDash.alertsBody", { name: data.adult?.preferred_name ?? t("adminDash.alertsTheyFallback") })}
-                    </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("adminDash.alertsOpen")}
+                onPress={() => router.push("/admin/safety")}
+                style={({ pressed }) => (pressed ? styles.pressed : null)}
+              >
+                <Card tone="surface" elevation="lg" style={styles.alert}>
+                  <Stack direction="row" gap="md" align="center">
+                    <Icon name="warning" color="danger" size={theme.iconSize.lg} />
+                    <Stack flex gap="xs">
+                      <Text variant="bodyStrong" tone="danger">
+                        {data.alerts.length === 1
+                          ? t("adminDash.alertsOne", { count: 1 })
+                          : t("adminDash.alertsMany", { count: data.alerts.length })}
+                      </Text>
+                      <Text variant="body" tone="textSecondary">
+                        {t("adminDash.alertsBody", { name: data.adult?.preferred_name ?? t("adminDash.alertsTheyFallback") })}
+                      </Text>
+                    </Stack>
+                    <Icon name="chevron" color="danger" size={theme.iconSize.md} />
                   </Stack>
-                </Stack>
-              </Card>
+                </Card>
+              </Pressable>
             ) : null}
 
             {FEATURE_HELP_TAB ? (
@@ -283,6 +292,7 @@ export default function AdminDashboard(): React.ReactElement {
 
 const styles = StyleSheet.create({
   alert: { borderLeftWidth: 4, borderLeftColor: theme.colors.danger },
+  pressed: { opacity: 0.7 },
   pillRow: { flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.sm },
   pill: {
     paddingHorizontal: theme.spacing.md,

@@ -42,13 +42,14 @@ export default function HelpScreen(): React.ReactElement {
     return subscribeLive(id, () => reload());
   }, [id, reload]);
 
-  // Call the family's first reachable contact. No emergency alert — just a normal call.
+  // Call the family's first reachable contact, and log it so the family sees it happened.
   async function callFamily(contacts: EmergencyContact[]): Promise<void> {
     const contact = contacts.find((c) => c.phone);
     if (!contact?.phone) {
       setNote(t("help.noPhoneSaved"));
       return;
     }
+    void createEmergencyEvent(id, { event_type: "call_family", user_message: "Pressed “Call family”", detected_urgency: "low" }).catch(() => undefined);
     setNote(t("help.calling", { name: contact.name }));
     Linking.openURL(`tel:${contact.phone.replace(/\s/g, "")}`).catch(() =>
       setNote(t("help.callFailed")),
@@ -59,7 +60,7 @@ export default function HelpScreen(): React.ReactElement {
   // maps app with directions home so they can start walking back to somewhere familiar.
   async function goHome(homeAddress: string): Promise<void> {
     setNote(t("help.openingMap"));
-    void createEmergencyEvent(id, { event_type: "lost", user_message: "Pressed I'm lost", detected_urgency: "high" }).catch(() => undefined);
+    void createEmergencyEvent(id, { event_type: "lost", user_message: "Pressed “I feel lost”", detected_urgency: "high" }).catch(() => undefined);
     void captureAndStoreLocation(id, true);
     const ok = await openMapDirections(homeAddress);
     if (!ok) setNote(t("help.mapFailed"));

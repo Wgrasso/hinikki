@@ -28,6 +28,23 @@ export async function getCurrentPlace(): Promise<CurrentPlace | null> {
   }
 }
 
+// Turn stored coordinates into a human place — an area + town like "Freiham, Munich" — for the
+// admin's location card (never show raw coordinates). Best-effort; null if it can't be resolved.
+// Deliberately excludes the street name/number to keep it coarse and private.
+export async function describePlace(latitude: number, longitude: number): Promise<string | null> {
+  try {
+    const places = await Location.reverseGeocodeAsync({ latitude, longitude });
+    const p = places[0];
+    if (!p) return null;
+    const area = p.district ?? p.subregion ?? null; // neighbourhood / borough, NOT the street
+    const town = p.city ?? p.region ?? null;
+    if (area && town && area.toLowerCase() !== town.toLowerCase()) return `${area}, ${town}`;
+    return town ?? area ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function captureAndStoreLocation(olderAdultId: string, emergencyFlag = false): Promise<boolean> {
   try {
     let permission = await Location.getForegroundPermissionsAsync();
