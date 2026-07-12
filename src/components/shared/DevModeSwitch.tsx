@@ -111,16 +111,16 @@ export default function DevModeSwitch(): React.ReactElement | null {
 }
 
 const styles = StyleSheet.create({
-  wrap: { position: "absolute", top: 50, right: theme.spacing.md, zIndex: 999, alignItems: "flex-end", gap: 2 },
-  code: { backgroundColor: "rgba(30,30,30,0.7)", paddingHorizontal: 6, borderRadius: theme.radius.pill, overflow: "hidden" },
-  codeText: { color: "rgba(255,255,255,0.9)", fontSize: 10, fontWeight: "700" },
-  menu: { backgroundColor: "rgba(30,30,30,0.92)", borderRadius: theme.radius.sm, paddingVertical: 4, minWidth: 150, gap: 2 },
-  menuItem: { paddingHorizontal: theme.spacing.md, paddingVertical: 8 },
-  menuText: { color: "rgba(255,255,255,0.85)", fontSize: 12, fontWeight: "600" },
+  wrap: { position: "absolute", top: 54, right: theme.spacing.md, zIndex: 999, alignItems: "flex-end", gap: theme.spacing.xs },
+  code: { backgroundColor: "rgba(30,30,30,0.8)", paddingHorizontal: theme.spacing.md, paddingVertical: 6, borderRadius: theme.radius.pill, overflow: "hidden" },
+  codeText: { color: "rgba(255,255,255,0.95)", fontSize: 14, fontWeight: "700" },
+  menu: { backgroundColor: "rgba(30,30,30,0.94)", borderRadius: theme.radius.md, paddingVertical: theme.spacing.xs, minWidth: 190, gap: 2 },
+  menuItem: { paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.md },
+  menuText: { color: "rgba(255,255,255,0.85)", fontSize: 16, fontWeight: "600" },
   menuTextActive: { color: "#fff", textDecorationLine: "underline" },
-  row: { flexDirection: "row", gap: 6 },
-  pill: { minWidth: 66, alignItems: "center", backgroundColor: "rgba(30,30,30,0.75)", borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.md, paddingVertical: 6 },
+  row: { flexDirection: "row", gap: theme.spacing.sm },
+  pill: { minWidth: 104, alignItems: "center", justifyContent: "center", minHeight: 48, backgroundColor: "rgba(30,30,30,0.82)", borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.md },
   active: { backgroundColor: theme.colors.primary },
   pressed: { opacity: 0.6 },
-  label: { color: "#fff", fontSize: 12, fontWeight: "600" },
+  label: { color: "#fff", fontSize: 18, fontWeight: "700" },
 });

@@ -37,6 +37,20 @@ export async function openMapLocation(latitude: number, longitude: number, label
   return openFirst(urls);
 }
 
+// Open the weather for a place. There's no reliable public deep link to a native weather app
+// (iOS Weather has no documented scheme; Android varies), so we best-effort the iOS scheme and
+// always fall back to a Google weather page for the place — which opens whatever browser/app
+// handles it. `place` is a city/town name.
+export async function openWeather(place: string): Promise<boolean> {
+  const q = encodeURIComponent(place.trim());
+  const web = `https://www.google.com/search?q=weather+${q}`;
+  const urls = Platform.select({
+    ios: [`weather://`, web], // weather:// only opens Apple Weather when the OS allows it; else web
+    default: [web],
+  }) as string[];
+  return openFirst(urls);
+}
+
 // Directions to a destination given as free text (an address or place name). Origin defaults
 // to the phone's current location. Works even when we only have an address, no coordinates.
 export async function openMapDirections(destination: string): Promise<boolean> {

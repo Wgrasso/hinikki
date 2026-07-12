@@ -3,7 +3,7 @@
 // The `ask` param (from Help's "I am lost" or People's "Who is …?") auto-starts the session
 // and speaks that phrase on the user's behalf.
 import React, { useCallback, useEffect } from "react";
-import { StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useAppState } from "../../src/auth/appState";
 import { Icon, Screen, Stack, Text } from "../../src/primitives";
@@ -15,7 +15,8 @@ import { theme } from "../../src/theme";
 import { greetingKey, formatTime } from "../../src/utils/format";
 import { useT } from "../../src/i18n";
 import { getNextEvent } from "../../src/services/calendarService";
-import { getWeather } from "../../src/services/weatherService";
+import { getWeather, localityCandidates } from "../../src/services/weatherService";
+import { openWeather } from "../../src/utils/openMaps";
 import { getOlderAdult } from "../../src/services/profileService";
 import type { WeatherSnapshot as Weather } from "../../src/types/domain";
 import type { CalendarEvent, OlderAdultProfile } from "../../src/types/database";
@@ -58,9 +59,11 @@ export default function NikkiScreen(): React.ReactElement {
       <StateView state={state} onRetry={reload} loadingLabel={t("nikki.wakingUp")}>
         {(data) => {
           const name = data.adult?.preferred_name ?? null;
+          // The town the weather is for (from the home address) — shown beside the weather.
+          const weatherCity = localityCandidates(data.adult?.home_address ?? null)[0] ?? null;
           return (
             <View style={styles.column}>
-              <NikkiHeader name={name} nextEvent={data.nextEvent} weather={data.weather} />
+              <NikkiHeader name={name} nextEvent={data.nextEvent} weather={data.weather} city={weatherCity} />
               <View style={styles.voice}>
                 <VoiceExperience olderAdultId={id} preferredName={name} initialAsk={initialAsk} />
               </View>
@@ -76,10 +79,12 @@ function NikkiHeader({
   name,
   nextEvent,
   weather,
+  city,
 }: {
   name: string | null;
   nextEvent: CalendarEvent | null;
   weather: Weather | null;
+  city: string | null;
 }): React.ReactElement {
   const { t } = useT();
   const greetingText = t(greetingKey());
@@ -104,12 +109,19 @@ function NikkiHeader({
           </Text>
         </View>
         {weather ? (
-          <View style={styles.pill}>
+          <Pressable
+            onPress={city ? () => void openWeather(city) : undefined}
+            disabled={!city}
+            accessibilityRole={city ? "button" : undefined}
+            accessibilityLabel={city ? t("nikki.openWeather", { city }) : undefined}
+            style={({ pressed }) => [styles.pill, pressed && city ? styles.pillPressed : null]}
+          >
             <Icon name="weather" color="primary" size={theme.iconSize.sm} />
-            <Text variant="caption" tone="textSecondary">
+            <Text variant="caption" tone="textSecondary" style={styles.pillText}>
               {weather.temperatureC}°C · {weather.summary}
+              {city ? ` · ${city}` : ""}
             </Text>
-          </View>
+          </Pressable>
         ) : null}
       </Stack>
     </Stack>
@@ -130,5 +142,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
     ...theme.shadows.sm,
   },
-  pillText: { maxWidth: 200 },
+  pillText: { maxWidth: 220 },
+  pillPressed: { opacity: 0.6 },
 });

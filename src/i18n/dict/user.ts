@@ -9,6 +9,7 @@ export const user = {
     "nikki.eventAt": "Today at {time}: {summary}.",
     "nikki.calmDay": "You have a calm, open day today.",
     "nikki.wakingUp": "Waking Nikki up…",
+    "nikki.openWeather": "See the weather in {city}",
 
     // People
     "people.title": "My people",
@@ -75,6 +76,7 @@ export const user = {
     "nikki.eventAt": "Vandaag om {time}: {summary}.",
     "nikki.calmDay": "U heeft vandaag een rustige, vrije dag.",
     "nikki.wakingUp": "Nikki wordt wakker…",
+    "nikki.openWeather": "Bekijk het weer in {city}",
 
     // People
     "people.title": "Mijn mensen",
