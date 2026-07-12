@@ -9,6 +9,7 @@ import { theme } from "../../theme";
 import { Button, Field, Icon, Stack, Text } from "../../primitives";
 import BottomSheetModal from "../shared/BottomSheetModal";
 import DateTimePickerField from "./DateTimePickerField";
+import LocationPicker, { type PickedLocation } from "../shared/LocationPicker";
 import { createEvent, deleteEvent, updateEvent } from "../../services/calendarService";
 import { createReminder, deleteReminder, updateReminder } from "../../services/reminderService";
 import { useT } from "../../i18n";
@@ -180,6 +181,7 @@ export default function ScheduleFormModal({ visible, kind, olderAdultId, event, 
   const [leadMinutes, setLeadMinutes] = useState("");
   const [whatToBring, setWhatToBring] = useState("");
   const [endTime, setEndTime] = useState<Date | null>(null);
+  const [eventPin, setEventPin] = useState<PickedLocation | null>(null); // optional map pin for the event location
   // Reminder
   const [repeatsMode, setRepeatsMode] = useState<RepeatsMode>("once");
   const [alert1Minutes, setAlert1Minutes] = useState(""); // minutes before to alert (blank = at the time)
@@ -210,6 +212,7 @@ export default function ScheduleFormModal({ visible, kind, olderAdultId, event, 
       setLeadMinutes(event.announce_lead_minutes != null ? String(event.announce_lead_minutes) : "");
       setWhatToBring(event.what_to_bring ?? "");
       setEndTime(event.end_at ? new Date(event.end_at) : null);
+      setEventPin(null); // no coordinates are stored for events; the saved address stays as text
     } else if (kind === "reminder" && reminder) {
       setTitle(reminder.title);
       setStartTime(reminder.scheduled_at ? new Date(reminder.scheduled_at) : null);
@@ -231,6 +234,7 @@ export default function ScheduleFormModal({ visible, kind, olderAdultId, event, 
       setLeadMinutes("");
       setWhatToBring("");
       setEndTime(null);
+      setEventPin(null);
       setRepeatsMode("once");
       setAlert1Minutes("");
       setAlert2Minutes("");
@@ -263,11 +267,15 @@ export default function ScheduleFormModal({ visible, kind, olderAdultId, event, 
           // An end earlier than the start ("22:00 to 01:00") runs past midnight: next day.
           if (endAt < startAt) endAt.setDate(endAt.getDate() + 1);
         }
+        // Location can be typed (place) OR dropped on the map (fills the address). Either is fine,
+        // both optional. A map pin also names the place when no name was typed.
+        const pinAddress = eventPin?.address ?? null;
         const patch = {
           title: title.trim(),
           start_at: startAt.toISOString(),
           end_at: endAt ? endAt.toISOString() : null,
-          location_name: place.trim() || null,
+          location_name: place.trim() || pinAddress || null,
+          location_address: pinAddress,
           companion: withSomeone ? companion.trim() || null : null,
           transport_notes: transport.trim() || null,
           announce_lead_minutes: lead != null && Number.isFinite(lead) ? lead : null,
@@ -398,6 +406,14 @@ export default function ScheduleFormModal({ visible, kind, olderAdultId, event, 
       {kind === "event" ? (
         <>
           <Field label={t("adminForms.event.place")} value={place} onChangeText={setPlace} placeholder={t("adminForms.event.placePlaceholder")} />
+          <Text variant="overline" tone="textSecondary" style={styles.chipLabel}>
+            {t("adminForms.event.orPinLocation").toUpperCase()}
+          </Text>
+          <LocationPicker
+            value={eventPin ? { latitude: eventPin.latitude, longitude: eventPin.longitude } : null}
+            address={eventPin?.address ?? null}
+            onChange={setEventPin}
+          />
           <CheckRow label={t("adminForms.event.withSomeone")} value={withSomeone} onChange={setWithSomeone} />
           {withSomeone ? (
             <Field label={t("adminForms.event.companion")} value={companion} onChangeText={setCompanion} placeholder={t("adminForms.event.companionPlaceholder")} />
