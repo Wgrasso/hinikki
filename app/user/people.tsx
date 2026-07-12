@@ -52,7 +52,7 @@ export default function PeopleScreen(): React.ReactElement {
   return (
     <Screen padded={false}>
       <View style={styles.bar}>
-        <AppBar title={t("people.title")} onRefresh={reload} />
+        <AppBar title={t("people.title")} />
       </View>
       <StateView
         state={state}

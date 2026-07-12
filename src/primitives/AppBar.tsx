@@ -11,10 +11,9 @@ type AppBarProps = {
   onBack?: () => void;
   rightLabel?: string;
   onRightPress?: () => void;
-  onRefresh?: () => void;
 };
 
-export default function AppBar({ title, subtitle, onBack, rightLabel, onRightPress, onRefresh }: AppBarProps): React.ReactElement {
+export default function AppBar({ title, subtitle, onBack, rightLabel, onRightPress }: AppBarProps): React.ReactElement {
   return (
     <View style={styles.container}>
       <View style={styles.row}>
@@ -32,17 +31,6 @@ export default function AppBar({ title, subtitle, onBack, rightLabel, onRightPre
           <View style={styles.backSpacer} />
         )}
         <View style={styles.rightGroup}>
-          {onRefresh ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Refresh"
-              onPress={onRefresh}
-              hitSlop={12}
-              style={({ pressed }) => [pressed ? styles.pressed : null]}
-            >
-              <Icon name="refresh" color="primary" size={theme.iconSize.lg} />
-            </Pressable>
-          ) : null}
           {rightLabel && onRightPress ? (
             <Pressable
               accessibilityRole="button"

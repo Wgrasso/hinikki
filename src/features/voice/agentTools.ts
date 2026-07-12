@@ -7,6 +7,7 @@
 // Tool RESULTS are instructions/acknowledgements for the agent, not user-facing copy.
 // makeAgentTools returns { tools, reset }: reset() MUST be called at each session start —
 // the recap-chip list and the one-push-per-conversation flag are per-conversation state.
+import { Linking } from "react-native";
 import { saveSessionNote } from "../../services/conversationService";
 import { confirmReminder } from "../../services/reminderService";
 import {
@@ -15,6 +16,9 @@ import {
   saveRecap,
 } from "../../services/proposalService";
 import { notifyAdminsOfProposal } from "../../services/pushService";
+import { createEmergencyEvent, listEmergencyContacts } from "../../services/emergencyService";
+import { captureAndStoreLocation } from "../safety/locationCapture";
+import { openMapDirections } from "../../utils/openMaps";
 import { looksLikeOpinion } from "./factFilter";
 import { getSnapshotTiers, neverRaiseNames } from "./snapshot";
 import type { FamilyPerson, ProposalType, RecapChange, Reminder } from "../../types/database";
@@ -269,6 +273,46 @@ export function makeAgentTools(
         p.pronunciation_help ? `say "${p.pronunciation_help}"` : null,
       ].filter(Boolean);
       return bits.join(". ");
+    },
+
+    // guide_to_safe_place — only when the person is PHYSICALLY lost (not just confused) and has
+    // AGREED to be shown the way. Alerts the family, drops a fresh location pin, and opens the
+    // phone's maps app with walking directions to their home.
+    guide_to_safe_place: async (): Promise<string> => {
+      const tiers = await getSnapshotTiers(olderAdultId);
+      const home = tiers.profile?.home_address?.trim();
+      if (!home) {
+        return "There is no home address on file, so a map can't be opened. Reassure them warmly and gently suggest calling family instead.";
+      }
+      void createEmergencyEvent(olderAdultId, {
+        event_type: "lost",
+        user_message: "Nikki is guiding them home",
+        detected_urgency: "high",
+      }).catch(() => undefined);
+      void captureAndStoreLocation(olderAdultId, true);
+      const opened = await openMapDirections(home);
+      changes.push({ kind: "confirmed", label: "Nikki opened directions home" });
+      return opened
+        ? "The map is opening with the way home, and the family has been told where they are. Tell them gently to follow it and that family is aware — stay warm and calm."
+        : "The map could not open. Reassure them warmly and suggest calling family.";
+    },
+
+    // call_family_member — only when the person clearly needs a person (not for every small
+    // worry) and has AGREED. Places a normal phone call to the family's first reachable contact.
+    call_family_member: async (): Promise<string> => {
+      const contacts = await listEmergencyContacts(olderAdultId).catch(() => []);
+      const contact = contacts
+        .filter((c) => c.active && (c.phone ?? "").trim().length > 0)
+        .sort((a, b) => a.priority_order - b.priority_order)[0];
+      if (!contact?.phone) {
+        return "There is no family phone number on file, so a call can't be placed. Reassure them warmly.";
+      }
+      try {
+        await Linking.openURL(`tel:${contact.phone.replace(/\s/g, "")}`);
+        return `Connecting them to ${contact.name} now. Let them know warmly that you're putting the call through.`;
+      } catch {
+        return "The call could not be started. Reassure them and suggest the Help screen's call button.";
+      }
     },
   };
 

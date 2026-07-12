@@ -73,7 +73,7 @@ export default function AdminSafety(): React.ReactElement {
 
   return (
     <Screen scroll>
-      <AppBar title={t("adminSafety.title")} subtitle={t("adminSafety.subtitle")} onRefresh={reload} />
+      <AppBar title={t("adminSafety.title")} subtitle={t("adminSafety.subtitle")} />
       <StateView state={state} onRetry={reload} loadingLabel={t("adminSafety.loading")}>
         {(data) => {
           const needsSafePlace = data.safe.length === 0;

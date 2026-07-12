@@ -140,7 +140,6 @@ export default function AdminDashboard(): React.ReactElement {
                     : t("adminDash.titleYour")
               }
               subtitle={t("adminDash.subtitle")}
-              onRefresh={reload}
             />
 
             {data.alerts.length > 0 ? (

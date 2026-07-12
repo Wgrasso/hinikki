@@ -9,6 +9,7 @@ import { subscribeLive } from "../../src/features/sync/liveChannel";
 import { flushProposalQueue } from "../../src/services/proposalService";
 import { notifyAdminsOfProposal } from "../../src/services/pushService";
 import { markSnapshotDirty } from "../../src/features/voice/snapshot";
+import { captureAndStoreLocation } from "../../src/features/safety/locationCapture";
 import DevModeSwitch from "../../src/components/shared/DevModeSwitch";
 import { Icon } from "../../src/primitives";
 import { theme } from "../../src/theme";
@@ -22,6 +23,26 @@ export default function UserLayout(): React.ReactElement {
   useEffect(() => {
     if (!olderAdultId) return;
     return subscribeLive(olderAdultId, (table) => markSnapshotDirty(olderAdultId, table));
+  }, [olderAdultId]);
+
+  // Keep the family's "current location" fresh so they can always see where their person is:
+  // capture on open, when the app returns to the foreground, and every few minutes while it's
+  // open. Foreground-only and best-effort — a declined permission simply no-ops (dignified, not
+  // covert). Continuous background tracking would need extra OS permissions and a native rebuild.
+  useEffect(() => {
+    if (!olderAdultId) return;
+    const capture = (): void => {
+      void captureAndStoreLocation(olderAdultId, false);
+    };
+    capture();
+    const interval = setInterval(capture, 3 * 60 * 1000);
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") capture();
+    });
+    return () => {
+      clearInterval(interval);
+      sub.remove();
+    };
   }, [olderAdultId]);
 
   // Facts queued while offline must reach the family when the app comes back — not only

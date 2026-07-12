@@ -94,7 +94,7 @@ export default function AdminSchedule(): React.ReactElement {
 
           return (
             <Stack gap="lg">
-              <AppBar title={t("adminSchedule.title")} subtitle={t("adminSchedule.subtitle")} onRefresh={reload} />
+              <AppBar title={t("adminSchedule.title")} subtitle={t("adminSchedule.subtitle")} />
 
               <DateNavigator date={selectedDate} onChange={setSelectedDate} />
 

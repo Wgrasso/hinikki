@@ -73,7 +73,7 @@ export default function AdminPeople(): React.ReactElement {
   return (
     <Screen padded={false}>
       <View style={styles.bar}>
-        <AppBar title={t("adminPeople.title")} subtitle={t("adminPeople.subtitle")} onRefresh={reload} />
+        <AppBar title={t("adminPeople.title")} subtitle={t("adminPeople.subtitle")} />
       </View>
       <StateView
         state={state}

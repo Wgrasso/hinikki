@@ -42,12 +42,9 @@ export default function HelpScreen(): React.ReactElement {
     return subscribeLive(id, () => reload());
   }, [id, reload]);
 
-  async function callFirst(contacts: EmergencyContact[], asEmergency: boolean): Promise<void> {
+  // Call the family's first reachable contact. No emergency alert — just a normal call.
+  async function callFamily(contacts: EmergencyContact[]): Promise<void> {
     const contact = contacts.find((c) => c.phone);
-    if (asEmergency) {
-      await createEmergencyEvent(id, { event_type: "help", user_message: "Pressed Emergency", detected_urgency: "high" });
-      void captureAndStoreLocation(id, true);
-    }
     if (!contact?.phone) {
       setNote(t("help.noPhoneSaved"));
       return;
@@ -58,16 +55,19 @@ export default function HelpScreen(): React.ReactElement {
     );
   }
 
-  // Open the phone's own maps app with turn-by-turn directions to the saved home address.
+  // "I'm lost": let the family know right away (alert + a fresh location), then open the phone's
+  // maps app with directions home so they can start walking back to somewhere familiar.
   async function goHome(homeAddress: string): Promise<void> {
     setNote(t("help.openingMap"));
+    void createEmergencyEvent(id, { event_type: "lost", user_message: "Pressed I'm lost", detected_urgency: "high" }).catch(() => undefined);
+    void captureAndStoreLocation(id, true);
     const ok = await openMapDirections(homeAddress);
     if (!ok) setNote(t("help.mapFailed"));
   }
 
   return (
     <Screen scroll>
-      <AppBar title={t("tab.help")} subtitle={t("help.subtitle")} onRefresh={reload} />
+      <AppBar title={t("tab.help")} subtitle={t("help.subtitle")} />
       <StateView state={state} onRetry={reload} loadingLabel={t("help.loading")}>
         {({ contacts, homeAddress }) => {
           const hasPhone = contacts.some((c) => c.phone);
@@ -86,15 +86,7 @@ export default function HelpScreen(): React.ReactElement {
                 label={t("help.call.label")}
                 description={t("help.call.desc")}
                 disabled={!hasPhone}
-                onPress={() => callFirst(contacts, false)}
-              />
-              <BigHelpButton
-                icon="warning"
-                label={t("help.emergency.label")}
-                description={t("help.emergency.desc")}
-                tone="danger"
-                disabled={!hasPhone}
-                onPress={() => callFirst(contacts, true)}
+                onPress={() => callFamily(contacts)}
               />
               {!hasPhone ? (
                 <View style={styles.note}>

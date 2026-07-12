@@ -50,7 +50,7 @@ export default function AdminSettings(): React.ReactElement {
 
   return (
     <Screen scroll>
-      <AppBar title={t("settings.title")} subtitle={t("settings.subtitle")} onRefresh={reloadProfile} />
+      <AppBar title={t("settings.title")} subtitle={t("settings.subtitle")} />
       <Stack gap="lg">
         <InfoCard
           icon="heart"
