@@ -21,13 +21,22 @@ export default function SwipeToDismiss({
 
   const settle = (open: boolean): void => {
     openRef.current = open;
-    Animated.spring(translateX, { toValue: open ? -ACTION_WIDTH : 0, useNativeDriver: true, bounciness: 0 }).start();
+    // A gentle, quick glide to the resting position (open or closed) — no bounce.
+    Animated.spring(translateX, { toValue: open ? -ACTION_WIDTH : 0, useNativeDriver: true, bounciness: 0, speed: 18 }).start();
   };
 
   const responder = useRef(
     PanResponder.create({
-      // Only claim clearly-horizontal drags, so vertical scrolling still works.
-      onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy),
+      // Claim a drag as soon as it's more horizontal than vertical (low threshold), so even a slow
+      // sideways pull is picked up smoothly instead of being read as a scroll.
+      onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dx) > 3 && Math.abs(g.dx) > Math.abs(g.dy),
+      onMoveShouldSetPanResponderCapture: (_e, g) => Math.abs(g.dx) > 3 && Math.abs(g.dx) > Math.abs(g.dy),
+      // Once we own the gesture, don't let the surrounding scroll view yank it back mid-slide —
+      // that hand-off is what made slow drags stutter.
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: () => {
+        translateX.stopAnimation();
+      },
       onPanResponderMove: (_e, g) => {
         const base = openRef.current ? -ACTION_WIDTH : 0;
         let x = base + g.dx;
@@ -37,7 +46,10 @@ export default function SwipeToDismiss({
       },
       onPanResponderRelease: (_e, g) => {
         const base = openRef.current ? -ACTION_WIDTH : 0;
-        settle(base + g.dx < -ACTION_WIDTH / 2);
+        const x = base + g.dx;
+        // Open on a flick (fast leftward), or once pulled a bit more than a third of the way —
+        // so a slow, short pull still reveals the trash instead of snapping shut.
+        settle(g.vx < -0.25 || x < -ACTION_WIDTH * 0.35);
       },
       onPanResponderTerminate: () => settle(openRef.current),
     }),

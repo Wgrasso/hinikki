@@ -25,7 +25,7 @@ export const admin = {
     // Dashboard
     "adminDash.loading": "Loading the dashboard…",
     "adminDash.titlePossessive": "{name}'s day",
-    "adminDash.titleName": "{name} day",
+    "adminDash.titleName": "{name}'s day",
     "adminDash.titleYour": "Your day",
     "adminDash.subtitle": "Everything Nikki is helping with today.",
     "adminDash.alertsOne": "{count} alert needs attention",

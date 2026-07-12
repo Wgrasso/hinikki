@@ -66,7 +66,7 @@ export default function NikkiScreen(): React.ReactElement {
     <Screen>
       <StateView state={state} onRetry={reload} loadingLabel={t("nikki.wakingUp")}>
         {(data) => {
-          const name = data.adult?.preferred_name ?? null;
+          const name = data.adult?.preferred_name ?? data.adult?.display_name ?? null;
           return (
             <View style={styles.column}>
               <NikkiHeader name={name} nextEvent={data.nextEvent} weather={data.weather} city={data.weatherCity} />
