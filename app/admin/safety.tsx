@@ -14,7 +14,7 @@ import { subscribeLive } from "../../src/features/sync/liveChannel";
 import { theme } from "../../src/theme";
 import { relativeTimeLabel } from "../../src/utils/format";
 import { createSafeLocation, getLatestLocation, getLocationById, listSafeLocations, updateSafeLocation } from "../../src/services/locationService";
-import { createEmergencyContact, listEmergencyContacts, listEmergencyEvents, resolveEmergencyEvent, updateEmergencyContact } from "../../src/services/emergencyService";
+import { createEmergencyContact, deleteEmergencyEvent, listEmergencyContacts, listEmergencyEvents, resolveEmergencyEvent, updateEmergencyContact } from "../../src/services/emergencyService";
 import { describePlace } from "../../src/features/safety/locationCapture";
 import { openMapLocation } from "../../src/utils/openMaps";
 import { useT } from "../../src/i18n";
@@ -79,6 +79,7 @@ export default function AdminSafety(): React.ReactElement {
   const placeVisible = addingPlace || editPlace !== null;
   const contactVisible = addingContact || editContact !== null;
 
+  // "Mark handled" keeps the alert as history (just flips it to resolved).
   async function handleResolve(id: string): Promise<void> {
     setResolvingId(id);
     try {
@@ -89,6 +90,16 @@ export default function AdminSafety(): React.ReactElement {
     }
   }
 
+  // Swipe-to-trash removes the alert from the log entirely.
+  async function handleDelete(id: string): Promise<void> {
+    try {
+      await deleteEmergencyEvent(id);
+      reload();
+    } catch {
+      // ignore — a blocked delete just leaves the alert in place
+    }
+  }
+
   return (
     <Screen scroll>
       <AppBar title={t("adminSafety.title")} subtitle={t("adminSafety.subtitle")} />
@@ -96,8 +107,6 @@ export default function AdminSafety(): React.ReactElement {
         {(data) => {
           const needsSafePlace = data.safe.length === 0;
           const needsContact = !data.contacts.some((c) => (c.phone ?? "").trim().length > 0);
-          // Only alerts still needing attention; dismissing (or "mark handled") resolves + hides them.
-          const openAlerts = data.events.filter((e) => e.status !== "resolved");
           return (
           <Stack gap="lg">
             <Card elevation="card">
@@ -168,20 +177,21 @@ export default function AdminSafety(): React.ReactElement {
             <View>
               <SectionHeader title={t("adminSafety.recentAlerts")} />
               <Stack gap="sm">
-                {openAlerts.length === 0 ? (
+                {data.events.length === 0 ? (
                   <EmptyHint text={t("adminSafety.alertsEmpty")} />
                 ) : (
-                  openAlerts.map((e) => {
+                  data.events.map((e) => {
                     const isCall = e.event_type === "call_family";
                     const where = data.eventLocations[e.id];
+                    const resolved = e.status === "resolved";
                     return (
-                    <SwipeToDismiss key={e.id} onDismiss={() => void handleResolve(e.id)} accessibilityLabel={t("adminSafety.dismissAlert")}>
+                    <SwipeToDismiss key={e.id} onDismiss={() => void handleDelete(e.id)} accessibilityLabel={t("adminSafety.dismissAlert")}>
                       <Card elevation="card">
                         <Stack gap="md">
                           <Stack direction="row" gap="md" align="center">
                             <Icon
-                              name={isCall ? "phone" : "warning"}
-                              color={isCall ? "primary" : "danger"}
+                              name={resolved ? "check" : isCall ? "phone" : "warning"}
+                              color={resolved ? "success" : isCall ? "primary" : "danger"}
                               size={theme.iconSize.md}
                             />
                             <Stack flex gap="xs">
@@ -205,13 +215,19 @@ export default function AdminSafety(): React.ReactElement {
                               </Stack>
                             </Pressable>
                           ) : null}
-                          <Button
-                            label={t("adminSafety.markHandled")}
-                            icon="check"
-                            variant="secondary"
-                            loading={resolvingId === e.id}
-                            onPress={() => void handleResolve(e.id)}
-                          />
+                          {resolved ? (
+                            <Text variant="caption" tone="textSecondary">
+                              {t("adminSafety.handled")}
+                            </Text>
+                          ) : (
+                            <Button
+                              label={t("adminSafety.markHandled")}
+                              icon="check"
+                              variant="secondary"
+                              loading={resolvingId === e.id}
+                              onPress={() => void handleResolve(e.id)}
+                            />
+                          )}
                         </Stack>
                       </Card>
                     </SwipeToDismiss>

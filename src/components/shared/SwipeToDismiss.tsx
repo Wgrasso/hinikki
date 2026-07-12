@@ -56,7 +56,7 @@ export default function SwipeToDismiss({
       >
         <Icon name="trash" color="onPrimary" size={theme.iconSize.md} />
       </Pressable>
-      <Animated.View style={{ transform: [{ translateX }] }} {...responder.panHandlers}>
+      <Animated.View style={[styles.content, { transform: [{ translateX }] }]} {...responder.panHandlers}>
         {children}
       </Animated.View>
     </View>
@@ -65,6 +65,9 @@ export default function SwipeToDismiss({
 
 const styles = StyleSheet.create({
   wrap: { position: "relative", overflow: "hidden", borderRadius: theme.radius.md },
+  // Opaque background so the red action stays fully hidden at rest (even behind the card's
+  // rounded corners) and is revealed only as the row slides — like Spotify's remove-from-playlist.
+  content: { backgroundColor: theme.colors.background },
   action: {
     position: "absolute",
     right: 0,
