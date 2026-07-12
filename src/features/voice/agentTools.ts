@@ -286,13 +286,14 @@ export function makeAgentTools(
       if (!home) {
         return "There is no home address on file, so a map can't be opened. Reassure them warmly and gently suggest calling family instead.";
       }
+      const opened = await openMapDirections(home);
+      const locId = await captureAndStoreLocation(olderAdultId, true).catch(() => null);
       void createEmergencyEvent(olderAdultId, {
         event_type: "lost",
         user_message: reason ? `Told Nikki: “${reason}” — Nikki guided them home` : "Told Nikki they felt lost — Nikki guided them home",
         detected_urgency: "high",
+        location_update_id: locId,
       }).catch(() => undefined);
-      void captureAndStoreLocation(olderAdultId, true);
-      const opened = await openMapDirections(home);
       return opened
         ? "The map is opening with the way home, and the family has been told where they are. Tell them gently to follow it and that family is aware — stay warm and calm."
         : "The map could not open. Reassure them warmly and suggest calling family.";
@@ -312,7 +313,7 @@ export function makeAgentTools(
       }
       void createEmergencyEvent(olderAdultId, {
         event_type: "call_family",
-        user_message: reason ? `Told Nikki: “${reason}” — Nikki called the family` : "Told Nikki they needed family — Nikki called the family",
+        user_message: reason ? `Told Nikki: “${reason}” — Nikki called ${contact.name}` : `Told Nikki they needed family — Nikki called ${contact.name}`,
         detected_urgency: "low",
       }).catch(() => undefined);
       try {

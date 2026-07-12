@@ -45,21 +45,21 @@ export async function describePlace(latitude: number, longitude: number): Promis
   }
 }
 
-export async function captureAndStoreLocation(olderAdultId: string, emergencyFlag = false): Promise<boolean> {
+// Returns the stored location's id (so a safety event can link to it), or null if unavailable.
+export async function captureAndStoreLocation(olderAdultId: string, emergencyFlag = false): Promise<string | null> {
   try {
     let permission = await Location.getForegroundPermissionsAsync();
     if (!permission.granted && permission.canAskAgain) {
       permission = await Location.requestForegroundPermissionsAsync();
     }
-    if (!permission.granted) return false;
+    if (!permission.granted) return null;
     const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-    await recordLocation(
+    return await recordLocation(
       olderAdultId,
       { latitude: position.coords.latitude, longitude: position.coords.longitude, accuracy: position.coords.accuracy },
       emergencyFlag,
     );
-    return true;
   } catch {
-    return false;
+    return null;
   }
 }

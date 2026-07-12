@@ -24,6 +24,7 @@ type Props = {
   olderAdultId: string;
   event?: CalendarEvent | null;
   reminder?: Reminder | null;
+  defaultDate?: Date; // the day already chosen in the schedule's date bar — used for new records
   onClose: () => void;
   onSaved: () => void;
 };
@@ -148,9 +149,11 @@ function ChipRow<T extends string>({ label, options, value, onChange }: {
   );
 }
 
-export default function ScheduleFormModal({ visible, kind, olderAdultId, event, reminder, onClose, onSaved }: Props): React.ReactElement {
-  const { t } = useT();
+export default function ScheduleFormModal({ visible, kind, olderAdultId, event, reminder, defaultDate, onClose, onSaved }: Props): React.ReactElement {
+  const { t, lang } = useT();
   const isEditing = kind === "event" ? Boolean(event) : Boolean(reminder);
+  // The day for a NEW record comes from the schedule's date bar, not a chip in this form.
+  const addDay = defaultDate ?? new Date();
 
   const DATE_OPTIONS: { value: DateMode; label: string }[] = [
     { value: "today", label: t("adminForms.day.today") },
@@ -222,6 +225,9 @@ export default function ScheduleFormModal({ visible, kind, olderAdultId, event, 
       setNikkiMessage(reminder.nikki_message ?? reminder.instructions ?? "");
       setRequiresConfirmation(reminder.requires_confirmation);
     } else {
+      // Adding: the day is fixed to the schedule's selected day (no day chips shown).
+      setDateMode("pick");
+      setPickedDate(addDay);
       setTitle("");
       setStartTime(null);
       setPlace("");
@@ -333,21 +339,43 @@ export default function ScheduleFormModal({ visible, kind, olderAdultId, event, 
     <BottomSheetModal visible={visible} onClose={onClose} title={heading}>
       <Field label={t("adminForms.titleField")} value={title} onChangeText={setTitle} placeholder={kind === "event" ? t("adminForms.event.titlePlaceholder") : t("adminForms.reminder.titlePlaceholder")} autoCapitalize="sentences" error={error} />
 
-      <ChipRow label={t("adminForms.schedule.whichDay")} options={kind === "reminder" ? REMINDER_DATE_OPTIONS : DATE_OPTIONS} value={dateMode} onChange={setDateMode} />
-      {dateMode === "pick" ? (
-        <DateTimePickerField
-          label={t("adminForms.schedule.dateLabel")}
-          mode="date"
-          value={pickedDate}
-          initialValue={pickedDate ?? new Date()}
-          placeholder={t("adminForms.schedule.datePlaceholder")}
-          error={dateError}
-          onChange={(d) => {
-            setPickedDate(d);
-            setDateError(null);
-          }}
-        />
-      ) : null}
+      {isEditing ? (
+        <>
+          <ChipRow label={t("adminForms.schedule.whichDay")} options={kind === "reminder" ? REMINDER_DATE_OPTIONS : DATE_OPTIONS} value={dateMode} onChange={setDateMode} />
+          {dateMode === "pick" ? (
+            <DateTimePickerField
+              label={t("adminForms.schedule.dateLabel")}
+              mode="date"
+              value={pickedDate}
+              initialValue={pickedDate ?? new Date()}
+              placeholder={t("adminForms.schedule.datePlaceholder")}
+              error={dateError}
+              onChange={(d) => {
+                setPickedDate(d);
+                setDateError(null);
+              }}
+            />
+          ) : null}
+        </>
+      ) : (
+        <>
+          {/* The day comes from the schedule's date bar; reminders can still be "any time of day". */}
+          {kind === "reminder" ? (
+            <CheckRow
+              label={t("adminForms.reminder.anytime")}
+              value={dateMode === "anytime"}
+              onChange={(v) => setDateMode(v ? "anytime" : "pick")}
+            />
+          ) : null}
+          {dateMode !== "anytime" ? (
+            <Text variant="overline" tone="textSecondary" style={styles.chipLabel}>
+              {t("adminForms.schedule.onDay", {
+                date: addDay.toLocaleDateString(lang === "nl" ? "nl-NL" : "en-US", { weekday: "long", day: "numeric", month: "long" }),
+              }).toUpperCase()}
+            </Text>
+          ) : null}
+        </>
+      )}
 
       {dateMode === "anytime" ? null : (
         <View style={styles.timeRow}>

@@ -227,6 +227,7 @@ export type EmergencyEvent = {
   detected_urgency: "low" | "medium" | "high" | "critical";
   status: "open" | "acknowledged" | "resolved";
   notified_admins: boolean;
+  location_update_id: string | null;
   created_at: string;
 };
 

@@ -140,6 +140,7 @@ export default function AdminSchedule(): React.ReactElement {
         olderAdultId={id}
         event={editEvent}
         reminder={editReminder}
+        defaultDate={selectedDate}
         onClose={closeForm}
         onSaved={reload}
       />

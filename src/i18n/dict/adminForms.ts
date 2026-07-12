@@ -76,10 +76,12 @@ export const adminForms = {
     "adminForms.reminder.messagePlaceholder": "e.g. Time to water the plants on the windowsill",
     "adminForms.reminder.confirm": "Ask later if it was done",
     "adminForms.reminder.confirmCaption": "Nikki will check in about it, and you'll see the answer here.",
+    "adminForms.reminder.anytime": "Any time of day",
     "adminForms.reminder.deleteButton": "Delete reminder",
     "adminForms.reminder.deleteConfirmTitle": "Delete this reminder?",
 
     // Schedule form — day / time / repeats chips + shared fields
+    "adminForms.schedule.onDay": "On {date}",
     "adminForms.schedule.whichDay": "Which day",
     "adminForms.schedule.dateLabel": "Date",
     "adminForms.schedule.datePlaceholder": "Choose a date",
@@ -201,10 +203,12 @@ export const adminForms = {
     "adminForms.reminder.messagePlaceholder": "bijv. Tijd om de planten op de vensterbank water te geven",
     "adminForms.reminder.confirm": "Later vragen of het gelukt is",
     "adminForms.reminder.confirmCaption": "Nikki vraagt er later naar, en u ziet het antwoord hier terug.",
+    "adminForms.reminder.anytime": "Op elk moment van de dag",
     "adminForms.reminder.deleteButton": "Herinnering verwijderen",
     "adminForms.reminder.deleteConfirmTitle": "Deze herinnering verwijderen?",
 
     // Schedule form — day / time / repeats chips + shared fields
+    "adminForms.schedule.onDay": "Op {date}",
     "adminForms.schedule.whichDay": "Welke dag",
     "adminForms.schedule.dateLabel": "Datum",
     "adminForms.schedule.datePlaceholder": "Kies een datum",

@@ -5,11 +5,13 @@ import type { LocationUpdate, SafeLocation } from "../types/database";
 
 export type Coords = { latitude: number; longitude: number; accuracy?: number | null; batteryLevel?: number | null };
 
+// Returns the new location row's id (so a safety event can link to exactly where it happened),
+// or null if it couldn't be stored.
 export async function recordLocation(
   olderAdultId: string,
   coords: Coords,
   emergencyFlag = false,
-): Promise<void> {
+): Promise<string | null> {
   if (!supabase) {
     const update: LocationUpdate = {
       id: newId("loc"),
@@ -24,17 +26,37 @@ export async function recordLocation(
     await mutateDemo((s) => {
       s.locationUpdates.push(update);
     });
-    return;
+    return update.id;
   }
-  const { error } = await supabase.from("location_updates").insert({
-    older_adult_id: olderAdultId,
-    latitude: coords.latitude,
-    longitude: coords.longitude,
-    accuracy: coords.accuracy ?? null,
-    battery_level: coords.batteryLevel ?? null,
-    emergency_flag: emergencyFlag,
-  });
+  const { data, error } = await supabase
+    .from("location_updates")
+    .insert({
+      older_adult_id: olderAdultId,
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+      accuracy: coords.accuracy ?? null,
+      battery_level: coords.batteryLevel ?? null,
+      emergency_flag: emergencyFlag,
+    })
+    .select("id")
+    .single();
   if (error) throw new Error(error.message);
+  return (data?.id as string | undefined) ?? null;
+}
+
+// A single location by id — used to show WHERE a safety alert happened.
+export async function getLocationById(id: string): Promise<LocationUpdate | null> {
+  if (!supabase) {
+    const s = await getDemoState();
+    return s.locationUpdates.find((l) => l.id === id) ?? null;
+  }
+  const { data, error } = await supabase
+    .from("location_updates")
+    .select("id, older_adult_id, latitude, longitude, accuracy, battery_level, emergency_flag, created_at")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as LocationUpdate | null) ?? null;
 }
 
 export async function getLatestLocation(olderAdultId: string): Promise<LocationUpdate | null> {

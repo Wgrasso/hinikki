@@ -54,6 +54,7 @@ export type NewEmergencyEvent = {
   event_type: string;
   user_message?: string | null;
   detected_urgency: "low" | "medium" | "high" | "critical";
+  location_update_id?: string | null;
 };
 
 export async function createEmergencyEvent(
@@ -68,6 +69,7 @@ export async function createEmergencyEvent(
     detected_urgency: input.detected_urgency,
     status: "open",
     notified_admins: true,
+    location_update_id: input.location_update_id ?? null,
     created_at: new Date().toISOString(),
   };
   if (!supabase) {
@@ -83,9 +85,10 @@ export async function createEmergencyEvent(
       event_type: input.event_type,
       user_message: input.user_message ?? null,
       detected_urgency: input.detected_urgency,
+      location_update_id: input.location_update_id ?? null,
       notified_admins: true,
     })
-    .select("id, older_adult_id, event_type, user_message, detected_urgency, status, notified_admins, created_at")
+    .select("id, older_adult_id, event_type, user_message, detected_urgency, status, notified_admins, location_update_id, created_at")
     .single();
   if (error) throw new Error(error.message);
   // Push the family right away — an emergency must reach them even with the app closed,
@@ -103,7 +106,7 @@ export async function listEmergencyEvents(olderAdultId: string): Promise<Emergen
   }
   const { data, error } = await supabase
     .from("emergency_events")
-    .select("id, older_adult_id, event_type, user_message, detected_urgency, status, notified_admins, created_at")
+    .select("id, older_adult_id, event_type, user_message, detected_urgency, status, notified_admins, location_update_id, created_at")
     .eq("older_adult_id", olderAdultId)
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);

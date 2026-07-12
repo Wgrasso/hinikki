@@ -49,7 +49,7 @@ export default function HelpScreen(): React.ReactElement {
       setNote(t("help.noPhoneSaved"));
       return;
     }
-    void createEmergencyEvent(id, { event_type: "call_family", user_message: "Pressed “Call family”", detected_urgency: "low" }).catch(() => undefined);
+    void createEmergencyEvent(id, { event_type: "call_family", user_message: `Pressed “Call family” — called ${contact.name}`, detected_urgency: "low" }).catch(() => undefined);
     setNote(t("help.calling", { name: contact.name }));
     Linking.openURL(`tel:${contact.phone.replace(/\s/g, "")}`).catch(() =>
       setNote(t("help.callFailed")),
@@ -60,9 +60,9 @@ export default function HelpScreen(): React.ReactElement {
   // maps app with directions home so they can start walking back to somewhere familiar.
   async function goHome(homeAddress: string): Promise<void> {
     setNote(t("help.openingMap"));
-    void createEmergencyEvent(id, { event_type: "lost", user_message: "Pressed “I feel lost”", detected_urgency: "high" }).catch(() => undefined);
-    void captureAndStoreLocation(id, true);
-    const ok = await openMapDirections(homeAddress);
+    const ok = await openMapDirections(homeAddress); // open the map first — no waiting for a GPS fix
+    const locId = await captureAndStoreLocation(id, true); // then record WHERE they were, and link it
+    void createEmergencyEvent(id, { event_type: "lost", user_message: "Pressed “I feel lost”", detected_urgency: "high", location_update_id: locId }).catch(() => undefined);
     if (!ok) setNote(t("help.mapFailed"));
   }
 

@@ -20,6 +20,7 @@ import type {
   FamilyPerson,
   FamilyRelationship,
   PersonMemory,
+  Reminder,
 } from "../../types/database";
 import type { WeatherSnapshot } from "../../types/domain";
 
@@ -100,6 +101,29 @@ export function formatMemories(memories: PersonMemory[]): string {
       if (m.description) parts.push(m.description);
       if (m.approximate_date) parts.push(`(${m.approximate_date})`);
       return `- ${parts.join(" — ")}`;
+    })
+    .join("\n");
+}
+
+// Today's reminders, so Nikki can gently bring them up as their time nears (there is no separate
+// alarm/notification — Nikki IS the reminder, during a conversation). Recurring and "anytime"
+// reminders apply every day; timed ones show their time.
+function reminderIsToday(r: Reminder, now: Date): boolean {
+  if (r.recurrence_rule || !r.scheduled_at) return true;
+  const d = new Date(r.scheduled_at);
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+}
+
+export function formatReminders(reminders: Reminder[], now: Date = new Date()): string {
+  const today = reminders.filter((r) => r.active && reminderIsToday(r, now));
+  if (today.length === 0) return "No reminders are set for today.";
+  return today
+    .map((r) => {
+      const when = r.scheduled_at ? `around ${formatTime(r.scheduled_at)}` : r.recurrence_rule ? r.recurrence_rule.toLowerCase() : "any time today";
+      const parts = [`${r.title} (${when})`];
+      if (r.nikki_message) parts.push(`— you might say: "${r.nikki_message}"`);
+      if (r.requires_confirmation) parts.push("[gently check whether they've done it; if they say yes, use confirm_reminder]");
+      return `- ${parts.join(" ")}`;
     })
     .join("\n");
 }
@@ -233,6 +257,7 @@ export async function buildSessionVariables(
     home_hint: formatHomeHint(profile?.home_address ?? null) || "their own familiar home",
     today_schedule: formatSchedule(tiers?.todayEvents ?? []),
     soon_schedule: formatSoon(tiers?.soonEvents ?? []),
+    reminders_today: formatReminders(tiers?.reminders ?? []),
     family_summary: formatFamily(people, relationships),
     family_connections: formatConnections(people, relationships),
     memories_summary: formatMemories(selectMemories(tiers?.memories ?? [], tiers?.todayEvents ?? [], people)),

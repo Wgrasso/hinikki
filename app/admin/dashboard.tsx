@@ -6,7 +6,6 @@ import { Alert, Platform, Pressable, StyleSheet, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useAppState } from "../../src/auth/appState";
 import { AppBar, Button, Card, Icon, Screen, Stack, Text } from "../../src/primitives";
-import SetupChecklist from "../../src/components/admin/SetupChecklist";
 import SectionHeader from "../../src/components/admin/SectionHeader";
 import ProposalsSection from "../../src/components/admin/ProposalsSection";
 import ListRow from "../../src/components/shared/ListRow";
@@ -189,7 +188,6 @@ export default function AdminDashboard(): React.ReactElement {
                 survive reloads that empty the pending list. */}
             <ProposalsSection olderAdultId={id} proposals={data.proposals} onChanged={reload} />
 
-            {data.checklist.some((item) => !item.done) ? <SetupChecklist items={data.checklist} /> : null}
 
             {data.recaps.length > 0 ? (
               <View>

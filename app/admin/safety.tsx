@@ -12,7 +12,7 @@ import { useAsync } from "../../src/utils/useAsync";
 import { subscribeLive } from "../../src/features/sync/liveChannel";
 import { theme } from "../../src/theme";
 import { relativeTimeLabel } from "../../src/utils/format";
-import { createSafeLocation, getLatestLocation, listSafeLocations, updateSafeLocation } from "../../src/services/locationService";
+import { createSafeLocation, getLatestLocation, getLocationById, listSafeLocations, updateSafeLocation } from "../../src/services/locationService";
 import { createEmergencyContact, listEmergencyContacts, listEmergencyEvents, resolveEmergencyEvent, updateEmergencyContact } from "../../src/services/emergencyService";
 import { describePlace } from "../../src/features/safety/locationCapture";
 import { openMapLocation } from "../../src/utils/openMaps";
@@ -27,6 +27,7 @@ type SafetyData = {
   safe: SafeLocation[];
   contacts: EmergencyContact[];
   events: EmergencyEvent[];
+  eventLocations: Record<string, LocationUpdate>; // alert id → where it happened (when known)
 };
 
 export default function AdminSafety(): React.ReactElement {
@@ -48,7 +49,15 @@ export default function AdminSafety(): React.ReactElement {
     ]);
     // Turn the last coordinates into a readable town for the card (never show raw coordinates).
     const latestPlace = latest ? await describePlace(latest.latitude, latest.longitude) : null;
-    return { latest, latestPlace, safe, contacts, events };
+    // Where each alert happened, so a "lost" alert can be opened on the map (spot patterns).
+    const withLoc = events.filter((e) => e.location_update_id);
+    const locs = await Promise.all(withLoc.map((e) => getLocationById(e.location_update_id as string).catch(() => null)));
+    const eventLocations: Record<string, LocationUpdate> = {};
+    withLoc.forEach((e, i) => {
+      const loc = locs[i];
+      if (loc) eventLocations[e.id] = loc;
+    });
+    return { latest, latestPlace, safe, contacts, events, eventLocations };
   }, [id]);
 
   // Refetch on focus and on live changes; stale-while-refresh keeps it flicker-free.
@@ -157,6 +166,7 @@ export default function AdminSafety(): React.ReactElement {
                 ) : (
                   data.events.map((e) => {
                     const isCall = e.event_type === "call_family";
+                    const where = data.eventLocations[e.id];
                     return (
                     <Card key={e.id} elevation="card">
                       <Stack gap="md">
@@ -173,6 +183,20 @@ export default function AdminSafety(): React.ReactElement {
                             </Text>
                           </Stack>
                         </Stack>
+                        {where ? (
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={t("adminSafety.whereA11y")}
+                            onPress={() => void openMapLocation(where.latitude, where.longitude, t("adminSafety.whereLabel"))}
+                          >
+                            <Stack direction="row" gap="xs" align="center">
+                              <Icon name="location" color="primary" size={theme.iconSize.sm} />
+                              <Text variant="caption" tone="primary">
+                                {t("adminSafety.whereHappened")}
+                              </Text>
+                            </Stack>
+                          </Pressable>
+                        ) : null}
                         {e.status === "resolved" ? (
                           <Text variant="caption" tone="textSecondary">
                             {t("adminSafety.handled")}
