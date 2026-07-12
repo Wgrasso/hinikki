@@ -9,7 +9,6 @@ import { useRouter } from "expo-router";
 import { theme } from "../../theme";
 import { useAppState } from "../../auth/appState";
 import { supabase } from "../../lib/supabase";
-import { clearSession } from "../../storage/localStore";
 import { becomeAdmin, becomeUser } from "../../features/dev/devHarness";
 import { getActiveDevFamily, getAllDevFamilies, setActiveDevFamilyCode, upsertSavedDevFamily, type DevFamily } from "../../features/dev/devConfig";
 
@@ -19,7 +18,7 @@ function famLabel(f: DevFamily): string {
 }
 
 export default function DevModeSwitch(): React.ReactElement | null {
-  const { mode, joinCode, refresh, completeSetupWithGroup } = useAppState();
+  const { mode, joinCode, completeSetupWithGroup } = useAppState();
   const router = useRouter();
   const [busy, setBusy] = useState<null | "admin" | "user">(null);
   const [active, setActive] = useState<DevFamily | null>(null);
@@ -65,8 +64,9 @@ export default function DevModeSwitch(): React.ReactElement | null {
     try {
       const r = await becomeAdmin();
       if (!r.ok) { Alert.alert("Dev: could not become admin", r.message); return; }
-      await clearSession(); // drop stale local link so refresh() re-derives from the server
-      await refresh();
+      // Pin to the EXACT family we joined, so an admin in several families doesn't default back
+      // to XZVX2D2T via get_my_group.
+      await completeSetupWithGroup("admin", r.olderAdultId, r.groupId, r.joinCode);
       router.replace("/admin/dashboard");
     } finally {
       setBusy(null);

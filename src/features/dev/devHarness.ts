@@ -16,19 +16,28 @@ export type BecomeUserResult =
 // Sign in as the fixed dev admin and ensure it is in the target family. The caller then
 // clears the local mode cache and calls appState.refresh(), which re-derives admin mode +
 // the family group from get_my_group().
-export async function becomeAdmin(): Promise<BecomeResult> {
+export async function becomeAdmin(): Promise<BecomeUserResult> {
   const cfg = await getActiveDevFamily();
   if (!__DEV__ || !supabase || !cfg) return { ok: false, message: "dev only" };
   await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
-  // Seed families use their own credentials; any other family uses the shared dev admin, which
-  // then JOINS that family by its code — so becoming admin works for every family, forever, with
-  // no captured session to expire.
+  // Resolve the target family + its elder FIRST, while still anonymous (get_group_roster uses an
+  // anon session) — before we take on the admin identity, so we return the RIGHT group.
+  const roster = await getGroupRoster(cfg.familyCode);
+  if (!roster.ok) return { ok: false, message: roster.message };
+  const target =
+    roster.value.olderAdults.find(
+      (o) => cfg.elderName && o.displayName.trim().toLowerCase() === cfg.elderName.toLowerCase(),
+    ) ?? roster.value.olderAdults[0];
+  // Become the shared dev admin (seed families use their own creds) and JOIN this family by code,
+  // so we're an admin of exactly the family we picked — for any family, no expiring session.
   const email = cfg.adminEmail ?? SHARED_DEV_ADMIN.email;
   const password = cfg.adminPassword ?? SHARED_DEV_ADMIN.password;
   const r = await adminSignIn(email, password);
   if (!r.ok) return { ok: false, message: r.message };
-  await joinGroupAsAdmin(cfg.familyCode).catch(() => undefined); // joins if not already a member; idempotent otherwise
-  return { ok: true };
+  await joinGroupAsAdmin(cfg.familyCode).catch(() => undefined); // joins if not already a member
+  // Pin the caller to THIS group explicitly (below), instead of letting get_my_group pick the
+  // shared admin's default family.
+  return { ok: true, olderAdultId: target?.id ?? "", groupId: roster.value.groupId, joinCode: cfg.familyCode };
 }
 
 // Become the fixed elder of the target family: fresh anonymous session, then claim the
