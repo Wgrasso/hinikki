@@ -254,7 +254,7 @@ export default function AdminSafety(): React.ReactElement {
         initialValues={editPlace ? { name: editPlace.name, address: editPlace.address ?? "" } : undefined}
         fields={[
           { key: "name", label: t("adminSafety.fieldName"), placeholder: t("adminSafety.placeNamePlaceholder"), required: true },
-          { key: "address", label: t("adminSafety.fieldAddress"), placeholder: t("common.optional") },
+          { key: "address", label: t("adminSafety.fieldAddress"), placeholder: t("adminSafety.placeAddressPlaceholder"), required: true },
         ]}
         onClose={() => {
           setAddingPlace(false);
