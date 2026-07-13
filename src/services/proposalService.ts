@@ -309,6 +309,26 @@ async function claimProposal(id: string): Promise<boolean> {
   return (data ?? []).length === 1;
 }
 
+// Low-risk learning that applies WITHOUT a family tap: shared memories and "how to help" support
+// notes. These build up Nikki's understanding of the person on their own. Everything that changes
+// real records or the schedule (people, events, reminders, profile, safe places) stays reviewed.
+const AUTO_APPLY_TYPES = new Set<ProposalType>(["memory", "support_note"]);
+
+// Called when a family admin opens the app: silently apply any pending low-risk proposals, so
+// memories and support notes accumulate automatically. Best-effort — a memory that references a
+// person who isn't approved yet simply throws and stays pending for review. Admin-only (RLS).
+export async function autoApplyLowRiskProposals(olderAdultId: string): Promise<void> {
+  try {
+    const pending = await listPendingProposals(olderAdultId);
+    for (const p of pending) {
+      if (!AUTO_APPLY_TYPES.has(p.proposal_type)) continue;
+      await approveAndApply(p).catch(() => undefined);
+    }
+  } catch {
+    // best-effort — never block the dashboard
+  }
+}
+
 export async function approveAndApply(
   proposal: NikkiProposal,
   editedPayload?: Record<string, unknown>,

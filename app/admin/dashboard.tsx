@@ -21,7 +21,7 @@ import { listTodayReminders } from "../../src/services/reminderService";
 import { getLatestLocation, listSafeLocations } from "../../src/services/locationService";
 import { listEmergencyContacts, listEmergencyEvents } from "../../src/services/emergencyService";
 import { listPeople } from "../../src/services/peopleService";
-import { listPendingProposals, listRecaps } from "../../src/services/proposalService";
+import { autoApplyLowRiskProposals, listPendingProposals, listRecaps } from "../../src/services/proposalService";
 import { registerAndSaveToken } from "../../src/services/pushService";
 import { registerForPush, sendPush } from "../../src/features/notifications/push";
 import { FEATURE_HELP_TAB, FEATURE_TEST_PUSH_NOTIFICATION } from "../../src/lib/constants";
@@ -66,6 +66,9 @@ export default function AdminDashboard(): React.ReactElement {
   }, []);
 
   const { state, reload } = useAsync<DashboardData>(async () => {
+    // Silently apply low-risk learning (memories + support notes) so personalization builds on
+    // its own; the rest stays as "Nikki asks" cards below. Runs before we list pending proposals.
+    await autoApplyLowRiskProposals(id);
     const [adult, latest, today, reminders, alerts, people, events, safe, contacts, proposals, recaps] = await Promise.all([
       getOlderAdult(id),
       getLatestLocation(id),
