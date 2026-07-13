@@ -197,7 +197,7 @@ export default function AdminSafety(): React.ReactElement {
                         <Stack gap="md">
                           <Stack direction="row" gap="md" align="center">
                             <Icon
-                              name={resolved ? "check" : isCall ? "phone" : "warning"}
+                              name={resolved ? "check" : isCall ? "phone" : "location"}
                               color={resolved ? "success" : isCall ? "primary" : "danger"}
                               size={theme.iconSize.md}
                             />
