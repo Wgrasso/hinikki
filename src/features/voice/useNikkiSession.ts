@@ -60,10 +60,20 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
   // used to work around a known iOS/LiveKit bug where the mic stays silent on the 2nd+ call.
   const lastEndAt = useRef<number | null>(null);
   const restartPending = useRef(false);
+  // After Nikki saves the recap (the last thing she does), we end the call OURSELVES a few seconds
+  // later — client-side — so the audio session tears down cleanly and the next call's mic works.
+  // (A server-side "End conversation" skips that teardown and leaves the mic dead on restart.)
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const clearIdle = useCallback((): void => {
     if (idleTimer.current) {
       clearTimeout(idleTimer.current);
       idleTimer.current = null;
+    }
+  }, []);
+  const clearCloseTimer = useCallback((): void => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
     }
   }, []);
   const armIdle = useCallback((): void => {
@@ -71,11 +81,22 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
     idleTimer.current = setTimeout(() => endRef.current(), IDLE_TIMEOUT_MS);
   }, [clearIdle]);
 
-  // The five tools, bound to this older adult; onRecap feeds the closing card.
+  // Recap arrived → show it, then close the call from the client after a short grace (so her
+  // goodbye line plays out). Cancelled if the person keeps talking.
+  const handleRecap = useCallback(
+    (r: SessionRecap): void => {
+      setRecap(r);
+      clearCloseTimer();
+      closeTimer.current = setTimeout(() => endRef.current(), 6000);
+    },
+    [clearCloseTimer],
+  );
+
+  // The five tools, bound to this older adult; onRecap feeds the closing card + auto-close.
   // Per-CONVERSATION state (recap chips, push budget) lives inside and is reset in begin().
   const toolSet: AgentToolSet = useMemo(
-    () => makeAgentTools(olderAdultId, { onRecap: setRecap }),
-    [olderAdultId],
+    () => makeAgentTools(olderAdultId, { onRecap: handleRecap }),
+    [olderAdultId, handleRecap],
   );
 
   const conversation = useConversation({
@@ -109,6 +130,7 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
     },
     onDisconnect: (details) => {
       clearIdle();
+      clearCloseTimer();
       lastEndAt.current = Date.now(); // mark when native teardown began, for the restart settle
       setPhase((current) => {
         if (details.reason === "error") {
@@ -133,8 +155,12 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
     },
     onMessage: ({ message, role }) => {
       const who: "user" | "nikki" = role === "agent" ? "nikki" : "user";
-      // The elder just spoke — reset the quiet-timer so an active chat is never cut off.
-      if (who === "user") armIdle();
+      // The elder just spoke — reset the quiet-timer, and cancel any pending auto-close (if they
+      // said "goodbye" but then kept chatting, don't hang up on them).
+      if (who === "user") {
+        armIdle();
+        clearCloseTimer();
+      }
       // Drop the speech engine's bracketed cues ("[gentle]") before showing or storing.
       const text = stripStageDirections(message);
       if (!text) return; // nothing but a stage direction — no caption, no stored turn
@@ -158,6 +184,7 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
       setCaptions([]);
       setRecap(null);
       clearIdle(); // no stale watchdog from a previous attempt
+      clearCloseTimer();
       photosRef.current = []; // fresh face lookup for THIS conversation
       toolSet.reset(); // fresh recap chips + push budget for THIS conversation
       // A previous session ended → this is a restart: re-arm the mic on connect, and settle the
@@ -219,13 +246,20 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
 
   const end = useCallback((): void => {
     clearIdle();
+    clearCloseTimer();
     conversation.endSession();
-  }, [conversation, clearIdle]);
+  }, [conversation, clearIdle, clearCloseTimer]);
 
-  // Keep the idle watchdog's "hang up" pointed at the latest end(), and stop the timer if the
+  // Keep the idle watchdog's "hang up" pointed at the latest end(), and stop both timers if the
   // screen unmounts mid-call.
   endRef.current = end;
-  useEffect(() => clearIdle, [clearIdle]);
+  useEffect(
+    () => () => {
+      clearIdle();
+      clearCloseTimer();
+    },
+    [clearIdle, clearCloseTimer],
+  );
 
   return {
     phase,
