@@ -107,7 +107,10 @@ export const adminReview = {
 
     // SupportNotesSection
     "support.title": "How Nikki supports {name}",
-    "support.empty": "Nikki will learn how best to help {name} as you talk, and you can adjust it here.",
+    "support.empty": "These notes shape how Nikki cares for {name} — what reassures them, how much to explain, who to gently reintroduce. Nikki adds what she learns as they talk, and you can add or change anything here.",
+    "support.addButton": "Add",
+    "support.addFirst": "Add a note for Nikki",
+    "support.addTitle": "Add a note",
     "support.editA11y": "Edit this note",
     "support.removeA11y": "Remove this note",
     "support.editTitle": "Edit note",
@@ -245,7 +248,10 @@ export const adminReview = {
 
     // SupportNotesSection
     "support.title": "Hoe Nikki {name} ondersteunt",
-    "support.empty": "Nikki leert gaandeweg hoe ze {name} het beste kan helpen, en u kunt dit hier aanpassen.",
+    "support.empty": "Deze notities bepalen hoe Nikki voor {name} zorgt — wat geruststelt, hoeveel uitleg nodig is, wie ze zachtjes opnieuw voorstelt. Nikki voegt toe wat ze leert tijdens gesprekken, en u kunt hier zelf iets toevoegen of aanpassen.",
+    "support.addButton": "Toevoegen",
+    "support.addFirst": "Een notitie voor Nikki toevoegen",
+    "support.addTitle": "Notitie toevoegen",
     "support.editA11y": "Deze notitie bewerken",
     "support.removeA11y": "Deze notitie verwijderen",
     "support.editTitle": "Notitie bewerken",

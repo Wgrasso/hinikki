@@ -24,6 +24,17 @@ function inTime(minutes: number, dutch: boolean): string {
   return dutch ? `Over ${hours} ${unit}` : `In ${hours} ${unit}`;
 }
 
+// The time of day for a reminder, so even a short title carries a sense of when: Dutch stays 24h
+// ("15:00"), English is 12h ("3 pm" / "3:45 pm").
+function clockTime(date: Date, dutch: boolean): string {
+  const h = date.getHours();
+  const m = date.getMinutes();
+  if (dutch) return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+  const hh = ((h + 11) % 12) + 1;
+  const period = h < 12 ? "am" : "pm";
+  return m === 0 ? `${hh} ${period}` : `${hh}:${m.toString().padStart(2, "0")} ${period}`;
+}
+
 async function schedule(body: string, trigger: Notifications.NotificationTriggerInput): Promise<void> {
   await Notifications.scheduleNotificationAsync({ content: { title: TITLE, body, sound: "default" }, trigger }).catch(() => undefined);
 }
@@ -51,7 +62,10 @@ export async function syncScheduledNotifications(olderAdultId: string): Promise<
       if (!r.active || !r.scheduled_at) continue;
       const when = new Date(r.scheduled_at);
       if (Number.isNaN(when.getTime())) continue;
-      const body = r.nikki_message ?? r.title;
+      // Lead the reminder with its clock time ("3 pm — Take your pills"), so it reads as a real
+      // moment in the day even when the family/Nikki gave it only a short title.
+      const label = r.nikki_message ?? r.title;
+      const body = `${clockTime(when, dutch)} — ${label}`;
       // One ping per configured alert: the first alert (default at the time) plus an optional
       // second. Each fires `lead` minutes before the reminder's time.
       const leads = Array.from(

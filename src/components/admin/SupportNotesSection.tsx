@@ -10,7 +10,7 @@ import { useT } from "../../i18n";
 import SectionHeader from "./SectionHeader";
 import BottomSheetModal from "../shared/BottomSheetModal";
 import { useAsync } from "../../utils/useAsync";
-import { deleteSupportNote, listSupportNotes, updateSupportNote } from "../../services/memoryService";
+import { createSupportNote, deleteSupportNote, listSupportNotes, updateSupportNote } from "../../services/memoryService";
 
 type Props = {
   olderAdultId: string;
@@ -25,19 +25,34 @@ export default function SupportNotesSection({ olderAdultId, elderName }: Props):
   const notes = state.status === "loaded" ? state.data : [];
 
   const [editing, setEditing] = useState<SupportNote | null>(null);
+  const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
+  const sheetOpen = editing !== null || creating;
+
   function openEdit(note: SupportNote): void {
     setEditing(note);
+    setCreating(false);
     setDraft(note.content);
     setError(null);
   }
 
+  function openCreate(): void {
+    setEditing(null);
+    setCreating(true);
+    setDraft("");
+    setError(null);
+  }
+
+  function closeSheet(): void {
+    setEditing(null);
+    setCreating(false);
+  }
+
   async function save(): Promise<void> {
-    if (!editing) return;
     const text = draft.trim();
     if (text.length === 0) {
       setError(t("support.errEmpty"));
@@ -46,8 +61,12 @@ export default function SupportNotesSection({ olderAdultId, elderName }: Props):
     setSaving(true);
     setError(null);
     try {
-      await updateSupportNote(editing.id, text);
-      setEditing(null);
+      if (editing) {
+        await updateSupportNote(editing.id, text);
+      } else {
+        await createSupportNote(olderAdultId, text);
+      }
+      closeSheet();
       reload();
     } catch {
       setError(t("support.errSave"));
@@ -77,11 +96,20 @@ export default function SupportNotesSection({ olderAdultId, elderName }: Props):
 
   return (
     <View>
-      <SectionHeader title={t("support.title", { name: elderName })} />
+      <SectionHeader
+        title={t("support.title", { name: elderName })}
+        actionLabel={t("support.addButton")}
+        onAction={openCreate}
+      />
       {notes.length === 0 ? (
-        <Text variant="body" tone="textSecondary">
-          {t("support.empty", { name: elderName })}
-        </Text>
+        <Card elevation="card">
+          <Stack gap="sm">
+            <Text variant="body" tone="textSecondary">
+              {t("support.empty", { name: elderName })}
+            </Text>
+            <Button label={t("support.addFirst")} icon="add" variant="secondary" onPress={openCreate} />
+          </Stack>
+        </Card>
       ) : (
         <Stack gap="sm">
           {notes.map((note) => (
@@ -115,9 +143,9 @@ export default function SupportNotesSection({ olderAdultId, elderName }: Props):
       )}
 
       <BottomSheetModal
-        visible={editing !== null}
-        onClose={() => setEditing(null)}
-        title={t("support.editTitle")}
+        visible={sheetOpen}
+        onClose={closeSheet}
+        title={creating ? t("support.addTitle") : t("support.editTitle")}
         subtitle={t("support.editSubtitle", { name: elderName })}
       >
         <Field
@@ -131,7 +159,7 @@ export default function SupportNotesSection({ olderAdultId, elderName }: Props):
         />
         <Stack gap="sm" style={styles.actions}>
           <Button label={t("common.saveChanges")} icon="check" loading={saving} onPress={() => void save()} />
-          <Button label={t("common.cancel")} variant="secondary" disabled={saving} onPress={() => setEditing(null)} />
+          <Button label={t("common.cancel")} variant="secondary" disabled={saving} onPress={closeSheet} />
         </Stack>
       </BottomSheetModal>
     </View>

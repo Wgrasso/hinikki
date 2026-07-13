@@ -183,6 +183,11 @@ export default function AdminSafety(): React.ReactElement {
 
             <View>
               <SectionHeader title={t("adminSafety.recentAlerts")} />
+              {visibleAlerts.some((e) => e.status !== "resolved") ? (
+                <Text variant="caption" tone="textSecondary" style={styles.alertsHint}>
+                  {t("adminSafety.recentAlertsHint")}
+                </Text>
+              ) : null}
               <Stack gap="sm">
                 {visibleAlerts.length === 0 ? (
                   <EmptyHint text={t("adminSafety.alertsEmpty")} />
@@ -337,6 +342,9 @@ function EmptyHint({ text }: { text: string }): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
+  // Sits just under the "Recent alerts" header when something is still open, so it's clear these
+  // need a look and a "Mark as handled" once checked.
+  alertsHint: { marginBottom: theme.spacing.sm },
   // The amber outline that marks a required-but-missing section, matching the header "!" and tab badge.
   missingBox: {
     borderWidth: 2,

@@ -88,6 +88,21 @@ export async function listSupportNotes(olderAdultId: string): Promise<{ id: stri
   return (data ?? []) as { id: string; content: string }[];
 }
 
+// Let the family write their own guidance for Nikki (not just edit what she proposed) — the same
+// store and shape as an approved support_note, so it feeds {{support_guidance}} identically.
+export async function createSupportNote(olderAdultId: string, content: string): Promise<void> {
+  if (!supabase) {
+    return;
+  }
+  const { error } = await supabase.from("ai_memory_items").insert({
+    older_adult_id: olderAdultId,
+    memory_type: "support_note",
+    title: "How to help",
+    content,
+  });
+  if (error) throw new Error(error.message);
+}
+
 export async function updateSupportNote(id: string, content: string): Promise<void> {
   if (!supabase) {
     return;
