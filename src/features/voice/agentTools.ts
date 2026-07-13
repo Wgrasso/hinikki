@@ -327,6 +327,33 @@ export function makeAgentTools(
         return "The call could not be started. Reassure them and suggest the Help screen's call button.";
       }
     },
+
+    // open_event_directions(event_title) — when they ask where a plan is and want to go, open the
+    // maps app with directions from where they are to the event's saved location. Confirm first.
+    open_event_directions: async (parameters: unknown): Promise<string> => {
+      const wanted = asString(asParams(parameters).event_title);
+      const tiers = await getSnapshotTiers(olderAdultId);
+      const events = [...(tiers.todayEvents ?? []), ...(tiers.soonEvents ?? [])].filter((e) => e.completion_status === "scheduled");
+      const located = events.filter((e) => ((e.location_address ?? e.location_name) ?? "").trim().length > 0);
+      if (located.length === 0) {
+        return "None of the upcoming plans have a place saved, so directions can't be opened. Reassure them and suggest asking the family.";
+      }
+      let target = wanted
+        ? located.find((e) => {
+            const n = normalize(wanted);
+            return normalize(e.user_friendly_summary ?? e.title).includes(n) || n.includes(normalize(e.title));
+          })
+        : undefined;
+      if (!target && located.length === 1) target = located[0];
+      if (!target) {
+        return `More than one plan has a place: ${located.map((e) => e.user_friendly_summary ?? e.title).join(", ")}. Ask gently which one they mean.`;
+      }
+      const dest = ((target.location_address ?? target.location_name) as string).trim();
+      const opened = await openMapDirections(dest);
+      return opened
+        ? `The map is opening with the way to ${target.user_friendly_summary ?? target.title}. Tell them warmly it's showing the route there.`
+        : "The map could not open. Reassure them warmly.";
+    },
   };
 
   return { tools, reset };
