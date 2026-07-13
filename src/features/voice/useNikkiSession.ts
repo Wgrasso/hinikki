@@ -167,14 +167,14 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
       // Both sides persist for continuity ([RECENT] next session); a failed write never
       // interrupts the conversation.
       void recordTurn(olderAdultId, who, text).catch(() => undefined);
-      // Caption BOTH sides so the person sees their own words and Nikki's reply. Keep the
-      // last few turns for a readable rolling transcript.
+      // Caption BOTH sides. Keep the WHOLE conversation (the transcript scrolls) — it's only
+      // cleared when a new conversation begins, never mid-chat.
       captionSeq.current += 1;
       const id = captionSeq.current;
       // Every person named in the line (by either side) who has a photo on file gets their
       // face + name shown beside the words, so the elder can place them clearly.
       const named = matchPersonPhotos(text, photosRef.current);
-      setCaptions((prev) => [...prev.slice(-5), { id, role: who, text, people: named.length ? named : undefined }]);
+      setCaptions((prev) => [...prev, { id, role: who, text, people: named.length ? named : undefined }]);
     },
   });
 

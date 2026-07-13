@@ -309,10 +309,9 @@ async function claimProposal(id: string): Promise<boolean> {
   return (data ?? []).length === 1;
 }
 
-// Low-risk learning that applies WITHOUT a family tap: shared memories and "how to help" support
-// notes. These build up Nikki's understanding of the person on their own. Everything that changes
-// real records or the schedule (people, events, reminders, profile, safe places) stays reviewed.
-const AUTO_APPLY_TYPES = new Set<ProposalType>(["memory", "support_note"]);
+// Only "how to help" support notes apply WITHOUT a family tap — the quiet, care-oriented guidance
+// that shapes how Nikki helps. Everything else, memories included, stays reviewed as "Nikki asks".
+const AUTO_APPLY_TYPES = new Set<ProposalType>(["support_note"]);
 
 // Called when a family admin opens the app: silently apply any pending low-risk proposals, so
 // memories and support notes accumulate automatically. Best-effort — a memory that references a
