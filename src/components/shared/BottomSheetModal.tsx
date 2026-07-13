@@ -9,7 +9,7 @@
 // onMoveShouldSetPanResponder to win a move-time negotiation, which does not reliably fire for
 // views inside a Modal's surface on the new architecture.
 import React, { useEffect, useRef } from "react";
-import { Animated, Dimensions, Modal, PanResponder, Pressable, ScrollView, ScrollViewProps, StyleSheet, View } from "react-native";
+import { Animated, Dimensions, KeyboardAvoidingView, Modal, PanResponder, Platform, Pressable, ScrollView, ScrollViewProps, StyleSheet, View } from "react-native";
 import { theme } from "../../theme";
 import { Text } from "../../primitives";
 
@@ -74,7 +74,9 @@ export default function BottomSheetModal({ visible, title, subtitle, onClose, ch
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.overlay}>
+      {/* Lift the sheet above the keyboard so the field being typed in — and the Save button
+          under it — never sit behind the keys. iOS pads; Android's adjustResize handles the rest. */}
+      <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
           <Pressable accessibilityRole="button" accessibilityLabel="Close" style={StyleSheet.absoluteFill} onPress={onClose} />
         </Animated.View>
@@ -93,7 +95,7 @@ export default function BottomSheetModal({ visible, title, subtitle, onClose, ch
             {children}
           </ScrollView>
         </Animated.View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

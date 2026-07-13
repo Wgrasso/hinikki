@@ -26,6 +26,9 @@ export type NikkiSessionPhase = "idle" | "preparing" | "connecting" | "live" | "
 export type NikkiSession = {
   phase: NikkiSessionPhase;
   isSpeaking: boolean;
+  // The elder's own voice, from the mic's voice-activity detector — drives the orb's "lit" ring
+  // so it glows when THEY talk, not when Nikki does.
+  userSpeaking: boolean;
   captions: NikkiCaption[];
   errorMessage: string | null;
   recap: SessionRecap | null;
@@ -37,6 +40,12 @@ export type NikkiSession = {
 // stay live (and billing) forever.
 const IDLE_TIMEOUT_MS = 2 * 60 * 1000;
 
+// Voice-activity detection: treat the elder as speaking once the mic's VAD probability crosses
+// this, and keep the orb lit for a short hang after the last voiced frame so it doesn't flicker
+// between words.
+const VAD_SPEAKING_THRESHOLD = 0.6;
+const VAD_HANG_MS = 500;
+
 // After a call ends, the native audio session keeps deactivating for a beat. Starting a new
 // call inside this window re-activates the shared, un-refcounted session mid-deactivation and
 // leaves the mic dead. We wait out only the REMAINING slice of this window (measured from the
@@ -45,6 +54,7 @@ const AUDIO_SETTLE_MS = 700;
 
 export function useNikkiSession(olderAdultId: string, preferredName: string | null): NikkiSession {
   const [phase, setPhase] = useState<NikkiSessionPhase>("idle");
+  const [userSpeaking, setUserSpeaking] = useState(false);
   const [captions, setCaptions] = useState<NikkiCaption[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [recap, setRecap] = useState<SessionRecap | null>(null);
@@ -64,6 +74,36 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
   // later — client-side — so the audio session tears down cleanly and the next call's mic works.
   // (A server-side "End conversation" skips that teardown and leaves the mic dead on restart.)
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // VAD "lit" state without re-rendering on every frame: a ref holds the current value so the
+  // callback only calls setState on an actual on↔off flip; the timer gives the off a short hang.
+  const userSpeakingRef = useRef(false);
+  const vadClearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const setUserVoice = useCallback((active: boolean): void => {
+    if (active) {
+      if (vadClearTimer.current) {
+        clearTimeout(vadClearTimer.current);
+        vadClearTimer.current = null;
+      }
+      if (!userSpeakingRef.current) {
+        userSpeakingRef.current = true;
+        setUserSpeaking(true);
+      }
+    } else if (userSpeakingRef.current && !vadClearTimer.current) {
+      vadClearTimer.current = setTimeout(() => {
+        vadClearTimer.current = null;
+        userSpeakingRef.current = false;
+        setUserSpeaking(false);
+      }, VAD_HANG_MS);
+    }
+  }, []);
+  const clearUserVoice = useCallback((): void => {
+    if (vadClearTimer.current) {
+      clearTimeout(vadClearTimer.current);
+      vadClearTimer.current = null;
+    }
+    userSpeakingRef.current = false;
+    setUserSpeaking(false);
+  }, []);
   const clearIdle = useCallback((): void => {
     if (idleTimer.current) {
       clearTimeout(idleTimer.current);
@@ -128,9 +168,12 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
         openingRef.current = null;
       }
     },
+    // The mic's voice-activity probability for the elder — drives the orb's lit ring.
+    onVadScore: ({ vadScore }) => setUserVoice(vadScore >= VAD_SPEAKING_THRESHOLD),
     onDisconnect: (details) => {
       clearIdle();
       clearCloseTimer();
+      clearUserVoice();
       lastEndAt.current = Date.now(); // mark when native teardown began, for the restart settle
       setPhase((current) => {
         if (details.reason === "error") {
@@ -257,13 +300,15 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
     () => () => {
       clearIdle();
       clearCloseTimer();
+      clearUserVoice();
     },
-    [clearIdle, clearCloseTimer],
+    [clearIdle, clearCloseTimer, clearUserVoice],
   );
 
   return {
     phase,
     isSpeaking: conversation.isSpeaking,
+    userSpeaking,
     captions,
     errorMessage,
     recap,

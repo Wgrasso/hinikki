@@ -100,7 +100,7 @@ function resolveReminder(reminders: Reminder[], title: string):
 
 const PROPOSAL_TYPES: ProposalType[] = [
   "new_person", "person_update", "relationship", "memory", "fact",
-  "event", "reminder", "profile_update", "safe_location",
+  "event", "reminder", "profile_update", "safe_location", "support_note",
 ];
 
 // Build the per-elder tool set. `reset()` starts a fresh conversation: new chip list,

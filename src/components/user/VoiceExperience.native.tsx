@@ -98,8 +98,10 @@ function VoiceSession({ olderAdultId, preferredName, initialAsk }: VoiceExperien
         {live ? (
           <Stack gap="lg" style={styles.liveArea}>
             <VoiceOrb
-              state={session.isSpeaking ? "speaking" : "listening"}
-              label={session.isSpeaking ? t("voice.speaking") : t("voice.listening")}
+              // The lit (accent) ring tracks the ELDER's voice, not Nikki's, so it glows when they
+              // speak. While Nikki talks the ring stays calm; the label still says who's speaking.
+              state={session.userSpeaking ? "speaking" : "listening"}
+              label={session.userSpeaking ? t("voice.hearing") : session.isSpeaking ? t("voice.speaking") : t("voice.listening")}
               onPress={() => undefined}
               disabled
             />

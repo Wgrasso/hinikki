@@ -54,6 +54,7 @@ export const user = {
       "It was lovely talking with you. Tap the button whenever you would like to talk again.",
     "voice.speaking": "Nikki is speaking…",
     "voice.listening": "Nikki is listening — just talk",
+    "voice.hearing": "Nikki hears you",
     "voice.goodbye": "Goodbye Nikki",
     "voice.talk": "Talk to Nikki",
 
@@ -121,6 +122,7 @@ export const user = {
       "Het was fijn om met u te praten. Tik op de knop wanneer u weer wilt praten.",
     "voice.speaking": "Nikki praat…",
     "voice.listening": "Nikki luistert — praat gewoon",
+    "voice.hearing": "Nikki hoort u",
     "voice.goodbye": "Dag Nikki",
     "voice.talk": "Praat met Nikki",
 
