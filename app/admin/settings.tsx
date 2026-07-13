@@ -29,8 +29,6 @@ export default function AdminSettings(): React.ReactElement {
   const { state: profileState, reload: reloadProfile } = useAsync<OlderAdultProfile | null>(() => getOlderAdult(id), [id]);
   const profile = profileState.status === "loaded" ? profileState.data : null;
   const elderName = profile?.preferred_name ?? profile?.display_name ?? t("settings.elderFallback");
-  // Nikki needs a home address to guide them home ("I am lost"), so flag it if it's still blank.
-  const needsHome = profileState.status === "loaded" && !!profile && (profile.home_address ?? "").trim().length === 0;
 
   // Refetch on focus and on live changes; stale-while-refresh keeps it flicker-free.
   useFocusEffect(
@@ -55,11 +53,9 @@ export default function AdminSettings(): React.ReactElement {
         <InfoCard
           icon="heart"
           title={t("settings.about.title", { name: elderName })}
-          body={needsHome ? t("settings.about.needsHome") : t("settings.about.body")}
+          body={t("settings.about.body")}
           actionLabel={t("settings.about.action")}
           onAction={() => setEditingAbout(true)}
-          needsSetup={needsHome}
-          needsSetupLabel={t("adminSafety.needsSetup")}
         />
 
         {id ? <SupportNotesSection olderAdultId={id} elderName={elderName} /> : null}
@@ -115,35 +111,6 @@ export default function AdminSettings(): React.ReactElement {
       />
     </Screen>
   );
-}
-
-// The About section is "complete" once a home address is saved (Nikki needs it to guide them
-// home). Drives the "!" badge on the Settings tab. Assumes complete until proven otherwise, so a
-// slow or failed read never shows a false nudge.
-export function useAboutSetupComplete(olderAdultId: string | null): boolean {
-  const [complete, setComplete] = useState(true);
-  useEffect(() => {
-    if (!olderAdultId) {
-      setComplete(true);
-      return;
-    }
-    let active = true;
-    const load = (): void => {
-      getOlderAdult(olderAdultId)
-        .then((adult) => {
-          if (!active) return;
-          setComplete((adult?.home_address ?? "").trim().length > 0);
-        })
-        .catch(() => undefined); // a missing badge must never crash the tab bar
-    };
-    load();
-    const unsubscribe = subscribeLive(olderAdultId, () => load());
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [olderAdultId]);
-  return complete;
 }
 
 function InfoCard({

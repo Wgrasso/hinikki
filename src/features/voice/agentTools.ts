@@ -18,8 +18,8 @@ import {
 import { notifyAdminsOfProposal } from "../../services/pushService";
 import { createEmergencyEvent, listEmergencyContacts } from "../../services/emergencyService";
 import { listSafeLocations } from "../../services/locationService";
-import { captureAndStoreLocation } from "../safety/locationCapture";
-import { resolveHomeDestination } from "../safety/homeDestination";
+import { captureAndStoreLocation, getCurrentPlace } from "../safety/locationCapture";
+import { nearestSafeDestination } from "../safety/homeDestination";
 import { openMapDirections } from "../../utils/openMaps";
 import { looksLikeOpinion } from "./factFilter";
 import { getSnapshotTiers, neverRaiseNames } from "./snapshot";
@@ -283,13 +283,12 @@ export function makeAgentTools(
     // the family sees why Nikki acted.
     guide_to_safe_place: async (parameters: unknown): Promise<string> => {
       const reason = asString(asParams(parameters).reason);
-      const tiers = await getSnapshotTiers(olderAdultId);
-      // Home is the saved home address, or a safe place (e.g. a pinned "Home") — same rule as the
-      // Help screen's "I'm lost" button.
+      // Guide to the CLOSEST safe place to where they are now — same rule as the Help "I'm lost".
       const safe = await listSafeLocations(olderAdultId).catch(() => []);
-      const home = resolveHomeDestination(tiers.profile?.home_address ?? null, safe);
+      const place = await getCurrentPlace().catch(() => null);
+      const home = nearestSafeDestination(place ? { latitude: place.latitude, longitude: place.longitude } : null, safe);
       if (!home) {
-        return "There is no home address or safe place on file, so a map can't be opened. Reassure them warmly and gently suggest calling family instead.";
+        return "There is no safe place on file, so a map can't be opened. Reassure them warmly and gently suggest calling family instead.";
       }
       const opened = await openMapDirections(home);
       const locId = await captureAndStoreLocation(olderAdultId, true).catch(() => null);

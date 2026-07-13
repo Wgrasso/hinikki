@@ -1,4 +1,4 @@
-import { resolveHomeDestination } from "./homeDestination";
+import { hasSafeDestination, nearestSafeDestination } from "./homeDestination";
 import type { SafeLocation } from "../../types/database";
 
 function place(overrides: Partial<SafeLocation>): SafeLocation {
@@ -15,24 +15,35 @@ function place(overrides: Partial<SafeLocation>): SafeLocation {
   };
 }
 
-describe("resolveHomeDestination", () => {
-  it("prefers the home address when set", () => {
-    expect(resolveHomeDestination("Lindenstraat 12, Amsterdam", [place({ name: "Home", address: "Elsewhere 3" })])).toBe(
-      "Lindenstraat 12, Amsterdam",
-    );
+describe("nearestSafeDestination", () => {
+  it("picks the closest safe place to the current location", () => {
+    const munich = place({ id: "m", name: "Home", latitude: 48.137, longitude: 11.575 });
+    const berlin = place({ id: "b", name: "Sister", latitude: 52.52, longitude: 13.405 });
+    const current = { latitude: 48.15, longitude: 11.58 }; // near Munich
+    expect(nearestSafeDestination(current, [berlin, munich])).toBe("48.137,11.575");
   });
 
-  it("falls back to a safe place named home", () => {
-    const safe = [place({ name: "Café", address: "Café 1" }), place({ id: "s2", name: "Home", address: "Thuisstraat 4, Utrecht" })];
-    expect(resolveHomeDestination(null, safe)).toBe("Thuisstraat 4, Utrecht");
+  it("prefers a place named home when there's no current fix", () => {
+    const safe = [place({ id: "c", name: "Café", address: "Café 1" }), place({ id: "h", name: "Home", address: "Thuisstraat 4" })];
+    expect(nearestSafeDestination(null, safe)).toBe("Thuisstraat 4");
   });
 
-  it("uses a pin's coordinates when a safe place has no address", () => {
-    expect(resolveHomeDestination("", [place({ name: "Home", latitude: 48.14, longitude: 11.53 })])).toBe("48.14,11.53");
+  it("returns an address over coordinates when the nearest place has one", () => {
+    const p = place({ name: "Home", address: "Lindenstraat 12", latitude: 52.1, longitude: 4.9 });
+    expect(nearestSafeDestination({ latitude: 52.1, longitude: 4.9 }, [p])).toBe("Lindenstraat 12");
   });
 
-  it("returns null when there's nowhere to go", () => {
-    expect(resolveHomeDestination(null, [])).toBeNull();
-    expect(resolveHomeDestination("   ", [place({ name: "Nowhere" })])).toBeNull();
+  it("is null when there are no usable safe places", () => {
+    expect(nearestSafeDestination(null, [])).toBeNull();
+    expect(nearestSafeDestination(null, [place({ name: "Nowhere" })])).toBeNull();
+  });
+});
+
+describe("hasSafeDestination", () => {
+  it("is true only when a place has an address or a pin", () => {
+    expect(hasSafeDestination([place({ name: "Home", latitude: 1, longitude: 2 })])).toBe(true);
+    expect(hasSafeDestination([place({ name: "Home", address: "X 1" })])).toBe(true);
+    expect(hasSafeDestination([place({ name: "Home" })])).toBe(false);
+    expect(hasSafeDestination([])).toBe(false);
   });
 });

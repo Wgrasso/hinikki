@@ -29,7 +29,6 @@ export default function AboutFormModal({ visible, profile, onClose, onSaved }: P
   const { t } = useT();
   const [preferredName, setPreferredName] = useState("");
   const [birthday, setBirthday] = useState("");
-  const [homeAddress, setHomeAddress] = useState("");
   // Null until an explicit choice is made — the admin must pick the language Nikki speaks.
   const [language, setLanguage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -42,7 +41,6 @@ export default function AboutFormModal({ visible, profile, onClose, onSaved }: P
     if (!visible) return;
     setPreferredName(profile?.preferred_name ?? "");
     setBirthday(profile?.date_of_birth ?? "");
-    setHomeAddress(profile?.home_address ?? "");
     setLanguage(profile?.primary_language ?? null);
     setError(null);
     setBirthdayError(null);
@@ -69,7 +67,6 @@ export default function AboutFormModal({ visible, profile, onClose, onSaved }: P
       await updateOlderAdultProfile(profile.id, {
         preferred_name: preferredName.trim() || null,
         date_of_birth: dateOfBirth,
-        home_address: homeAddress.trim() || null,
         primary_language: language,
       });
       onSaved();
@@ -98,13 +95,6 @@ export default function AboutFormModal({ visible, profile, onClose, onSaved }: P
         autoCapitalize="none"
         error={birthdayError}
       />
-
-      <Stack gap="xs">
-        <Field label={t("adminForms.about.homeAddress")} value={homeAddress} onChangeText={setHomeAddress} placeholder={t("adminForms.about.homeAddressPlaceholder")} multiline />
-        <Text variant="caption" tone="textSecondary" style={styles.helper}>
-          {t("adminForms.about.addressHelper")}
-        </Text>
-      </Stack>
 
       <Stack gap="xs">
         <Text variant="overline" tone="textSecondary" style={styles.helper}>

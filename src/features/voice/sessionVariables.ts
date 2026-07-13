@@ -229,6 +229,18 @@ export async function buildSessionVariables(
   const profile = tiers?.profile ?? null;
   const { language_name, register } = languageSettings(profile?.primary_language);
 
+  // "Home" is now a SAFE PLACE (the one named home, else the first), not a profile field. Use its
+  // address for the home hint + as the weather fallback.
+  let homeAddr: string | null = profile?.home_address ?? null; // legacy fallback for existing data
+  try {
+    const { listSafeLocations } = await import("../../services/locationService");
+    const safe = await listSafeLocations(olderAdultId).catch(() => []);
+    const homePlace = safe.find((s) => /\b(home|thuis|huis)\b/i.test(s.name)) ?? safe[0] ?? null;
+    if (homePlace?.address) homeAddr = homePlace.address;
+  } catch {
+    // keep the legacy fallback
+  }
+
   // Weather follows where the elder ACTUALLY is: use their last captured GPS location (from the
   // app's foreground location sharing) so a traveller's weather is right, and fall back to the
   // home town when there's no recent fix. Best-effort — null/errors keep the safe default.
@@ -239,7 +251,7 @@ export async function buildSessionVariables(
     let weather = null;
     const loc = await getLatestLocation(olderAdultId).catch(() => null);
     if (loc) weather = await getWeatherByCoords(loc.latitude, loc.longitude);
-    if (!weather) weather = await getWeather(profile?.home_address ?? null);
+    if (!weather) weather = await getWeather(homeAddr);
     if (weather) weatherText = formatWeather(weather, tiers?.weatherAdvice);
   } catch {
     // keep default
@@ -254,7 +266,7 @@ export async function buildSessionVariables(
     local_time: formatTime(new Date().toISOString()),
     language_name,
     register,
-    home_hint: formatHomeHint(profile?.home_address ?? null) || "their own familiar home",
+    home_hint: formatHomeHint(homeAddr) || "their own familiar home",
     today_schedule: formatSchedule(tiers?.todayEvents ?? []),
     soon_schedule: formatSoon(tiers?.soonEvents ?? []),
     reminders_today: formatReminders(tiers?.reminders ?? []),
