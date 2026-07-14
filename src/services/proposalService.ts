@@ -313,6 +313,12 @@ async function claimProposal(id: string): Promise<boolean> {
 // that shapes how Nikki helps. Everything else, memories included, stays reviewed as "Nikki asks".
 const AUTO_APPLY_TYPES = new Set<ProposalType>(["support_note"]);
 
+// Auto-applied types need no family review, so they must not fire the "Nikki has a question" push —
+// they just take effect quietly in the background.
+export function isAutoAppliedProposal(type: ProposalType): boolean {
+  return AUTO_APPLY_TYPES.has(type);
+}
+
 // Called when a family admin opens the app: silently apply any pending low-risk proposals, so
 // memories and support notes accumulate automatically. Best-effort — a memory that references a
 // person who isn't approved yet simply throws and stays pending for review. Admin-only (RLS).
@@ -586,7 +592,9 @@ export async function flushProposalQueue(): Promise<string[]> {
       });
       if (!error || /duplicate key/i.test(error.message)) {
         succeeded.add(item.id);
-        flushedConversations.add(item.conversationKey ?? "unknown");
+        // Only review-needed proposals warrant the "Nikki has a question" push; auto-applied
+        // types (support notes) flush silently, just like they do online.
+        if (!isAutoAppliedProposal(item.proposalType)) flushedConversations.add(item.conversationKey ?? "unknown");
       }
     }
     try {

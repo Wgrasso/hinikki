@@ -12,6 +12,7 @@ import { saveSessionNote } from "../../services/conversationService";
 import { confirmReminder } from "../../services/reminderService";
 import {
   createProposal,
+  isAutoAppliedProposal,
   newProposalId,
   saveRecap,
 } from "../../services/proposalService";
@@ -193,8 +194,10 @@ export function makeAgentTools(
         // Insert failed but the fact is safely queued for retry — no push yet.
         return "Noted; it will reach the family when the connection returns. Say at most 'I'll make a note of that'.";
       }
-      void firePushOnce();
-      return "Noted for the family to confirm. Say at most 'I'll make a note of that' — no mechanics.";
+      // Support notes (and any other auto-applied type) take effect silently — they need no family
+      // review, so they must NOT fire the "Nikki has a question" push. Only review-needed proposals do.
+      if (!isAutoAppliedProposal(proposalType)) void firePushOnce();
+      return "Noted for the family. Say at most 'I'll make a note of that' — no mechanics.";
     },
 
     // save_session_note — Nikki's PRIVATE continuity note (admins can never read it).
