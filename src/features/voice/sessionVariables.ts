@@ -241,6 +241,18 @@ export async function buildSessionVariables(
     // keep the legacy fallback
   }
 
+  // Support notes shape how Nikki helps and MUST be current: a note the family just added has to
+  // land on the VERY NEXT call. The cached world tier can be up to an hour stale (and
+  // ai_memory_items has no realtime invalidation), so read them fresh here; fall back to the
+  // cached tier only if the read fails.
+  let supportNotes: string[] = tiers?.supportNotes ?? [];
+  try {
+    const { listSupportNotes } = await import("../../services/memoryService");
+    supportNotes = (await listSupportNotes(olderAdultId)).map((n) => n.content);
+  } catch {
+    // keep the cached tier
+  }
+
   // Weather follows where the elder ACTUALLY is: use their last captured GPS location (from the
   // app's foreground location sharing) so a traveller's weather is right, and fall back to the
   // home town when there's no recent fix. Best-effort — null/errors keep the safe default.
@@ -274,7 +286,7 @@ export async function buildSessionVariables(
     family_connections: formatConnections(people, relationships),
     memories_summary: formatMemories(selectMemories(tiers?.memories ?? [], tiers?.todayEvents ?? [], people)),
     never_raise: formatNeverRaise(neverRaiseNames(people)),
-    support_guidance: formatSupportGuidance(tiers?.supportNotes ?? []),
+    support_guidance: formatSupportGuidance(supportNotes),
     recent_summary: formatRecent(tiers?.sessionNotes ?? []),
     recent_turns: formatRecentTurns(tiers?.recentTurns ?? []),
     pending_family_items: formatPendingItems(tiers?.digestTopics ?? []),

@@ -344,8 +344,11 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
       closingRef.current = true;
       setPhase("closing");
       clearIdle(); // no idle hang-up while we're wrapping up
+      // A plain sign-off — NOT a request like "I need to go now", which makes her answer with a
+      // stock "Of course…". This just tells her the chat is ending so she runs her closing (save
+      // note + recap) and gives one short goodbye.
       try {
-        conversation.sendUserMessage("I need to go now. Goodbye, Nikki.");
+        conversation.sendUserMessage("Goodbye, Nikki.");
       } catch {
         /* if we can't reach her, fall through to the hard close below */
       }
