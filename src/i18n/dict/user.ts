@@ -55,6 +55,7 @@ export const user = {
     "voice.speaking": "Nikki is speaking…",
     "voice.listening": "Nikki is listening — just talk",
     "voice.hearing": "Nikki hears you",
+    "voice.wrappingUp": "Saying goodbye…",
     "voice.goodbye": "Goodbye Nikki",
     "voice.talk": "Talk to Nikki",
 
@@ -123,6 +124,7 @@ export const user = {
     "voice.speaking": "Nikki praat…",
     "voice.listening": "Nikki luistert — praat gewoon",
     "voice.hearing": "Nikki hoort u",
+    "voice.wrappingUp": "Even afronden…",
     "voice.goodbye": "Dag Nikki",
     "voice.talk": "Praat met Nikki",
 

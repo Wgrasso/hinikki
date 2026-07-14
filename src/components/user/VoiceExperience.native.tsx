@@ -58,12 +58,11 @@ function VoiceSession({ olderAdultId, preferredName, initialAsk }: VoiceExperien
     void session.begin();
   }, [session]);
 
-  // End the session when the user leaves the screen — never leave a live call behind.
-  const endRef = useRef(session.end);
-  endRef.current = session.end;
-  useEffect(() => () => endRef.current(), []);
+  // Leaving the screen is handled inside the session hook (it hard-closes on unmount and marks the
+  // audio-settle clock), so there's no manual end-on-unmount here.
 
   const live = session.phase === "live";
+  const closing = session.phase === "closing";
   const busy = session.phase === "preparing" || session.phase === "connecting";
 
   // Auto-scroll the transcript so the newest line is always visible and older lines rise
@@ -105,6 +104,12 @@ function VoiceSession({ olderAdultId, preferredName, initialAsk }: VoiceExperien
               onPress={() => undefined}
               disabled
             />
+            <Button label={t("voice.goodbye")} variant="secondary" onPress={session.end} />
+          </Stack>
+        ) : closing ? (
+          // Nikki is saving the recap and signing off after a "Goodbye" tap; a second tap forces it.
+          <Stack gap="lg" style={styles.liveArea}>
+            <VoiceOrb state="busy" label={t("voice.wrappingUp")} onPress={() => undefined} disabled />
             <Button label={t("voice.goodbye")} variant="secondary" onPress={session.end} />
           </Stack>
         ) : (
