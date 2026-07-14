@@ -19,6 +19,7 @@ const FILTERED_TABLES = [
   "person_memories",
   "family_relationships",
   "emergency_events",
+  "emergency_contacts",
   "safe_locations",
   "weather_preferences",
 ] as const;

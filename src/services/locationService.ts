@@ -131,3 +131,16 @@ export async function updateSafeLocation(
   const { error } = await supabase.from("safe_locations").update(patch).eq("id", id);
   if (error) throw new Error(error.message);
 }
+
+// Hard delete — a safe place is shared family data, so removing it removes it for EVERYONE (RLS's
+// admin "manage" policy covers delete). Not a per-admin hide.
+export async function deleteSafeLocation(id: string): Promise<void> {
+  if (!supabase) {
+    await mutateDemo((s) => {
+      s.safeLocations = s.safeLocations.filter((l) => l.id !== id);
+    });
+    return;
+  }
+  const { error } = await supabase.from("safe_locations").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}

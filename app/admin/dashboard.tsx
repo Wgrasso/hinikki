@@ -2,7 +2,7 @@
 // and what still needs setup. "Nikki asks" and "Conversations" are the human-in-the-loop
 // review surface (plan §4.3/§4.6); realtime + focus refetch keep them fresh without pull.
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Platform, Pressable, StyleSheet, View } from "react-native";
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useAppState } from "../../src/auth/appState";
 import { AppBar, Button, Card, Icon, Screen, Stack, Text } from "../../src/primitives";
@@ -195,7 +195,9 @@ export default function AdminDashboard(): React.ReactElement {
             {data.recaps.length > 0 ? (
               <View>
                 <SectionHeader title={t("adminDash.conversations")} />
-                <Stack gap="sm">
+                {/* Cap the height so a long history of chats doesn't push the rest of Home off
+                    screen — the recaps scroll within this box instead. */}
+                <ScrollView style={styles.recapScroll} nestedScrollEnabled showsVerticalScrollIndicator contentContainerStyle={styles.recapScrollContent}>
                   {data.recaps.map((recap) => (
                     <Card key={recap.id} bordered elevation="none">
                       <Stack gap="sm">
@@ -217,7 +219,7 @@ export default function AdminDashboard(): React.ReactElement {
                       </Stack>
                     </Card>
                   ))}
-                </Stack>
+                </ScrollView>
               </View>
             ) : null}
 
@@ -294,6 +296,9 @@ export default function AdminDashboard(): React.ReactElement {
 const styles = StyleSheet.create({
   alert: { borderLeftWidth: 4, borderLeftColor: theme.colors.danger },
   pressed: { opacity: 0.7 },
+  // Recap history scrolls within a capped box so it never crowds out the rest of Home.
+  recapScroll: { maxHeight: 360 },
+  recapScrollContent: { gap: theme.spacing.sm, paddingBottom: theme.spacing.xs },
   pillRow: { flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.sm },
   pill: {
     paddingHorizontal: theme.spacing.md,

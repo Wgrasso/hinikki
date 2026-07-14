@@ -125,6 +125,19 @@ export async function resolveEmergencyEvent(id: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+// Hard delete — a contact is shared family data, so removing it removes it for EVERYONE (RLS's
+// admin "manage" policy covers delete). Not a per-admin hide like the alert list.
+export async function deleteEmergencyContact(id: string): Promise<void> {
+  if (!supabase) {
+    await mutateDemo((s) => {
+      s.emergencyContacts = s.emergencyContacts.filter((c) => c.id !== id);
+    });
+    return;
+  }
+  const { error } = await supabase.from("emergency_contacts").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
 export async function updateEmergencyContact(
   id: string,
   patch: { name?: string; phone?: string | null; relationship?: string | null; priority_order?: number },

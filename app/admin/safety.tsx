@@ -1,6 +1,6 @@
 // app/admin/safety.tsx — location, safe places, emergency contacts, and the alert log in one place.
 import React, { useCallback, useEffect, useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Alert, Pressable, StyleSheet, View } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { useAppState } from "../../src/auth/appState";
 import { AppBar, Button, Card, Icon, Screen, Stack, Text } from "../../src/primitives";
@@ -14,8 +14,8 @@ import { useAsync } from "../../src/utils/useAsync";
 import { subscribeLive } from "../../src/features/sync/liveChannel";
 import { theme } from "../../src/theme";
 import { relativeTimeLabel } from "../../src/utils/format";
-import { getLatestLocation, getLocationById, listSafeLocations } from "../../src/services/locationService";
-import { createEmergencyContact, listEmergencyContacts, listEmergencyEvents, resolveEmergencyEvent, updateEmergencyContact } from "../../src/services/emergencyService";
+import { deleteSafeLocation, getLatestLocation, getLocationById, listSafeLocations } from "../../src/services/locationService";
+import { createEmergencyContact, deleteEmergencyContact, listEmergencyContacts, listEmergencyEvents, resolveEmergencyEvent, updateEmergencyContact } from "../../src/services/emergencyService";
 import { describePlace } from "../../src/features/safety/locationCapture";
 import { getHiddenAlertIds, hideAlertId } from "../../src/features/safety/hiddenAlerts";
 import { openMapLocation } from "../../src/utils/openMaps";
@@ -105,6 +105,30 @@ export default function AdminSafety(): React.ReactElement {
     void hideAlertId(alertId);
   }
 
+  // Safe places and contacts are SHARED family data: deleting removes them for everyone, so we
+  // confirm first (unlike the per-admin alert hide). Reload after, which brings the "!" setup
+  // marker back when the last safe place or contact is gone.
+  function confirmDeletePlace(place: SafeLocation): void {
+    Alert.alert(t("adminSafety.deletePlaceTitle"), t("adminSafety.deleteSharedBody", { name: place.name }), [
+      { text: t("common.cancel"), style: "cancel" },
+      {
+        text: t("common.remove"),
+        style: "destructive",
+        onPress: () => void deleteSafeLocation(place.id).then(reload).catch(() => Alert.alert(t("common.somethingWrong"), t("common.tryAgainMoment"))),
+      },
+    ]);
+  }
+  function confirmDeleteContact(contact: EmergencyContact): void {
+    Alert.alert(t("adminSafety.deleteContactTitle"), t("adminSafety.deleteSharedBody", { name: contact.name }), [
+      { text: t("common.cancel"), style: "cancel" },
+      {
+        text: t("common.remove"),
+        style: "destructive",
+        onPress: () => void deleteEmergencyContact(contact.id).then(reload).catch(() => Alert.alert(t("common.somethingWrong"), t("common.tryAgainMoment"))),
+      },
+    ]);
+  }
+
   return (
     <Screen scroll>
       <AppBar title={t("adminSafety.title")} subtitle={t("adminSafety.subtitle")} />
@@ -157,7 +181,9 @@ export default function AdminSafety(): React.ReactElement {
                     </Text>
                   ) : (
                     data.safe.map((s) => (
-                      <ListRow key={s.id} title={s.name} subtitle={s.address ?? s.location_type ?? t("adminSafety.safePlaceFallback")} onPress={() => setEditPlace(s)} accessibilityLabel={t("admin.editName", { name: s.name })} />
+                      <SwipeToDismiss key={s.id} onDismiss={() => confirmDeletePlace(s)} accessibilityLabel={t("adminSafety.deletePlaceA11y", { name: s.name })}>
+                        <ListRow title={s.name} subtitle={s.address ?? s.location_type ?? t("adminSafety.safePlaceFallback")} onPress={() => setEditPlace(s)} accessibilityLabel={t("admin.editName", { name: s.name })} />
+                      </SwipeToDismiss>
                     ))
                   )}
                 </Stack>
@@ -174,7 +200,9 @@ export default function AdminSafety(): React.ReactElement {
                     </Text>
                   ) : (
                     data.contacts.map((c) => (
-                      <ListRow key={c.id} title={c.name} subtitle={`${c.relationship ?? t("adminSafety.contactFallback")}${c.phone ? ` · ${c.phone}` : ""}`} onPress={() => setEditContact(c)} accessibilityLabel={t("admin.editName", { name: c.name })} />
+                      <SwipeToDismiss key={c.id} onDismiss={() => confirmDeleteContact(c)} accessibilityLabel={t("adminSafety.deleteContactA11y", { name: c.name })}>
+                        <ListRow title={c.name} subtitle={`${c.relationship ?? t("adminSafety.contactFallback")}${c.phone ? ` · ${c.phone}` : ""}`} onPress={() => setEditContact(c)} accessibilityLabel={t("admin.editName", { name: c.name })} />
+                      </SwipeToDismiss>
                     ))
                   )}
                 </Stack>
