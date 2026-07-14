@@ -344,6 +344,16 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
       closingRef.current = true;
       setPhase("closing");
       clearIdle(); // no idle hang-up while we're wrapping up
+      // Silent context (not spoken): remind her to do the write-backs she often skips — save her
+      // private note + the family recap, AND, if she learned how to comfort/help this person today,
+      // file it as a support note. Sent BEFORE the goodbye so it's in scope for the closing turn.
+      try {
+        conversation.sendContextualUpdate(
+          "The chat is ending now. Before you say goodbye, quietly do your closing: save your private note, then save the family recap. And if anything today showed you how to comfort or help them better next time (something that reassures them, a topic they love, how much to explain), save that as a support note with propose_fact too.",
+        );
+      } catch {
+        /* contextual updates may be unavailable; the goodbye below still drives the close */
+      }
       // A plain sign-off — NOT a request like "I need to go now", which makes her answer with a
       // stock "Of course…". This just tells her the chat is ending so she runs her closing (save
       // note + recap) and gives one short goodbye.
