@@ -430,7 +430,99 @@ app/ (screens)  →  src/features/* (domain logic)  →  src/services/* (all DB 
 
 ---
 
-## 13. Suggested reading order
+## 13. Problems we hit and how we solved them (war stories)
+
+These are the bugs that shaped the odd-looking code. Each is **symptom → cause → fix → where**. If
+you're about to "simplify" something in §6 or the caching, read these first.
+
+### 13.1 Nikki stopped hearing the elder (dead mic)
+- **Symptom:** the first call worked, but the *second* one (or a call after Nikki hung up, or after
+  switching Admin↔User) connected fine yet the mic was dead — Nikki heard nothing.
+- **Cause:** the native audio session on iOS is a **process-global, un-refcounted singleton**, and it
+  bit us three different ways:
+  1. Starting call #2 while call #1's session was still *deactivating* re-activated it mid-teardown →
+     capture never came back.
+  2. When the **agent** ended the call (the server-side "End conversation" tool), the SDK's
+     `stopAudioSession` teardown was skipped, leaving the session wedged.
+  3. Switching Admin↔User **unmounts** the voice screen; the "when did the last call end" timer lived
+     on the component, so the remounted hook had no idea it needed to wait, and raced the mic dead.
+- **Fix:**
+  1. Measure the teardown window from the **actual** end time and wait out only the *remaining* slice
+     before `startSession` (`AUDIO_SETTLE_MS`), then toggle mute off→on on connect to re-arm capture
+     (`restartPending`).
+  2. **Disable the server "End conversation" tool** and drive the close from the client after the
+     recap, so teardown always runs (ADR-4).
+  3. Make the settle clock **module-global** (`lastNativeEndAt`) so it survives the remount.
+- **Where:** `src/features/voice/useNikkiSession.ts`.
+- **Dead end we hit:** we first tried *remounting the `ConversationProvider`* to "reset" audio — it
+  made things worse, because the broken singleton lives *below* React. Don't do that.
+
+### 13.2 Weather/location looked wrong or out of date
+- **Symptom:** the home screen showed e.g. "22°, cloudy" but tapping through to Apple Weather said
+  "20°, thunderstorm." Earlier, weather also didn't follow where the person actually was.
+- **Cause:** two separate things.
+  1. *Original bug:* weather was tied to the **home town**, not the elder's real position — a
+     traveller got the wrong weather.
+  2. *The "mismatch" that looks like staleness isn't a bug:* the in-app number comes from
+     **Open-Meteo** (free, keyless), while the tap opens **Apple Weather**, a *different* forecast
+     provider. Two models legitimately differ by a degree or two and on the condition label
+     (especially convective storms). There's also up to ~15 min of caching, matching Open-Meteo's own
+     update cadence.
+- **Fix:** weather now follows the device's **real GPS** (`getWeatherByCoords`), falling back to the
+  home safe-place town; the home screen already refetches on focus. The residual Apple mismatch is a
+  provider difference, not staleness — accepted for now. (Exact match would mean adopting Apple
+  WeatherKit: paid key + signed JWT; not worth it yet.)
+- **Where:** `src/services/weatherService.ts`, `app/user/nikki.tsx`.
+
+### 13.3 "How Nikki supports {name}" was always empty
+- **Symptom:** the elder told Nikki what reassures them; the admin screen stayed empty. Even a note
+  **added by hand** in admin wasn't used by the agent.
+- **Cause:** three bugs stacked (found by bisecting **read** vs **write** with a hand-added note):
+  1. *Write:* the client tool's allow-list (`PROPOSAL_TYPES`) **omitted `support_note`**, so
+     `propose_fact` silently downgraded it to a plain `fact` — never stored as a support note, never
+     auto-applied.
+  2. *Read:* support notes were served from the **60-min world-tier cache** with no realtime
+     invalidation, so a just-added note was stale and the agent never saw it.
+  3. *Write timing:* a note is only filed when the agent calls the tool, usually at **end of call** —
+     and abrupt endings skipped it.
+- **Fix:**
+  1. Add `support_note` to `PROPOSAL_TYPES`.
+  2. Read support notes **fresh at every session start** in `buildSessionVariables` (fail-soft to the
+     cached tier) — the deliberate exception noted in §4.
+  3. The graceful wrap-up (§6) plus a silent contextual-update nudge to file it, and prompt guidance
+     to file "the moment you learn it," not only at the end.
+  Also: support notes **auto-apply silently** — no "Nikki has a question" push
+  (`isAutoAppliedProposal`).
+- **Where:** `agentTools.ts` (allow-list), `sessionVariables.ts` (fresh read), `useNikkiSession.ts`
+  (wrap-up nudge), `proposalService.ts` (auto-apply/no-push).
+- **Lesson:** a *read-works / write-fails* split usually isolates to the **dashboard prompt vs the
+  tool allow-list**. Add a row directly in the DB to test the read path in isolation.
+
+### 13.4 Recap/notes weren't saved when the elder tapped "End"
+- **Symptom:** a recap showed up after a spoken "goodbye" but not when the button was tapped.
+- **Cause:** the End button **hard-killed** the connection before the agent could run its save tools.
+- **Fix:** the graceful wrap-up (§6) — inject a goodbye, show a `closing` state, let the recap
+  auto-close finish, with a hard-timeout fallback and a second-tap force-quit (ADR-4).
+- **Where:** `src/features/voice/useNikkiSession.ts`.
+
+### 13.5 A canned goodbye every time ("Of course {name}, I'm glad I could be with you")
+- **Cause:** the wrap-up injected *"I need to go now"*, so the agent **acknowledged the request** with
+  a stock "Of course…".
+- **Fix:** inject a plain *"Goodbye, Nikki."* instead — no request to acknowledge, no stock line.
+- **Where:** `src/features/voice/useNikkiSession.ts`.
+
+### 13.6 Other notable fixes (smaller, same spirit)
+- **Stage directions leaked** ("[gentle]") into captions/stored turns → `stripStageDirections`.
+- **Greeting always "Good morning"** → time-of-day greeting from the device clock (1:40am reads as
+  evening).
+- **Chat log vanished mid-conversation** → captions were capped at the last 5; keep the full
+  transcript, clear only on a new conversation.
+- **Google Maps key was committed** (GitHub flagged it) → moved to `app.config.js` from env / EAS
+  secret; key rotated. Never commit it.
+
+---
+
+## 14. Suggested reading order
 
 1. This file, then `docs/plans/nikki-brain.md` §0 (decisions) and §0.6/§0.7 (integration reality).
 2. `elevenlabs/README.md` + `elevenlabs/agent.json` — the persona and the contracts.
