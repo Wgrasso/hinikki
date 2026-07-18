@@ -149,8 +149,11 @@ needed before voice-triggered safety escalation can be relied on. App-side piece
   fired automatically. The Help screen's buttons write the same durable `emergency_events` via
   `createEmergencyEvent`. Nikki never diagnoses; reminders have no medication type as of
   2026-07-10 (removed — admin-only, non-medical reminders now).
-- `src/features/dev/*` / `DevModeSwitch` — a developer-only overlay to hop between families and
-  Admin/User mode on one device without losing work; gated so it never reaches real users.
+- `src/components/shared/DevModeSwitch.tsx` (backed by `src/features/dev/devConfig.ts` and
+  `devHarness.ts`) — a developer-only overlay to hop between families and Admin/User mode on one
+  device without losing work. Gated purely by `__DEV__` (no custom flag): the component renders
+  `null` and the harness functions no-op whenever `__DEV__` is false, which is the case in any
+  release-mode JS bundle (e.g. an EAS `production` build) — so it never reaches real users.
 
 `WeatherProvider` (`src/services/weatherService.ts`) is real — `OpenMeteoWeatherProvider` (keyless,
 free), following the elder's live GPS with a fallback to their home safe-place town — not a mock.
