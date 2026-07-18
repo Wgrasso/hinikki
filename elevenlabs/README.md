@@ -18,7 +18,7 @@ so a warm session start makes no network calls). The names must match **exactly*
 |---|---|
 | `preferred_name` | What Nikki calls the person ("friend" if unset) |
 | `today_date` / `local_time` | Device-local date and time |
-| `language_name` / `register` | From `older_adult_profiles.primary_language` (`en` / `nl` / `nl-informal`): "English"/"Dutch" + the u/je register line |
+| `language_name` / `register` | From `older_adult_profiles.primary_language` (`en` / `nl` / `nl-informal`): "English"/"Dutch" + the bare form of address to use (`you` / `u` / `je`) |
 | `home_hint` | AREA only, from the part after the last comma of the home address ("in Amsterdam"; fallback "their own familiar home") — the street address never leaves the device |
 | `today_schedule` | Today's events: time, friendly summary, place, **companion**, transport, `[mention it from HH:MM]` announce lead, bring-notes, family note |
 | `soon_schedule` | Scheduled events beyond today within 48 h, with weekday |

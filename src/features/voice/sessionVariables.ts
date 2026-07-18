@@ -203,11 +203,11 @@ export function languageSettings(primaryLanguage: string | null | undefined): {
 } {
   switch (primaryLanguage) {
     case "nl":
-      return { language_name: "Dutch", register: 'formal "u"' };
+      return { language_name: "Dutch", register: "u" };
     case "nl-informal":
-      return { language_name: "Dutch", register: 'informal "je"' };
+      return { language_name: "Dutch", register: "je" };
     default:
-      return { language_name: "English", register: "warm and respectful" };
+      return { language_name: "English", register: "you" };
   }
 }
 
