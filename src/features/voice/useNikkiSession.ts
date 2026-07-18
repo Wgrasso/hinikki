@@ -15,7 +15,7 @@ import { notifyAdminsOfProposal } from "../../services/pushService";
 import { buildSessionVariables } from "./sessionVariables";
 import { ensureMicPermission } from "./micPermission";
 import { makeAgentTools, type AgentToolSet, type SessionRecap } from "./agentTools";
-import { getSnapshotTiers } from "./snapshot";
+import { getSnapshotTiers, markSnapshotDirty } from "./snapshot";
 import { loadPersonPhotos, matchPersonPhotos, type PersonPhoto } from "./personPhotos";
 
 export type NikkiCaption = { id: number; role: "user" | "nikki"; text: string; people?: PersonPhoto[] };
@@ -287,6 +287,12 @@ export function useNikkiSession(olderAdultId: string, preferredName: string | nu
             photosRef.current = photos;
           })
           .catch(() => undefined);
+        // Force a fresh profile read this session start: a just-changed language (or name) MUST
+        // reflect on the very next call, not up to an hour later when the identity tier's TTL
+        // expires. This marks ONLY the identity tier dirty — one small row fetch that overlaps the
+        // token mint below — so both the language_name variable and the agent.language override
+        // read the latest value. Same rationale as support notes in buildSessionVariables.
+        markSnapshotDirty(olderAdultId, "older_adult_profiles");
         const [conversationToken, dynamicVariables, tiers] = await Promise.all([
           getConversationToken(olderAdultId),
           buildSessionVariables(olderAdultId, preferredName),
