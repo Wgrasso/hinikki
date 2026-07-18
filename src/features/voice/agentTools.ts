@@ -1,4 +1,4 @@
-// src/features/voice/agentTools.ts — the five ElevenLabs client tools (plan §2.6).
+// src/features/voice/agentTools.ts — the ElevenLabs client tools (plan §2.6).
 // These run ON THE ELDER'S DEVICE under their own Supabase session; the agent only ever
 // sees the returned strings. Names, not ids, cross the LLM boundary — the compiled context
 // contains no uuids, so every tool resolves people/reminders against the cached snapshot
