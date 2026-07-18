@@ -4,6 +4,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { getOlderAdult, hasActiveSession, signOutAll } from "../services/profileService";
 import { getMyGroup } from "../services/groupService";
+import { clearScheduledNotifications } from "../features/notifications/scheduler";
+import { clearSnapshot } from "../features/voice/snapshot";
 import type { MyGroup } from "../services/groupService";
 import {
   clearSession,
@@ -189,6 +191,11 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
   );
 
   const signOut = useCallback(async (): Promise<void> => {
+    // Device cleanup BEFORE dropping identity: scheduled reminder pings and the cached voice
+    // snapshot belong to the person leaving this phone — they must not survive into the next
+    // family that pairs here.
+    if (olderAdultId) await clearSnapshot(olderAdultId);
+    await clearScheduledNotifications();
     await signOutAll();
     await clearSession();
     setMode(null);
@@ -196,7 +203,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
     setGroupIdState(null);
     setJoinCodeState(null);
     setStatus("onboarding");
-  }, []);
+  }, [olderAdultId]);
 
   const value = useMemo<AppStateValue>(
     () => ({

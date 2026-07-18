@@ -39,6 +39,12 @@ async function schedule(body: string, trigger: Notifications.NotificationTrigger
   await Notifications.scheduleNotificationAsync({ content: { title: TITLE, body, sound: "default" }, trigger }).catch(() => undefined);
 }
 
+// Sign-out cleanup: drop every pending ping, so a device that leaves this elder/family stops
+// announcing their old schedule. Best-effort like everything else here (no-ops on web).
+export async function clearScheduledNotifications(): Promise<void> {
+  await Notifications.cancelAllScheduledNotificationsAsync().catch(() => undefined);
+}
+
 // Rebuild the whole set of scheduled notifications from the current schedule. Cancels everything
 // first (HiNikki is the only source), so edits/deletes never leave stale pings behind.
 export async function syncScheduledNotifications(olderAdultId: string): Promise<void> {

@@ -104,6 +104,17 @@ export function markSnapshotDirty(olderAdultId: string, table: LiveTable): void 
   if (tier) entry.dirty.add(tier);
 }
 
+// Forget everything cached for this elder (RAM + disk). Called on sign-out so the next
+// person paired on this phone never inherits another family's context.
+export async function clearSnapshot(olderAdultId: string): Promise<void> {
+  cache.delete(olderAdultId);
+  try {
+    await AsyncStorage.removeItem(storageKey(olderAdultId));
+  } catch {
+    // cache persistence is best-effort
+  }
+}
+
 // Build/refresh the structured tiers. Every source is fail-soft: a broken tier keeps its
 // previous (stale) data rather than blocking the session (NFR-3).
 export async function getSnapshotTiers(olderAdultId: string): Promise<SnapshotTiers> {

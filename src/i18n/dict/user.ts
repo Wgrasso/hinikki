@@ -40,6 +40,11 @@ export const user = {
     "help.callFailed": "I could not start the call. Please try again.",
     "help.openingMap": "Opening the map to guide you home…",
     "help.mapFailed": "I could not open the map. Please try again.",
+    "help.startOver.link": "Start over on this phone",
+    "help.startOver.title": "Start over?",
+    "help.startOver.body":
+      "This phone will be disconnected from your family. You will need your family code to set it up again.",
+    "help.startOver.confirm": "Start over",
 
     // Voice experience
     "voice.notSetUp":
@@ -109,6 +114,11 @@ export const user = {
     "help.callFailed": "Ik kon het gesprek niet starten. Probeer het opnieuw.",
     "help.openingMap": "De kaart wordt geopend om u naar huis te begeleiden…",
     "help.mapFailed": "Ik kon de kaart niet openen. Probeer het opnieuw.",
+    "help.startOver.link": "Opnieuw beginnen op deze telefoon",
+    "help.startOver.title": "Opnieuw beginnen?",
+    "help.startOver.body":
+      "Deze telefoon wordt losgekoppeld van uw familie. U heeft de familiecode nodig om hem opnieuw in te stellen.",
+    "help.startOver.confirm": "Opnieuw beginnen",
 
     // Voice experience
     "voice.notSetUp":

@@ -1,7 +1,7 @@
 // app/user/help.tsx — the simplest, most reachable screen: big help actions that always work.
 import React, { useCallback, useEffect, useState } from "react";
-import { Linking, StyleSheet, View } from "react-native";
-import { useFocusEffect } from "expo-router";
+import { Alert, Linking, Pressable, StyleSheet, View } from "react-native";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useAppState } from "../../src/auth/appState";
 import { AppBar, Screen, Stack, Text } from "../../src/primitives";
 import BigHelpButton from "../../src/components/user/BigHelpButton";
@@ -23,7 +23,8 @@ type HelpData = { contacts: EmergencyContact[]; safe: SafeLocation[] };
 
 export default function HelpScreen(): React.ReactElement {
   const { t } = useT();
-  const { olderAdultId } = useAppState();
+  const { olderAdultId, signOut } = useAppState();
+  const router = useRouter();
   const id = olderAdultId ?? "";
   const [note, setNote] = useState<string | null>(null);
 
@@ -75,6 +76,22 @@ export default function HelpScreen(): React.ReactElement {
     if (!ok) setNote(t("help.mapFailed"));
   }
 
+  // "Start over": disconnect this phone from the family (used by caregivers/testers, not the
+  // elder — hence the deliberately quiet styling and a confirmation first). Re-pairing with the
+  // family code brings the same person right back; the pairing claim was built for this.
+  function confirmStartOver(): void {
+    Alert.alert(t("help.startOver.title"), t("help.startOver.body"), [
+      { text: t("common.cancel"), style: "cancel" },
+      {
+        text: t("help.startOver.confirm"),
+        style: "destructive",
+        onPress: () => {
+          void signOut().then(() => router.replace("/"));
+        },
+      },
+    ]);
+  }
+
   return (
     <Screen scroll>
       <AppBar title={t("tab.help")} subtitle={t("help.subtitle")} />
@@ -116,10 +133,24 @@ export default function HelpScreen(): React.ReactElement {
           );
         }}
       </StateView>
+      {/* Outside StateView on purpose: a phone with broken pairing (load error) is exactly the
+          phone that needs a way to start over. */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t("help.startOver.link")}
+        onPress={confirmStartOver}
+        style={({ pressed }) => [styles.startOver, pressed ? styles.startOverPressed : null]}
+      >
+        <Text variant="body" tone="textTertiary" center>
+          {t("help.startOver.link")}
+        </Text>
+      </Pressable>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   note: { paddingTop: theme.spacing.md },
+  startOver: { marginTop: theme.spacing.xl, paddingVertical: theme.spacing.md, minHeight: 44, justifyContent: "center" },
+  startOverPressed: { opacity: 0.7 },
 });
