@@ -46,9 +46,12 @@ instructions for the agent to follow, not user-facing text.
 |---|---|---|
 | `lookup_person` | `name` | Searches the cached people (suppressed names → returns do-not-discuss guidance) |
 | `propose_fact` | `proposal_type`, `payload` (object), `source_quote`, `agent_note` | Files a pending row in `nikki_proposals` for family approval; opinion-filtered; deduped; at most ONE push per conversation. People inside `payload` are referenced by `person_name` / `person_a_name` / `person_b_name` |
-| `confirm_reminder` | `reminder_title`, `notes?` | Resolves the reminder by title (asks to clarify on ambiguity) and inserts a `reminder_confirmations` row (`voice`) |
+| `confirm_reminder` | `reminder_title` | Resolves the reminder by title (asks to clarify on ambiguity) and inserts a `reminder_confirmations` row (`voice`) |
 | `save_session_note` | `note` | Nikki's PRIVATE continuity note (self-only row; admins can never read it) |
 | `save_session_recap` | `summary`, `changes` (array of `{kind, label}`) | The shareable recap: elder closing card + the family's "Conversations" feed (filtered once, shown identically to both) |
+| `guide_to_safe_place` | `reason` | **Live safety action.** Only when the elder is physically lost and has agreed to be shown the way: finds the nearest safe place, opens the maps app with directions, captures a fresh location pin, and logs an `emergency_events` row (`event_type: "lost"`) so the family is alerted |
+| `call_family_member` | `reason` | **Live safety action.** Only when the elder clearly needs a person and has agreed: dials the priority emergency contact (`Linking.openURL("tel:...")`) and logs an `emergency_events` row (`event_type: "call_family"`) |
+| `open_event_directions` | `event_title` | Opens the maps app with directions to a scheduled event's saved location (asks to clarify if more than one plan has a place and the title is ambiguous) |
 
 ## Setup (one-time, human steps)
 
@@ -58,7 +61,7 @@ instructions for the agent to follow, not user-facing text.
    2026-07-09) — the app only connects through conversation tokens minted by the
    `elevenlabs-token` Edge Function; an unauthenticated agent would be callable by anyone
    with the agent id.
-3. **Declare the five client tools** (table above) on the agent so the model can call them.
+3. **Declare the eight client tools** (table above) on the agent so the model can call them.
 4. Set the Supabase function secrets:
    ```bash
    supabase secrets set ELEVENLABS_API_KEY=xi-... ELEVENLABS_AGENT_ID=agent-...
@@ -72,12 +75,17 @@ instructions for the agent to follow, not user-facing text.
    create a second agent from the same prompt with a Dutch-capable voice/model and route by
    `older_adult_profiles.primary_language` when minting the token (the Edge Function can
    pick the agent id) — tracked as plan §7.8.
-7. Safety escalation: voice-triggered escalation (`request_help`/`call_person`) has been
-   removed from this build's scope — Nikki no longer calls anyone or logs emergency events
-   from a conversation. If a platform-side escalation workflow exists on the ElevenLabs
-   agent, disable it too so the persona doesn't promise help it can no longer deliver
-   (see the "In distress" line in the Dutch guide section of the prompt, which still
-   describes the old behavior and needs a product decision on replacement wording).
+7. Safety tools: `guide_to_safe_place` and `call_family_member` (table above) are live —
+   Nikki can open maps to the nearest safe place or dial the priority emergency contact
+   mid-conversation, gated on the elder having agreed (not fired automatically), and both
+   log an `emergency_events` row so the family is alerted. **Known gap:** the live prompt's
+   "YOUR TOOLS" block in `agent.json` doesn't mention either tool by name — only
+   `lookup_person`, `propose_fact`, `confirm_reminder`, and the save-note/recap pair are
+   documented there, so the model has no prompt guidance on when to reach for them. The
+   Dutch "In distress" line ("Ik ben bij u. U bent niet alleen...") also predates these tools
+   and doesn't route to them. This needs a prompt update (mirrored to the dashboard, plus
+   product sign-off on wording) before voice-triggered safety escalation can be relied on in
+   practice — right now the tools work if called, but the persona isn't told to call them.
 8. Medication removed (2026-07-10): reminders no longer support a "medication" type
    (admin-only, non-medical reminders now — watering plants, hydration, etc.), so the prompt
    no longer references `{{medication_notes}}` or a medication-specific instruction. **The

@@ -10,6 +10,8 @@ Full schema for the HiNikki backend, applied in filename order:
 | `20260709130000_event_input_fields.sql` | Additive `calendar_events` columns: `companion`, `announce_lead_minutes` |
 | `20260709140000_person_call_flag.sql` | Additive `family_people.can_be_called_by_nikki` flag |
 | `20260710120000_nikki_brain.sql` | Additive brain layer: `nikki_proposals` (approval queue + guard trigger), `push_tokens` (admin push, active-link-scoped RLS), realtime publication entries. Applied to live on 2026-07-09 |
+| `20260712120000_reminder_alerts.sql` | Additive `reminders` columns: `announce_lead_minutes`, `second_lead_minutes` |
+| `20260714120000_emergency_contacts_realtime.sql` | Adds `emergency_contacts` to the `supabase_realtime` publication so shared-contact edits sync live across a family |
 
 On a fresh project these reproduce the entire backend:
 

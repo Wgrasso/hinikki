@@ -10,7 +10,7 @@ Companion docs (don't duplicate, cross-reference):
   declarations that must match the ElevenLabs dashboard.
 - `elevenlabs/agent.json` — the versioned snapshot of the agent's prompt + settings.
 - `docs/plans/nikki-brain.md` — the original design plan (deeper rationale, decision log).
-- `DEVELOPMENT.md` — how to run, build (EAS), and configure keys.
+- `README.md` — how to run, build (EAS), and configure keys (Maps, Supabase, ElevenLabs).
 
 ---
 
@@ -402,7 +402,7 @@ app/ (screens)  →  src/features/* (domain logic)  →  src/services/* (all DB 
 
 ## 11. Running, building, and the sync rule
 
-- Running + EAS builds: `DEVELOPMENT.md`.
+- Running + EAS builds: `README.md`.
 - ElevenLabs one-time setup (create agent, enable auth, declare tools, set function secrets, push the
   brain migration): `elevenlabs/README.md` §Setup.
 - **Two-sided rule:** any change to the persona prompt, dynamic-variable names, or tool schemas must
