@@ -5,6 +5,7 @@ import { listReminders } from "./reminderService";
 import { getLatestLocation, recordLocation } from "./locationService";
 import { createEmergencyContact, createEmergencyEvent, listEmergencyContacts, listEmergencyEvents } from "./emergencyService";
 import { generatePairingCode, redeemPairingCode } from "./pairingService";
+import { isSameDay } from "../utils/format";
 
 const id = DEMO_OLDER_ADULT_ID;
 
@@ -25,6 +26,26 @@ describe("calendar (demo)", () => {
     await createEvent(id, { title: "Physio", start_at: new Date().toISOString() });
     const all = await listEvents(id);
     expect(all.some((e) => e.title === "Physio")).toBe(true);
+  });
+
+  it("persists a map-pin address on a new event", async () => {
+    await createEvent(id, {
+      title: "Coffee with Els",
+      start_at: new Date().toISOString(),
+      location_address: "Dorpsstraat 12, Utrecht",
+    });
+    const all = await listEvents(id);
+    const saved = all.find((e) => e.title === "Coffee with Els");
+    expect(saved?.location_address).toBe("Dorpsstraat 12, Utrecht");
+  });
+
+  it("listTodayEvents only returns events dated today", async () => {
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    await createEvent(id, { title: "Future outing", start_at: nextWeek.toISOString() });
+    const today = await listTodayEvents(id);
+    expect(today.some((e) => e.title === "Future outing")).toBe(false);
+    expect(today.every((e) => isSameDay(e.start_at, new Date()))).toBe(true);
   });
 });
 

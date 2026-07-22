@@ -268,14 +268,17 @@ export default function ScheduleFormModal({ visible, kind, olderAdultId, event, 
           if (endAt < startAt) endAt.setDate(endAt.getDate() + 1);
         }
         // Location can be typed (place) OR dropped on the map (fills the address). Either is fine,
-        // both optional. A map pin also names the place when no name was typed.
+        // both optional. A map pin also names the place when no name was typed. On edit the pin
+        // starts empty (coordinates aren't stored), so fall back to the event's previously-saved
+        // address rather than wiping it when the user didn't drop a new pin this time.
         const pinAddress = eventPin?.address ?? null;
+        const nextAddress = pinAddress ?? event?.location_address ?? null;
         const patch = {
           title: title.trim(),
           start_at: startAt.toISOString(),
           end_at: endAt ? endAt.toISOString() : null,
-          location_name: place.trim() || pinAddress || null,
-          location_address: pinAddress,
+          location_name: place.trim() || nextAddress || null,
+          location_address: nextAddress,
           companion: withSomeone ? companion.trim() || null : null,
           transport_notes: transport.trim() || null,
           announce_lead_minutes: lead != null && Number.isFinite(lead) ? lead : null,

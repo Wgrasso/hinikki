@@ -36,7 +36,7 @@ read HANDOFF before making a non-trivial change to the voice/data layers.
 ```bash
 npm install                  # .npmrc sets legacy-peer-deps (ElevenLabs/LiveKit peer-dep skew)
 npx expo start --dev-client  # daily loop: JS hot-reloads into the installed dev build
-npx expo start               # web still works for ADMIN-mode UI only (voice shows a fallback)
+npx expo start               # web still works for ADMIN-mode UI only (voice + the map location picker show a fallback)
 npx tsc --noEmit             # type-check (strict mode, must be clean)
 npm test                     # Jest + jest-expo
 npx jest src/utils/format.test.ts   # run a single test file

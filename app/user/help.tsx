@@ -44,9 +44,18 @@ export default function HelpScreen(): React.ReactElement {
     return subscribeLive(id, () => reload());
   }, [id, reload]);
 
+  // Transient status notes ("opening the map…", "no phone saved") are momentary — clear them after
+  // a few seconds so a stale message never lingers on screen and confuses the person. (PairingCode
+  // uses the same self-clearing pattern.)
+  useEffect(() => {
+    if (!note) return;
+    const timer = setTimeout(() => setNote(null), 5000);
+    return () => clearTimeout(timer);
+  }, [note]);
+
   // Call the family's first reachable contact, and log it so the family sees it happened.
   async function callFamily(contacts: EmergencyContact[]): Promise<void> {
-    const contact = contacts.find((c) => c.phone);
+    const contact = contacts.find((c) => (c.phone ?? "").trim().length > 0);
     if (!contact?.phone) {
       setNote(t("help.noPhoneSaved"));
       return;
@@ -59,8 +68,11 @@ export default function HelpScreen(): React.ReactElement {
     );
   }
 
-  // "I'm lost": let the family know right away (alert + a fresh location), then open the phone's
-  // maps app with directions home so they can start walking back to somewhere familiar.
+  // "I'm lost": let the family know right away (a durable alert + a fresh location), THEN open the
+  // phone's maps app with driving directions to the nearest safe place. We record the location and
+  // log the event BEFORE handing off to Maps: opening Maps backgrounds the app, and a GPS fix taken
+  // after that can be delayed or dropped — which would rob the family of the "where are they" link
+  // at the exact moment it matters most.
   async function goHome(safe: SafeLocation[]): Promise<void> {
     setNote(t("help.openingMap"));
     // Where they are now → pick the CLOSEST safe place to guide them to.
@@ -70,9 +82,10 @@ export default function HelpScreen(): React.ReactElement {
       setNote(t("help.mapFailed"));
       return;
     }
-    const ok = await openMapDirections(destination);
-    const locId = await captureAndStoreLocation(id, true); // record WHERE they were, and link it
+    // Record WHERE they are and alert the family while the app is still in the foreground.
+    const locId = await captureAndStoreLocation(id, true);
     void createEmergencyEvent(id, { event_type: "lost", user_message: "Pressed “I feel lost”", detected_urgency: "high", location_update_id: locId }).catch(() => undefined);
+    const ok = await openMapDirections(destination);
     if (!ok) setNote(t("help.mapFailed"));
   }
 
@@ -97,7 +110,7 @@ export default function HelpScreen(): React.ReactElement {
       <AppBar title={t("tab.help")} subtitle={t("help.subtitle")} />
       <StateView state={state} onRetry={reload} loadingLabel={t("help.loading")}>
         {({ contacts, safe }) => {
-          const hasPhone = contacts.some((c) => c.phone);
+          const hasPhone = contacts.some((c) => (c.phone ?? "").trim().length > 0);
           const canGuide = hasSafeDestination(safe);
           return (
             <Stack gap="md">

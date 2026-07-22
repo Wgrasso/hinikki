@@ -108,7 +108,13 @@ export default function AdminSchedule(): React.ReactElement {
                       <ListRow
                         key={item.id}
                         title={item.user_friendly_summary ?? item.title}
-                        subtitle={`${formatTime(item.start_at)}${item.what_to_bring ? ` ${t("adminSchedule.bring", { item: item.what_to_bring })}` : ""}`}
+                        subtitle={[
+                          formatTime(item.start_at),
+                          item.location_name ?? item.location_address,
+                          item.what_to_bring ? t("adminSchedule.bring", { item: item.what_to_bring }) : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
                         onPress={() => setEditEvent(item)}
                         accessibilityLabel={t("admin.editName", { name: item.title })}
                       />

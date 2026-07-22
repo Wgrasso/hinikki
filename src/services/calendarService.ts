@@ -23,10 +23,29 @@ export async function listEvents(olderAdultId: string): Promise<CalendarEvent[]>
   return (data ?? []) as CalendarEvent[];
 }
 
+// Just today's events. This is on the elder's hot paths (home screen, next-event, the voice
+// context snapshot), so query the single day directly instead of pulling the whole event history
+// and filtering client-side — the (older_adult_id, start_at) index makes the bounded range cheap.
 export async function listTodayEvents(olderAdultId: string): Promise<CalendarEvent[]> {
-  const all = await listEvents(olderAdultId);
-  const today = new Date();
-  return all.filter((e) => isSameDay(e.start_at, today));
+  const dayStart = new Date();
+  dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(dayStart);
+  dayEnd.setDate(dayEnd.getDate() + 1);
+  if (!supabase) {
+    const s = await getDemoState();
+    return [...s.events]
+      .filter((e) => e.older_adult_id === olderAdultId && isSameDay(e.start_at, dayStart))
+      .sort((a, b) => a.start_at.localeCompare(b.start_at));
+  }
+  const { data, error } = await supabase
+    .from("calendar_events")
+    .select(EVENT_COLUMNS)
+    .eq("older_adult_id", olderAdultId)
+    .gte("start_at", dayStart.toISOString())
+    .lt("start_at", dayEnd.toISOString())
+    .order("start_at", { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as CalendarEvent[];
 }
 
 // Events starting between now and `hours` from now (default 48 h) — the context snapshot window.
@@ -65,6 +84,7 @@ export type NewEvent = {
   start_at: string;
   end_at?: string | null;
   location_name?: string | null;
+  location_address?: string | null;
   what_to_bring?: string | null;
   transport_notes?: string | null;
   companion?: string | null;
@@ -84,7 +104,7 @@ export async function createEvent(olderAdultId: string, input: NewEvent): Promis
       start_at: input.start_at,
       end_at: input.end_at ?? null,
       location_name: input.location_name ?? null,
-      location_address: null,
+      location_address: input.location_address ?? null,
       what_to_bring: input.what_to_bring ?? null,
       transport_notes: input.transport_notes ?? null,
       companion: input.companion ?? null,
