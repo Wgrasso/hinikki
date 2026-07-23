@@ -58,7 +58,7 @@ struct NikkiWidgetView: View {
         switch family {
         case .accessoryInline:
             // Lock-screen inline: one system-tinted line next to the app clock.
-            Label("Praat met Nikkie", systemImage: "mic.fill")
+            Label("Praat met Nikki", systemImage: "mic.fill")
 
         case .accessoryCircular:
             ZStack {
@@ -71,7 +71,7 @@ struct NikkiWidgetView: View {
             HStack(spacing: 8) {
                 Image(systemName: "mic.fill")
                     .font(.system(size: 20, weight: .semibold))
-                Text("Praat met Nikkie")
+                Text("Praat met Nikki")
                     .font(.headline)
                     .minimumScaleFactor(0.7)
                     .lineLimit(2)
@@ -93,7 +93,7 @@ struct NikkiWidgetView: View {
             }
             .frame(width: micCircle, height: micCircle)
 
-            Text("Klik hier als je met Nikkie wilt praten")
+            Text("Klik hier als je met Nikki wilt praten")
                 .font(.system(size: textSize, weight: .semibold, design: .rounded))
                 .foregroundStyle(nikkiCream)
                 .multilineTextAlignment(.center)
@@ -152,8 +152,8 @@ struct NikkiWidget: Widget {
         StaticConfiguration(kind: kind, provider: NikkiProvider()) { entry in
             NikkiWidgetView(entry: entry)
         }
-        .configurationDisplayName("Praat met Nikkie")
-        .description("Tik om Nikkie te openen en met haar te praten.")
+        .configurationDisplayName("Praat met Nikki")
+        .description("Tik om Nikki te openen en met haar te praten.")
         .supportedFamilies([
             .systemSmall, .systemMedium, .systemLarge,
             .accessoryCircular, .accessoryRectangular, .accessoryInline,
