@@ -40,11 +40,13 @@
       ],
       "@livekit/react-native-expo-plugin",
       "expo-notifications",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "@bacons/apple-targets"
     ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.willemgrasso.hinikki",
+      "appleTeamId": "AL7SQ4HRT6",
       "buildNumber": "1",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false

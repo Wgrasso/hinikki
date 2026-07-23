@@ -20,6 +20,7 @@
     ]
   },
   "dependencies": {
+    "@bacons/apple-targets": "^5.0.0",
     "@config-plugins/react-native-webrtc": "^15.0.1",
     "@elevenlabs/react-native": "^1.2.13",
     "@expo-google-fonts/fraunces": "^0.4.1",
